@@ -11,7 +11,8 @@ import {
   Shield, 
   Bell,
   Wallet,
-  LogOut
+  LogOut,
+  History
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -141,10 +142,12 @@ const Dashboard = () => {
                   <Activity className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg">Your Holdings</CardTitle>
                 </div>
-                <Button variant="ghost" size="sm">
-                  View All
-                  <ArrowUpRight className="h-4 w-4 ml-1" />
-                </Button>
+                <Link to="/transactions">
+                  <Button variant="ghost" size="sm">
+                    <History className="h-4 w-4 mr-1" />
+                    History
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border/50">
