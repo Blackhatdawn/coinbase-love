@@ -6,8 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
+
+  const user = auth?.user ?? null;
+  const signOut = auth?.signOut ?? (() => {});
 
   const handleSignOut = () => {
     signOut();
