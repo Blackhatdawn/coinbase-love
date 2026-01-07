@@ -49,9 +49,9 @@ const Header = () => {
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
-                <span className="text-sm text-muted-foreground">
-                  Hi, {user.name.split(' ')[0]}
-                </span>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
                 <Button variant="ghost" size="sm" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
@@ -97,9 +97,9 @@ const Header = () => {
               <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
                 {user ? (
                   <>
-                    <span className="text-sm text-muted-foreground px-2">
-                      Hi, {user.name}
-                    </span>
+                    <Button variant="ghost" size="sm" className="justify-start" asChild>
+                      <Link to="/dashboard">Dashboard</Link>
+                    </Button>
                     <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignOut}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign Out
