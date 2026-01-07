@@ -1,9 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Wallet, Menu, X } from "lucide-react";
+import { Wallet, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    signOut();
+    navigate("/");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -35,12 +44,26 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-            <Button variant="gradient" size="sm">
-              Get Started
-            </Button>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  Hi, {user.name.split(' ')[0]}
+                </span>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/auth">Sign In</Link>
+                </Button>
+                <Button variant="gradient" size="sm" asChild>
+                  <Link to="/auth">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -69,12 +92,26 @@ const Header = () => {
                 Learn
               </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
-                <Button variant="ghost" size="sm" className="justify-start">
-                  Sign In
-                </Button>
-                <Button variant="gradient" size="sm">
-                  Get Started
-                </Button>
+                {user ? (
+                  <>
+                    <span className="text-sm text-muted-foreground px-2">
+                      Hi, {user.name}
+                    </span>
+                    <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="sm" className="justify-start" asChild>
+                      <Link to="/auth">Sign In</Link>
+                    </Button>
+                    <Button variant="gradient" size="sm" asChild>
+                      <Link to="/auth">Get Started</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </div>
