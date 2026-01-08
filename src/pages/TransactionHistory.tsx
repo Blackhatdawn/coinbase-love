@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Filter, CalendarIcon } from "lucide-react";
@@ -8,39 +8,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface Transaction {
   id: string;
-  type: "buy" | "sell";
-  coin: string;
-  symbol: string;
+  type: string;
+  symbol?: string;
   amount: number;
-  price: number;
-  total: number;
-  date: Date;
+  description?: string;
+  createdAt: string;
 }
-
-const mockTransactions: Transaction[] = [
-  { id: "1", type: "buy", coin: "Bitcoin", symbol: "BTC", amount: 0.5, price: 67234, total: 33617, date: new Date("2026-01-05") },
-  { id: "2", type: "sell", coin: "Ethereum", symbol: "ETH", amount: 2.0, price: 3456, total: 6912, date: new Date("2026-01-04") },
-  { id: "3", type: "buy", coin: "Solana", symbol: "SOL", amount: 25, price: 178, total: 4450, date: new Date("2026-01-03") },
-  { id: "4", type: "buy", coin: "Cardano", symbol: "ADA", amount: 1000, price: 0.89, total: 890, date: new Date("2026-01-02") },
-  { id: "5", type: "sell", coin: "Bitcoin", symbol: "BTC", amount: 0.2, price: 65890, total: 13178, date: new Date("2025-12-28") },
-  { id: "6", type: "buy", coin: "Ethereum", symbol: "ETH", amount: 1.5, price: 3234, total: 4851, date: new Date("2025-12-25") },
-  { id: "7", type: "sell", coin: "Solana", symbol: "SOL", amount: 10, price: 165, total: 1650, date: new Date("2025-12-20") },
-  { id: "8", type: "buy", coin: "Bitcoin", symbol: "BTC", amount: 0.3, price: 62500, total: 18750, date: new Date("2025-12-15") },
-];
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
-  const filteredTransactions = mockTransactions.filter((tx) => {
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.transactions.getAll();
+        setTransactions(response.transactions || []);
+      } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        setTransactions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  const filteredTransactions = transactions.filter((tx) => {
     if (typeFilter !== "all" && tx.type !== typeFilter) return false;
-    if (startDate && tx.date < startDate) return false;
-    if (endDate && tx.date > endDate) return false;
+
+    const txDate = new Date(tx.createdAt);
+    if (startDate && txDate < startDate) return false;
+    if (endDate && txDate > endDate) return false;
     return true;
   });
 
