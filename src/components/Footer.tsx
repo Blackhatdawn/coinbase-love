@@ -1,10 +1,29 @@
 import { Wallet, Twitter, Github, Linkedin, Youtube } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const links = {
-    products: ["Exchange", "Wallet", "Card", "Earn", "NFT"],
-    resources: ["Learn", "Blog", "API Docs", "Status", "Support"],
-    company: ["About", "Careers", "Press", "Legal", "Privacy"],
+    products: [
+      { label: "Exchange", href: "/markets" },
+      { label: "Wallet", href: "#" },
+      { label: "Card", href: "#" },
+      { label: "Earn", href: "/earn" },
+      { label: "NFT", href: "#" },
+    ],
+    resources: [
+      { label: "Learn", href: "/learn" },
+      { label: "Blog", href: "#" },
+      { label: "API Docs", href: "#" },
+      { label: "Status", href: "#" },
+      { label: "Support", href: "/contact" },
+    ],
+    company: [
+      { label: "About", href: "#" },
+      { label: "Careers", href: "#" },
+      { label: "Press", href: "#" },
+      { label: "Legal", href: "#" },
+      { label: "Privacy", href: "/privacy" },
+    ],
   };
 
   return (
