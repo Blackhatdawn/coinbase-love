@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Zap, Globe } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const HeroSection = () => {
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
       {/* Background Effects */}
