@@ -121,12 +121,12 @@ const Footer = () => {
             © 2024 CryptoVault. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Terms of Service
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Privacy Policy
-            </a>
+            </Link>
             <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Cookie Policy
             </a>
