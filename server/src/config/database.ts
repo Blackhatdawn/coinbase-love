@@ -31,6 +31,9 @@ export const getClient = () => pool.connect();
 // Initialize database schema
 export const initializeDatabase = async () => {
   try {
+    // Create pgcrypto extension for UUID generation
+    await query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+
     // Users table
     await query(`
       CREATE TABLE IF NOT EXISTS users (
