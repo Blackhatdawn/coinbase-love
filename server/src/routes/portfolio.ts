@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { query } from '@/config/database';
 import { authMiddleware, AuthRequest } from '@/middleware/auth';
 import { addHoldingSchema } from '@/utils/validation';
+import { getCryptoPrice } from '@/utils/cryptoApi';
 
 const router = Router();
 
