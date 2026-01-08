@@ -17,20 +17,28 @@ import Learn from "./pages/Learn";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect } from "react";
+import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
 
+  useRedirectSpinner((visible) => setIsLoading(visible));
+
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
-    const handleNavigationEnd = () => setIsLoading(false);
+    const handleNavigationEnd = () => {
+      // Hide spinner after a short delay to allow page to render
+      setTimeout(() => setIsLoading(false), 300);
+    };
 
     window.addEventListener("popstate", handleNavigationStart);
+    window.addEventListener("load", handleNavigationEnd);
 
     return () => {
       window.removeEventListener("popstate", handleNavigationStart);
+      window.removeEventListener("load", handleNavigationEnd);
     };
   }, []);
 
