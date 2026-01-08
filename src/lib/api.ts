@@ -122,6 +122,11 @@ export const api = {
       request('/auth/me'),
     refresh: () =>
       request('/auth/refresh', { method: 'POST' }),
+    verifyEmail: (token: string, email: string) =>
+      request('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token, email }),
+      }),
   },
 
   // Cryptocurrencies
