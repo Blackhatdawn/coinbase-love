@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,73 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, BarChart3, Settings } from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Trade = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const [tradingPair, setTradingPair] = useState("");
+  const [orderType, setOrderType] = useState("market");
+  const [side, setSide] = useState("buy");
+  const [amount, setAmount] = useState("");
+  const [price, setPrice] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [accountBalance] = useState(10000);
+
+  const total = amount && price ? (parseFloat(amount) * parseFloat(price)).toFixed(2) : "0.00";
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please sign in to place orders",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!tradingPair || !amount || !price) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all order details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await api.orders.create(
+        tradingPair,
+        orderType,
+        side,
+        parseFloat(amount),
+        parseFloat(price)
+      );
+
+      toast({
+        title: "Order placed successfully",
+        description: `${side.toUpperCase()} ${amount} ${tradingPair} at ${price}`,
+      });
+
+      // Reset form
+      setTradingPair("");
+      setAmount("");
+      setPrice("");
+    } catch (error: any) {
+      toast({
+        title: "Failed to place order",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -28,20 +94,20 @@ const Trade = () => {
               <Card className="p-6 border-border/50 bg-secondary/20 backdrop-blur">
                 <div className="mb-6">
                   <h2 className="font-display text-xl font-bold mb-4">Create Order</h2>
-                  
+
                   <div className="space-y-4">
                     {/* Pair Selection */}
                     <div>
                       <label className="block text-sm font-medium mb-2">Trading Pair</label>
-                      <Select>
+                      <Select value={tradingPair} onValueChange={setTradingPair}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select cryptocurrency pair" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="btcusdt">BTC/USDT</SelectItem>
-                          <SelectItem value="ethusdt">ETH/USDT</SelectItem>
-                          <SelectItem value="solusdt">SOL/USDT</SelectItem>
-                          <SelectItem value="xrpusdt">XRP/USDT</SelectItem>
+                          <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
+                          <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
+                          <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
+                          <SelectItem value="XRP/USDT">XRP/USDT</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -50,7 +116,7 @@ const Trade = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-2">Order Type</label>
-                        <Select>
+                        <Select value={orderType} onValueChange={setOrderType}>
                           <SelectTrigger>
                             <SelectValue placeholder="Market" />
                           </SelectTrigger>
@@ -64,10 +130,18 @@ const Trade = () => {
                       <div>
                         <label className="block text-sm font-medium mb-2">Side</label>
                         <div className="flex gap-2">
-                          <Button variant="outline" className="flex-1 text-success border-success/50">
+                          <Button
+                            variant={side === "buy" ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setSide("buy")}
+                          >
                             Buy
                           </Button>
-                          <Button variant="outline" className="flex-1 text-destructive border-destructive/50">
+                          <Button
+                            variant={side === "sell" ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setSide("sell")}
+                          >
                             Sell
                           </Button>
                         </div>
@@ -78,11 +152,21 @@ const Trade = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-2">Amount</label>
-                        <Input placeholder="0.00" type="number" />
+                        <Input
+                          placeholder="0.00"
+                          type="number"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-2">Price</label>
-                        <Input placeholder="0.00" type="number" />
+                        <Input
+                          placeholder="0.00"
+                          type="number"
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                        />
                       </div>
                     </div>
 
@@ -90,14 +174,20 @@ const Trade = () => {
                     <div className="p-4 bg-secondary/50 rounded-lg border border-border/50">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Total</span>
-                        <span className="font-display font-bold text-lg">0.00 USDT</span>
+                        <span className="font-display font-bold text-lg">{total} USDT</span>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-4">
-                      <Button variant="hero" size="lg" className="flex-1">
-                        Place Order
+                      <Button
+                        variant="hero"
+                        size="lg"
+                        className="flex-1"
+                        onClick={handlePlaceOrder}
+                        disabled={isLoading || !user}
+                      >
+                        {isLoading ? "Placing..." : "Place Order"}
                       </Button>
                       <Button variant="outline" size="lg">
                         <Settings className="h-4 w-4" />
