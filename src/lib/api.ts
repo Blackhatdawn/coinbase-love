@@ -73,6 +73,8 @@ export const api = {
       request('/auth/logout', { method: 'POST' }),
     getProfile: () =>
       request('/auth/me'),
+    refresh: () =>
+      request('/auth/refresh', { method: 'POST' }),
   },
 
   // Cryptocurrencies
