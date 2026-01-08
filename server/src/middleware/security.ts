@@ -211,16 +211,17 @@ export const getCorsOptions = () => {
 
       // In production, only allow specified origins
       const allowedOrigins = [corsOrigin].filter(Boolean);
-      
+
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
       return callback(new Error('Not allowed by CORS'));
     },
-    credentials: true,
+    credentials: true, // Allow credentials (cookies) to be included in requests
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'], // Expose Set-Cookie header for credentials
     maxAge: 86400, // 24 hours
   };
 };
