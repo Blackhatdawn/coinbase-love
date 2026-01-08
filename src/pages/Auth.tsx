@@ -256,12 +256,17 @@ const Auth = () => {
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                    className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                      getFieldError("name") ? "border-destructive" : ""
+                    }`}
                   />
                 </div>
+                {getFieldError("name") && (
+                  <p className="text-xs text-destructive">{getFieldError("name")}</p>
+                )}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -272,11 +277,16 @@ const Auth = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                  className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                    getFieldError("email") ? "border-destructive" : ""
+                  }`}
                 />
               </div>
+              {getFieldError("email") && (
+                <p className="text-xs text-destructive">{getFieldError("email")}</p>
+              )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -287,7 +297,9 @@ const Auth = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                  className={`pl-10 pr-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                    getFieldError("password") ? "border-destructive" : ""
+                  }`}
                 />
                 <button
                   type="button"
@@ -297,6 +309,14 @@ const Auth = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {getFieldError("password") && (
+                <p className="text-xs text-destructive">{getFieldError("password")}</p>
+              )}
+              {!isLogin && !getFieldError("password") && password && (
+                <p className="text-xs text-muted-foreground">
+                  ✓ Password meets security requirements
+                </p>
+              )}
             </div>
             
             {isLogin && (
