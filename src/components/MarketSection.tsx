@@ -26,8 +26,10 @@ const MarketSection = () => {
               Track real-time prices across 200+ cryptocurrencies. Trade with confidence using advanced charts and analytics.
             </p>
           </div>
-          <Button variant="outline" className="mt-4 md:mt-0">
-            View All Markets
+          <Button variant="outline" className="mt-4 md:mt-0" asChild>
+            <Link to="/markets">
+              View All Markets
+            </Link>
           </Button>
         </div>
 
