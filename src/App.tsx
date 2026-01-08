@@ -15,6 +15,8 @@ import Trade from "./pages/Trade";
 import Earn from "./pages/Earn";
 import Learn from "./pages/Learn";
 import Contact from "./pages/Contact";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
