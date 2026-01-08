@@ -213,6 +213,50 @@ router.post(
 );
 
 // ============================================================================
+// VERIFY EMAIL ROUTE - Verify email using token
+// ============================================================================
+router.post(
+  '/verify-email',
+  asyncHandler(async (req, res) => {
+    const { token, email } = req.body;
+
+    if (!token || !email) {
+      return res.status(400).json({ error: 'Verification token and email are required' });
+    }
+
+    // Find user by email and verification token
+    const result = await query(
+      'SELECT id, email, name, email_verified, email_verification_token, email_verification_expires FROM users WHERE email = $1 AND email_verification_token = $2',
+      [email.toLowerCase(), token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid verification token' });
+    }
+
+    const user = result.rows[0];
+
+    // Check if token is expired
+    if (user.email_verification_expires < new Date()) {
+      return res.status(400).json({ error: 'Verification token has expired. Please request a new one.' });
+    }
+
+    // Check if already verified
+    if (user.email_verified) {
+      return res.status(200).json({ message: 'Email already verified' });
+    }
+
+    // Mark email as verified
+    await query(
+      'UPDATE users SET email_verified = true, email_verification_token = NULL, email_verification_expires = NULL WHERE id = $1',
+      [user.id]
+    );
+
+    res.json({ message: 'Email verified successfully. You can now sign in.' });
+  })
+);
+
+// ============================================================================
 // REFRESH TOKEN ROUTE - Get new access token using refresh token
 // ============================================================================
 router.post(
