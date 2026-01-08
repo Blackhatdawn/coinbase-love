@@ -1,4 +1,13 @@
-const API_BASE = '/api';
+/**
+ * API Client Configuration
+ *
+ * In development: Uses /api proxy defined in vite.config.ts (targets localhost:5000)
+ * In production: Uses relative /api path (requests go to same domain where frontend is hosted)
+ *
+ * For separate domain deployments, update API_BASE environment variable
+ */
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export class APIError extends Error {
   constructor(
@@ -10,6 +19,9 @@ export class APIError extends Error {
   }
 }
 
+/**
+ * Generic request handler with authentication and error handling
+ */
 const request = async (
   endpoint: string,
   options: RequestInit = {}
@@ -22,6 +34,7 @@ const request = async (
     ...options.headers,
   };
 
+  // Add authorization token if available
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -32,8 +45,20 @@ const request = async (
       headers,
     });
 
+    // Handle non-2xx responses
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+      // Handle 401 - likely token expired, clear localStorage
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        // Optionally redirect to login
+        if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+          // Don't redirect here, let components handle it
+        }
+      }
+
       throw new APIError(response.status, error.error || 'Request failed');
     }
 
