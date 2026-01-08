@@ -4,6 +4,33 @@ import { authMiddleware, generateToken, AuthRequest } from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
 
+// Simple in-memory rate limiter for login attempts
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+
+const checkLoginRateLimit = (email: string): boolean => {
+  const now = Date.now();
+  const attempt = loginAttempts.get(email);
+
+  if (!attempt) {
+    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 }); // 15 min window
+    return true;
+  }
+
+  if (now > attempt.resetTime) {
+    // Reset after window expires
+    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 });
+    return true;
+  }
+
+  // Max 5 attempts per 15 minutes
+  if (attempt.count >= 5) {
+    return false;
+  }
+
+  attempt.count += 1;
+  return true;
+};
+
 const router = Router();
 
 // Sign Up
