@@ -25,8 +25,8 @@ export const createOrderSchema = z.object({
 });
 
 export const addHoldingSchema = z.object({
-  symbol: z.string().length(1, 20, 'Invalid symbol length'),
-  name: z.string().min(1, 'Name required'),
+  symbol: z.string().min(1).max(20, 'Invalid symbol length'),
+  name: z.string().min(1, 'Name required').max(100, 'Name is too long'),
   amount: z.number().positive('Amount must be positive'),
 });
 
