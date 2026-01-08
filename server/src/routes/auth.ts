@@ -12,6 +12,7 @@ import {
 } from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
+import { generateVerificationToken, getVerificationTokenExpiry, sendVerificationEmail } from '@/utils/email';
 import {
   authLimiter,
   validateEmail,
