@@ -113,6 +113,9 @@ router.post('/login', async (req, res) => {
     // Generate token
     const token = generateToken(user.id, user.email);
 
+    // Clear rate limit on successful login
+    loginAttempts.delete(email.toLowerCase());
+
     res.json({
       token,
       user: {
