@@ -10,7 +10,11 @@ export interface AuthRequest extends Request {
 
 export const verifyToken = (token: string) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is not configured');
+    }
+    const decoded = jwt.verify(token, secret);
     return decoded as { id: string; email: string };
   } catch (error) {
     return null;
