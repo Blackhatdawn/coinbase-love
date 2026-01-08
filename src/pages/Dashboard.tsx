@@ -1,35 +1,64 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  TrendingUp, 
-  ArrowUpRight, 
-  PieChart, 
-  Activity, 
-  Settings, 
-  User, 
-  Shield, 
+import {
+  TrendingUp,
+  ArrowUpRight,
+  PieChart,
+  Activity,
+  Settings,
+  User,
+  Shield,
   Bell,
   Wallet,
   LogOut,
   History
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 
-const holdings = [
-  { symbol: "BTC", name: "Bitcoin", amount: 0.5234, value: 50987.23, allocation: 45, change: 2.34 },
-  { symbol: "ETH", name: "Ethereum", amount: 8.234, value: 28456.78, allocation: 25, change: -1.23 },
-  { symbol: "SOL", name: "Solana", amount: 120.5, value: 22829.22, allocation: 20, change: 5.67 },
-  { symbol: "XRP", name: "Ripple", amount: 4500, value: 10530.00, allocation: 10, change: 3.21 },
-];
+interface Holding {
+  symbol: string;
+  name: string;
+  amount: number;
+  value: number;
+  allocation: number;
+  change?: number;
+}
 
 const Dashboard = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const user = auth?.user;
   const signOut = auth?.signOut ?? (() => {});
-  
-  const totalValue = holdings.reduce((acc, h) => acc + h.value, 0);
+
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [totalValue, setTotalValue] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.portfolio.get();
+        const portfolio = response.portfolio;
+
+        setTotalValue(portfolio.totalBalance);
+        setHoldings(portfolio.holdings || []);
+      } catch (error) {
+        console.error("Failed to fetch portfolio:", error);
+        setTotalValue(0);
+        setHoldings([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchPortfolio();
+    }
+  }, [user]);
 
   const handleSignOut = () => {
     signOut();
