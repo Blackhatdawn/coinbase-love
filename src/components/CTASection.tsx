@@ -28,12 +28,16 @@ const CTASection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="hero" size="xl" className="group">
-              Create Free Account
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            <Button variant="hero" size="xl" className="group" asChild>
+              <Link to="/auth">
+                Create Free Account
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
             </Button>
-            <Button variant="outline" size="xl">
-              Contact Sales
+            <Button variant="outline" size="xl" asChild>
+              <Link to="/contact">
+                Contact Sales
+              </Link>
             </Button>
           </div>
 
