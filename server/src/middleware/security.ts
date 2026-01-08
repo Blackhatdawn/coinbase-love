@@ -164,24 +164,47 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
 // ============================================================================
 
 /**
+ * Generate a random nonce for inline scripts
+ */
+const generateNonce = (): string => {
+  return require('crypto').randomBytes(16).toString('hex');
+};
+
+/**
  * Custom security headers (used with helmet)
+ * Implements strict Content Security Policy with nonce-based inline script protection
  */
 export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Content Security Policy
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
-  );
-  
-  // Prevent MIME sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  
-  // Prevent clickjacking
-  res.setHeader('X-Frame-Options', 'DENY');
-  
-  // Disable X-Powered-By header
+  // Generate a nonce for this request
+  const nonce = generateNonce();
+
+  // Store nonce on request object for use in templates
+  (req as any).nonce = nonce;
+
+  // Strict Content Security Policy (without unsafe-inline or unsafe-eval)
+  // Using nonce for any necessary inline scripts
+  const csp = [
+    "default-src 'self'",                                    // Only allow same-origin by default
+    `script-src 'self' 'nonce-${nonce}'`,                    // Allow self and inline scripts with nonce
+    "style-src 'self' 'nonce-" + nonce + "'",               // Allow self and inline styles with nonce
+    "img-src 'self' data: https:",                           // Allow self, data URIs, and HTTPS images
+    "font-src 'self' data:",                                 // Allow self and data URIs for fonts
+    "connect-src 'self' https:",                             // Allow API calls to self and HTTPS
+    "frame-ancestors 'none'",                                // Prevent embedding in frames
+    "base-uri 'self'",                                       // Restrict base URLs
+    "form-action 'self'",                                    // Restrict form submissions
+  ].join('; ');
+
+  res.setHeader('Content-Security-Policy', csp);
+
+  // Additional security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');       // Prevent MIME type sniffing
+  res.setHeader('X-Frame-Options', 'DENY');                  // Prevent clickjacking
+  res.setHeader('X-XSS-Protection', '1; mode=block');        // Enable XSS protection
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); // Control referrer info
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'); // Restrict API access
   res.setHeader('X-Powered-By', 'CryptoVault');
-  
+
   next();
 };
 
@@ -211,16 +234,17 @@ export const getCorsOptions = () => {
 
       // In production, only allow specified origins
       const allowedOrigins = [corsOrigin].filter(Boolean);
-      
+
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
       return callback(new Error('Not allowed by CORS'));
     },
-    credentials: true,
+    credentials: true, // Allow credentials (cookies) to be included in requests
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'], // Expose Set-Cookie header for credentials
     maxAge: 86400, // 24 hours
   };
 };

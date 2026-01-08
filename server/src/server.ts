@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { initializeDatabase } from '@/config/database';
 import authRoutes from '@/routes/auth';
@@ -28,8 +29,11 @@ app.use(helmet());
 // Custom security headers
 app.use(securityHeaders);
 
-// CORS with dynamic origin configuration
+// CORS with dynamic origin configuration (must be before cookie parser)
 app.use(cors(getCorsOptions()));
+
+// Cookie parser for HttpOnly cookie handling
+app.use(cookieParser());
 
 // Rate limiting (general API - applied to all routes except health)
 app.use(generalLimiter);

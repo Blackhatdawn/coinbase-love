@@ -3,9 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Wallet, Mail, Lock, User, ArrowLeft, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+
+interface ValidationError {
+  field: string;
+  message: string;
+}
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,64 +20,217 @@ const Auth = () => {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [emailVerificationStep, setEmailVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  /**
+   * Validate email format
+   */
+  const validateEmail = (email: string): string | null => {
+    const trimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmed) {
+      return "Email is required";
+    }
+
+    if (!emailRegex.test(trimmed)) {
+      return "Please enter a valid email address";
+    }
+
+    return null;
+  };
+
+  /**
+   * Validate password strength
+   * Requirements: min 8 chars, at least one uppercase, one lowercase, one number
+   */
+  const validatePassword = (password: string): string | null => {
+    if (!password) {
+      return "Password is required";
+    }
+
+    if (password.length < 8) {
+      return "Password must be at least 8 characters long";
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return "Password must contain at least one uppercase letter";
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return "Password must contain at least one lowercase letter";
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return "Password must contain at least one number";
+    }
+
+    return null;
+  };
+
+  /**
+   * Validate name
+   * Requirements: 2-100 characters
+   */
+  const validateName = (name: string): string | null => {
+    const trimmed = name.trim();
+
+    if (!trimmed) {
+      return "Full name is required";
+    }
+
+    if (trimmed.length < 2) {
+      return "Name must be at least 2 characters long";
+    }
+
+    if (trimmed.length > 100) {
+      return "Name must not exceed 100 characters";
+    }
+
+    return null;
+  };
+
+  /**
+   * Validate form based on current mode (login/signup)
+   */
+  const validateForm = (): boolean => {
+    const newErrors: ValidationError[] = [];
+
+    // Validate email
+    const emailError = validateEmail(email);
+    if (emailError) {
+      newErrors.push({ field: "email", message: emailError });
+    }
+
+    // Validate password
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      newErrors.push({ field: "password", message: passwordError });
+    }
+
+    // Validate name if signing up
+    if (!isLogin) {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.push({ field: "name", message: nameError });
+      }
+    }
+
+    setErrors(newErrors);
+    return newErrors.length === 0;
+  };
+
+  /**
+   * Get error message for a specific field
+   */
+  const getFieldError = (field: string): string | null => {
+    const error = errors.find(e => e.field === field);
+    return error ? error.message : null;
+  };
+
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!verificationCode.trim()) {
+      toast({
+        title: "Verification code required",
+        description: "Please enter the verification code or paste the token",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await api.auth.verifyEmail(verificationCode, pendingEmail);
+
+      toast({
+        title: "Email verified!",
+        description: "Your email has been verified. You can now sign in.",
+      });
+
+      // Reset form and show login
+      setEmailVerificationStep(false);
+      setVerificationCode("");
+      setPendingEmail("");
+      setIsLogin(true);
+      setEmail("");
+      setPassword("");
+      setName("");
+    } catch (error: any) {
+      toast({
+        title: "Verification failed",
+        description: error.message || "Invalid or expired verification token",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateEmail(email)) {
-      toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      });
+
+    // Validate form before submitting
+    if (!validateForm()) {
       return;
     }
-    
-    if (password.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!isLogin && name.trim().length < 2) {
-      toast({
-        title: "Name required",
-        description: "Please enter your name",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+
     setIsLoading(true);
-    
+
     try {
-      const result = isLogin 
-        ? await signIn(email, password)
-        : await signUp(email, password, name);
-      
-      if (result.error) {
-        toast({
-          title: isLogin ? "Sign in failed" : "Sign up failed",
-          description: result.error,
-          variant: "destructive",
-        });
+      if (isLogin) {
+        const result = await signIn(email, password);
+
+        if (result.error) {
+          // Check if error is due to unverified email
+          if (result.error.includes("Email not verified")) {
+            toast({
+              title: "Email not verified",
+              description: "Please verify your email address first. Check your inbox for a verification link.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Sign in failed",
+              description: result.error,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in",
+          });
+          navigate("/");
+        }
       } else {
-        toast({
-          title: isLogin ? "Welcome back!" : "Account created!",
-          description: isLogin ? "You have successfully signed in" : "Your account has been created",
-        });
-        navigate("/");
+        const result = await signUp(email, password, name);
+
+        if (result.error) {
+          toast({
+            title: "Sign up failed",
+            description: result.error,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Please verify your email address. Check your inbox for a verification link.",
+          });
+
+          // Move to email verification step
+          setPendingEmail(email);
+          setEmailVerificationStep(true);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -149,16 +308,29 @@ const Auth = () => {
             </button>
           </div>
           
-          <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
-            {isLogin ? "Welcome back" : "Create account"}
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            {isLogin 
-              ? "Enter your credentials to access your account" 
-              : "Start your crypto journey today"}
-          </p>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {emailVerificationStep ? (
+            <>
+              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                Verify Your Email
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                We've sent a verification link to {pendingEmail}. Enter the verification code below.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                {isLogin ? "Welcome back" : "Create account"}
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                {isLogin
+                  ? "Enter your credentials to access your account"
+                  : "Start your crypto journey today"}
+              </p>
+            </>
+          )}
+
+          <form onSubmit={emailVerificationStep ? handleVerifyEmail : handleSubmit} className="space-y-5">
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -170,12 +342,17 @@ const Auth = () => {
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                    className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                      getFieldError("name") ? "border-destructive" : ""
+                    }`}
                   />
                 </div>
+                {getFieldError("name") && (
+                  <p className="text-xs text-destructive">{getFieldError("name")}</p>
+                )}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -186,11 +363,16 @@ const Auth = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                  className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                    getFieldError("email") ? "border-destructive" : ""
+                  }`}
                 />
               </div>
+              {getFieldError("email") && (
+                <p className="text-xs text-destructive">{getFieldError("email")}</p>
+              )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -201,7 +383,9 @@ const Auth = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 bg-muted/50 border-border/50 focus:border-primary"
+                  className={`pl-10 pr-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
+                    getFieldError("password") ? "border-destructive" : ""
+                  }`}
                 />
                 <button
                   type="button"
@@ -211,6 +395,14 @@ const Auth = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {getFieldError("password") && (
+                <p className="text-xs text-destructive">{getFieldError("password")}</p>
+              )}
+              {!isLogin && !getFieldError("password") && password && (
+                <p className="text-xs text-muted-foreground">
+                  ✓ Password meets security requirements
+                </p>
+              )}
             </div>
             
             {isLogin && (

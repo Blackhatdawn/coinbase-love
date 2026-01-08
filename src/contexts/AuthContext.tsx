@@ -13,32 +13,38 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const TOKEN_KEY = "auth_token";
-const USER_KEY = "auth_user";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem(TOKEN_KEY);
-    const userData = localStorage.getItem(USER_KEY);
-
-    if (token && userData) {
+    // Check for existing session by calling the /me endpoint
+    // If the user is authenticated, the server will return user info
+    // The HttpOnly cookie will be sent automatically
+    const checkSession = async () => {
       try {
-        setUser(JSON.parse(userData));
-      } catch {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
+        const response = await api.auth.getProfile();
+        const userData: User = {
+          id: response.user.id,
+          email: response.user.email,
+          name: response.user.name,
+          createdAt: response.user.createdAt,
+        };
+        setUser(userData);
+      } catch (error) {
+        // No valid session, user is not authenticated
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    checkSession();
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
@@ -52,8 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      // HttpOnly cookies are set by the server, no need to store here
       setUser(userData);
 
       return {};
@@ -73,8 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      // HttpOnly cookies are set by the server, no need to store here
       setUser(userData);
 
       return {};
@@ -83,10 +87,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    try {
+      await api.auth.logout();
+    } catch (error) {
+      // Even if logout fails, clear the user state
+      console.error("Logout error:", error);
+    }
+    // Clear user state (cookies are cleared by the server)
     setUser(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
   };
 
   return (

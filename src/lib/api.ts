@@ -20,44 +20,78 @@ export class APIError extends Error {
 }
 
 /**
+ * Token refresh state to prevent multiple concurrent refresh attempts
+ */
+let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
+/**
  * Generic request handler with authentication and error handling
+ * Uses HttpOnly cookies for authentication (automatically sent with credentials)
+ * Implements automatic token refresh on 401 responses
  */
 const request = async (
   endpoint: string,
   options: RequestInit = {}
-) => {
+): Promise<any> => {
   const url = `${API_BASE}${endpoint}`;
-  const token = localStorage.getItem('auth_token');
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
 
-  // Add authorization token if available
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       ...options,
       headers,
+      // IMPORTANT: Include credentials so cookies are sent with requests
+      credentials: 'include',
     });
+
+    // Handle 401 - token expired, attempt refresh
+    if (response.status === 401 && endpoint !== '/auth/refresh' && endpoint !== '/auth/login' && endpoint !== '/auth/signup') {
+      // If already refreshing, wait for the refresh to complete
+      if (isRefreshing && refreshPromise) {
+        await refreshPromise;
+        // Retry original request with refreshed token
+        response = await fetch(url, {
+          ...options,
+          headers,
+          credentials: 'include',
+        });
+      } else if (!isRefreshing) {
+        // Start refresh process
+        isRefreshing = true;
+        refreshPromise = (async () => {
+          try {
+            await fetch(`${API_BASE}/auth/refresh`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+            });
+          } catch (error) {
+            console.error('Token refresh failed:', error);
+          } finally {
+            isRefreshing = false;
+            refreshPromise = null;
+          }
+        })();
+
+        await refreshPromise;
+
+        // Retry original request
+        response = await fetch(url, {
+          ...options,
+          headers,
+          credentials: 'include',
+        });
+      }
+    }
 
     // Handle non-2xx responses
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-
-      // Handle 401 - likely token expired, clear localStorage
-      if (response.status === 401) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        // Optionally redirect to login
-        if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
-          // Don't redirect here, let components handle it
-        }
-      }
 
       throw new APIError(response.status, error.error || 'Request failed');
     }
@@ -86,6 +120,13 @@ export const api = {
       request('/auth/logout', { method: 'POST' }),
     getProfile: () =>
       request('/auth/me'),
+    refresh: () =>
+      request('/auth/refresh', { method: 'POST' }),
+    verifyEmail: (token: string, email: string) =>
+      request('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token, email }),
+      }),
   },
 
   // Cryptocurrencies
