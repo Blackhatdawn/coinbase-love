@@ -308,16 +308,29 @@ const Auth = () => {
             </button>
           </div>
           
-          <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
-            {isLogin ? "Welcome back" : "Create account"}
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            {isLogin 
-              ? "Enter your credentials to access your account" 
-              : "Start your crypto journey today"}
-          </p>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {emailVerificationStep ? (
+            <>
+              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                Verify Your Email
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                We've sent a verification link to {pendingEmail}. Enter the verification code below.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                {isLogin ? "Welcome back" : "Create account"}
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                {isLogin
+                  ? "Enter your credentials to access your account"
+                  : "Start your crypto journey today"}
+              </p>
+            </>
+          )}
+
+          <form onSubmit={emailVerificationStep ? handleVerifyEmail : handleSubmit} className="space-y-5">
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
