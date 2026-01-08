@@ -67,11 +67,14 @@ router.post(
       [user.id, 10000] // Default starting balance
     );
 
-    // Generate token
-    const token = generateToken(user.id, user.email);
+    // Generate access and refresh tokens
+    const accessToken = generateAccessToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id, user.email);
+
+    // Set HttpOnly cookies
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
-      token,
       user: {
         id: user.id,
         email: user.email,
