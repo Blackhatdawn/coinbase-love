@@ -10,7 +10,11 @@ export interface AuthRequest extends Request {
 
 export const verifyToken = (token: string) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is not configured');
+    }
+    const decoded = jwt.verify(token, secret);
     return decoded as { id: string; email: string };
   } catch (error) {
     return null;
@@ -36,9 +40,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 export const generateToken = (userId: string, email: string) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not configured');
+  }
   return jwt.sign(
     { id: userId, email },
-    process.env.JWT_SECRET || 'secret',
+    secret,
     { expiresIn: process.env.JWT_EXPIRY || '7d' }
   );
 };

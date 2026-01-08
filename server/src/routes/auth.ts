@@ -4,12 +4,44 @@ import { authMiddleware, generateToken, AuthRequest } from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
 
+// Simple in-memory rate limiter for login attempts
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+
+const checkLoginRateLimit = (email: string): boolean => {
+  const now = Date.now();
+  const attempt = loginAttempts.get(email);
+
+  if (!attempt) {
+    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 }); // 15 min window
+    return true;
+  }
+
+  if (now > attempt.resetTime) {
+    // Reset after window expires
+    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 });
+    return true;
+  }
+
+  // Max 5 attempts per 15 minutes
+  if (attempt.count >= 5) {
+    return false;
+  }
+
+  attempt.count += 1;
+  return true;
+};
+
 const router = Router();
 
 // Sign Up
 router.post('/signup', async (req, res) => {
   try {
     const { email, password, name } = signUpSchema.parse(req.body);
+
+    // Check rate limit to prevent spam
+    if (!checkLoginRateLimit(email.toLowerCase())) {
+      return res.status(429).json({ error: 'Too many signup attempts. Please try again in 15 minutes.' });
+    }
 
     // Check if user already exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
@@ -60,6 +92,11 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = signInSchema.parse(req.body);
 
+    // Check rate limit
+    if (!checkLoginRateLimit(email.toLowerCase())) {
+      return res.status(429).json({ error: 'Too many login attempts. Please try again in 15 minutes.' });
+    }
+
     // Find user
     const result = await query(
       'SELECT id, email, name, password_hash, created_at FROM users WHERE email = $1',
@@ -80,6 +117,9 @@ router.post('/login', async (req, res) => {
 
     // Generate token
     const token = generateToken(user.id, user.email);
+
+    // Clear rate limit on successful login
+    loginAttempts.delete(email.toLowerCase());
 
     res.json({
       token,

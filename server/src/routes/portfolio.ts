@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { query } from '@/config/database';
 import { authMiddleware, AuthRequest } from '@/middleware/auth';
 import { addHoldingSchema } from '@/utils/validation';
+import { getCryptoPrice } from '@/utils/cryptoApi';
 
 const router = Router();
 
@@ -102,9 +103,13 @@ router.post('/holding', authMiddleware, async (req: AuthRequest, res: Response) 
       [portfolio.id, symbol.toUpperCase()]
     );
 
-    // For now, using a fixed price for demo (should be fetched from crypto API)
-    const demoPrice = 50000; // Demo price per unit
-    const value = amount * demoPrice;
+    // Fetch live price from CoinGecko API
+    const priceData = await getCryptoPrice(symbol.toUpperCase());
+    if (!priceData) {
+      return res.status(400).json({ error: 'Cryptocurrency price not found. Please use a valid symbol (BTC, ETH, SOL, etc.)' });
+    }
+    const price = priceData.price;
+    const value = amount * price;
 
     if (existingResult.rows.length > 0) {
       // Update existing holding
