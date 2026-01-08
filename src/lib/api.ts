@@ -21,43 +21,30 @@ export class APIError extends Error {
 
 /**
  * Generic request handler with authentication and error handling
+ * Uses HttpOnly cookies for authentication (automatically sent with credentials)
  */
 const request = async (
   endpoint: string,
   options: RequestInit = {}
 ) => {
   const url = `${API_BASE}${endpoint}`;
-  const token = localStorage.getItem('auth_token');
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
 
-  // Add authorization token if available
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   try {
     const response = await fetch(url, {
       ...options,
       headers,
+      // IMPORTANT: Include credentials so cookies are sent with requests
+      credentials: 'include',
     });
 
     // Handle non-2xx responses
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-
-      // Handle 401 - likely token expired, clear localStorage
-      if (response.status === 401) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        // Optionally redirect to login
-        if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
-          // Don't redirect here, let components handle it
-        }
-      }
 
       throw new APIError(response.status, error.error || 'Request failed');
     }
