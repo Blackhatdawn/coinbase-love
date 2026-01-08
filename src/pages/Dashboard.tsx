@@ -179,29 +179,41 @@ const Dashboard = () => {
                 </Link>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-border/50">
-                  {holdings.map((holding) => (
-                    <div key={holding.symbol} className="p-4 hover:bg-secondary/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
-                            {holding.symbol.charAt(0)}
+                {isLoading ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Loading holdings...
+                  </div>
+                ) : holdings.length > 0 ? (
+                  <div className="divide-y divide-border/50">
+                    {holdings.map((holding) => (
+                      <div key={holding.symbol} className="p-4 hover:bg-secondary/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
+                              {holding.symbol.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-semibold">{holding.symbol}</div>
+                              <div className="text-sm text-muted-foreground">{holding.amount.toFixed(4)} {holding.symbol}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-semibold">{holding.symbol}</div>
-                            <div className="text-sm text-muted-foreground">{holding.amount} {holding.symbol}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold">${holding.value.toLocaleString()}</div>
-                          <div className={`text-sm ${holding.change >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {holding.change >= 0 ? '+' : ''}{holding.change}%
+                          <div className="text-right">
+                            <div className="font-semibold">${holding.value.toLocaleString()}</div>
+                            {holding.change !== undefined && (
+                              <div className={`text-sm ${holding.change >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                {holding.change >= 0 ? '+' : ''}{holding.change}%
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No holdings yet. Add some to get started!
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
