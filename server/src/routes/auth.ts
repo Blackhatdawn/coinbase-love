@@ -38,6 +38,11 @@ router.post('/signup', async (req, res) => {
   try {
     const { email, password, name } = signUpSchema.parse(req.body);
 
+    // Check rate limit to prevent spam
+    if (!checkLoginRateLimit(email.toLowerCase())) {
+      return res.status(429).json({ error: 'Too many signup attempts. Please try again in 15 minutes.' });
+    }
+
     // Check if user already exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (existingUser.rows.length > 0) {
