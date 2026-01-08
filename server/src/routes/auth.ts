@@ -1,52 +1,46 @@
 import { Router, Response } from 'express';
+import { body, validationResult } from 'express-validator';
 import { query } from '@/config/database';
 import { authMiddleware, generateToken, AuthRequest } from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
-
-// Simple in-memory rate limiter for login attempts
-const loginAttempts = new Map<string, { count: number; resetTime: number }>();
-
-const checkLoginRateLimit = (email: string): boolean => {
-  const now = Date.now();
-  const attempt = loginAttempts.get(email);
-
-  if (!attempt) {
-    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 }); // 15 min window
-    return true;
-  }
-
-  if (now > attempt.resetTime) {
-    // Reset after window expires
-    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 });
-    return true;
-  }
-
-  // Max 5 attempts per 15 minutes
-  if (attempt.count >= 5) {
-    return false;
-  }
-
-  attempt.count += 1;
-  return true;
-};
+import {
+  authLimiter,
+  validateEmail,
+  validatePassword,
+  validateName,
+  handleValidationErrors,
+  asyncHandler,
+} from '@/middleware/security';
 
 const router = Router();
 
-// Sign Up
-router.post('/signup', async (req, res) => {
-  try {
-    const { email, password, name } = signUpSchema.parse(req.body);
+// ============================================================================
+// SIGN UP ROUTE - with rate limiting and validation
+// ============================================================================
+router.post(
+  '/signup',
+  authLimiter,
+  [
+    validateEmail(),
+    validatePassword(),
+    validateName(),
+  ],
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
+    const { email, password, name } = req.body;
 
-    // Check rate limit to prevent spam
-    if (!checkLoginRateLimit(email.toLowerCase())) {
-      return res.status(429).json({ error: 'Too many signup attempts. Please try again in 15 minutes.' });
+    // Double-check with Zod schema (defense in depth)
+    try {
+      signUpSchema.parse({ email, password, name });
+    } catch (zodError: any) {
+      return res.status(400).json({ error: zodError.errors[0].message });
     }
 
     // Check if user already exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'An account with this email already exists' });
+      return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
     // Hash password
@@ -78,33 +72,38 @@ router.post('/signup', async (req, res) => {
         createdAt: user.created_at,
       },
     });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ error: error.errors[0].message });
+  })
+);
+
+// ============================================================================
+// SIGN IN ROUTE - with rate limiting and validation
+// ============================================================================
+router.post(
+  '/login',
+  authLimiter,
+  [
+    validateEmail(),
+    body('password').isLength({ min: 1 }).withMessage('Password required'),
+  ],
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    // Double-check with Zod schema
+    try {
+      signInSchema.parse({ email, password });
+    } catch (zodError: any) {
+      return res.status(400).json({ error: zodError.errors[0].message });
     }
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'Failed to create account' });
-  }
-});
 
-// Sign In
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = signInSchema.parse(req.body);
-
-    // Check rate limit
-    if (!checkLoginRateLimit(email.toLowerCase())) {
-      return res.status(429).json({ error: 'Too many login attempts. Please try again in 15 minutes.' });
-    }
-
-    // Find user
+    // Find user by email
     const result = await query(
       'SELECT id, email, name, password_hash, created_at FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'No account found with this email' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const user = result.rows[0];
@@ -112,14 +111,11 @@ router.post('/login', async (req, res) => {
     // Compare password
     const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Incorrect password' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Generate token
     const token = generateToken(user.id, user.email);
-
-    // Clear rate limit on successful login
-    loginAttempts.delete(email.toLowerCase());
 
     res.json({
       token,
@@ -130,18 +126,16 @@ router.post('/login', async (req, res) => {
         createdAt: user.created_at,
       },
     });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ error: error.errors[0].message });
-    }
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Failed to sign in' });
-  }
-});
+  })
+);
 
-// Get Current User
-router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
+// ============================================================================
+// GET CURRENT USER - Protected route
+// ============================================================================
+router.get(
+  '/me',
+  authMiddleware,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const result = await query(
       'SELECT id, email, name, created_at FROM users WHERE id = $1',
       [req.user?.id]
@@ -160,15 +154,18 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         createdAt: user.created_at,
       },
     });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
+  })
+);
 
-// Logout (client-side token removal, but here for completeness)
-router.post('/logout', authMiddleware, (req: AuthRequest, res: Response) => {
-  res.json({ message: 'Logged out successfully' });
-});
+// ============================================================================
+// LOGOUT ROUTE - Client-side token removal, server acknowledges
+// ============================================================================
+router.post(
+  '/logout',
+  authMiddleware,
+  (req: AuthRequest, res: Response) => {
+    res.json({ message: 'Logged out successfully' });
+  }
+);
 
 export default router;
