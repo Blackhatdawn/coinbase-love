@@ -171,12 +171,15 @@ router.get(
 );
 
 // ============================================================================
-// LOGOUT ROUTE - Client-side token removal, server acknowledges
+// LOGOUT ROUTE - Clear authentication cookies
 // ============================================================================
 router.post(
   '/logout',
   authMiddleware,
   (req: AuthRequest, res: Response) => {
+    // Clear HttpOnly cookies
+    clearAuthCookies(res);
+
     res.json({ message: 'Logged out successfully' });
   }
 );
