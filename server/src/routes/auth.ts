@@ -1,7 +1,14 @@
 import { Router, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '@/config/database';
-import { authMiddleware, generateToken, AuthRequest } from '@/middleware/auth';
+import {
+  authMiddleware,
+  generateAccessToken,
+  generateRefreshToken,
+  AuthRequest,
+  setAuthCookies,
+  clearAuthCookies,
+} from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
 import {
