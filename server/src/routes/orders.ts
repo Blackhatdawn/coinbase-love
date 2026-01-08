@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { query } from '@/config/database';
+import { query, getClient } from '@/config/database';
 import { authMiddleware, AuthRequest } from '@/middleware/auth';
 import { createOrderSchema } from '@/utils/validation';
 
