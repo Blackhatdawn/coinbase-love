@@ -82,18 +82,18 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <nav className="flex flex-col gap-4">
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/markets" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Markets
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link to="/trade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Trade
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link to="/earn" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Earn
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link to="/learn" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Learn
-              </a>
+              </Link>
               <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
                 {user ? (
                   <>
