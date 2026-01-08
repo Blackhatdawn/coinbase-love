@@ -55,10 +55,14 @@ router.post(
     // Hash password
     const passwordHash = await hashPassword(password);
 
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpiry = getVerificationTokenExpiry();
+
     // Create user
     const result = await query(
-      'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
-      [email.toLowerCase(), name, passwordHash]
+      'INSERT INTO users (email, name, password_hash, email_verification_token, email_verification_expires) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, name, created_at',
+      [email.toLowerCase(), name, passwordHash, verificationToken, verificationExpiry]
     );
 
     const user = result.rows[0];
@@ -69,21 +73,33 @@ router.post(
       [user.id, 10000] // Default starting balance
     );
 
-    // Generate access and refresh tokens
-    const accessToken = generateAccessToken(user.id, user.email);
-    const refreshToken = generateRefreshToken(user.id, user.email);
+    // Send verification email
+    const emailSent = await sendVerificationEmail(user.email, user.name, verificationToken);
 
-    // Set HttpOnly cookies
-    setAuthCookies(res, accessToken, refreshToken);
+    if (!emailSent) {
+      console.warn(`Failed to send verification email to ${user.email}`);
+    }
 
-    res.status(201).json({
+    // For development: return verification token in response
+    // In production, only send via email
+    const responseData: any = {
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         createdAt: user.created_at,
+        emailVerified: false,
       },
-    });
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      responseData.verificationToken = verificationToken;
+      responseData.message = 'Check console for verification email link. In development, you can use the verificationToken to verify your email.';
+    } else {
+      responseData.message = 'Verification email sent. Please check your inbox to verify your email address.';
+    }
+
+    res.status(201).json(responseData);
   })
 );
 
