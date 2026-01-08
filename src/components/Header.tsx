@@ -31,18 +31,18 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/markets" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Markets
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/trade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Trade
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/earn" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Earn
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/learn" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Learn
-            </a>
+            </Link>
           </nav>
 
           {/* Desktop CTA */}
