@@ -184,4 +184,55 @@ router.post(
   }
 );
 
+// ============================================================================
+// REFRESH TOKEN ROUTE - Get new access token using refresh token
+// ============================================================================
+router.post(
+  '/refresh',
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    // Get refresh token from cookie
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'No refresh token provided' });
+    }
+
+    // Verify refresh token
+    const decoded = require('@/middleware/auth').verifyToken(refreshToken, true);
+
+    if (!decoded) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Verify user still exists
+    const userResult = await query(
+      'SELECT id, email, name FROM users WHERE id = $1',
+      [decoded.id]
+    );
+
+    if (userResult.rows.length === 0) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate new access and refresh tokens
+    const newAccessToken = generateAccessToken(user.id, user.email);
+    const newRefreshToken = generateRefreshToken(user.id, user.email);
+
+    // Set new tokens in cookies
+    setAuthCookies(res, newAccessToken, newRefreshToken);
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    });
+  })
+);
+
 export default router;
