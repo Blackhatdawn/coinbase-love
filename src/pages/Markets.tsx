@@ -1,29 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CryptoCard from "@/components/CryptoCard";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { api } from "@/lib/api";
 
-const marketData = [
-  { symbol: "BTC", name: "Bitcoin", price: 97423.50, change: 2.34, marketCap: "$1.9T", volume: "$42B", icon: "₿" },
-  { symbol: "ETH", name: "Ethereum", price: 3456.78, change: -1.23, marketCap: "$415B", volume: "$18B", icon: "Ξ" },
-  { symbol: "SOL", name: "Solana", price: 189.45, change: 5.67, marketCap: "$82B", volume: "$4.2B", icon: "◎" },
-  { symbol: "XRP", name: "Ripple", price: 2.34, change: 3.21, marketCap: "$134B", volume: "$8.1B", icon: "✕" },
-  { symbol: "ADA", name: "Cardano", price: 0.89, change: -0.45, marketCap: "$31B", volume: "$890M", icon: "₳" },
-  { symbol: "DOGE", name: "Dogecoin", price: 0.31, change: 4.56, marketCap: "$45B", volume: "$2.1B", icon: "🐕" },
-  { symbol: "AVAX", name: "Avalanche", price: 38.67, change: 1.56, marketCap: "$15B", volume: "$512M", icon: "🔺" },
-  { symbol: "DOT", name: "Polkadot", price: 7.23, change: -2.34, marketCap: "$10B", volume: "$312M", icon: "●" },
-  { symbol: "LINK", name: "Chainlink", price: 14.89, change: 4.12, marketCap: "$8.7B", volume: "$623M", icon: "⬡" },
-  { symbol: "MATIC", name: "Polygon", price: 0.42, change: 2.15, marketCap: "$4.2B", volume: "$287M", icon: "▲" },
-  { symbol: "UNI", name: "Uniswap", price: 6.78, change: -0.89, marketCap: "$5.1B", volume: "$145M", icon: "⬢" },
-  { symbol: "ATOM", name: "Cosmos", price: 11.34, change: 3.45, marketCap: "$3.4B", volume: "$89M", icon: "⚛" },
-];
+interface CryptoData {
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  marketCap: string;
+  volume24h: string;
+}
 
 const Markets = () => {
+  const [marketData, setMarketData] = useState<CryptoData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"price" | "change" | "marketCap">("price");
+
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.crypto.getAll();
+        setMarketData(response.data || []);
+      } catch (error) {
+        console.error("Failed to fetch market data:", error);
+        // Fallback to empty array if API fails
+        setMarketData([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMarketData();
+  }, []);
 
   const filteredData = marketData.filter(
     (crypto) =>
@@ -34,7 +49,7 @@ const Markets = () => {
   const sortedData = [...filteredData].sort((a, b) => {
     switch (sortBy) {
       case "change":
-        return b.change - a.change;
+        return b.change24h - a.change24h;
       case "marketCap":
         return parseFloat(b.marketCap.replace(/[$BTG,]/g, "")) - parseFloat(a.marketCap.replace(/[$BTG,]/g, ""));
       default:
@@ -94,9 +109,23 @@ const Markets = () => {
 
           {/* Markets Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedData.length > 0 ? (
+            {isLoading ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground text-lg">Loading market data...</p>
+              </div>
+            ) : sortedData.length > 0 ? (
               sortedData.map((crypto, index) => (
-                <CryptoCard key={crypto.symbol} {...crypto} index={index} />
+                <CryptoCard
+                  key={crypto.symbol}
+                  symbol={crypto.symbol}
+                  name={crypto.name}
+                  price={crypto.price}
+                  change={crypto.change24h}
+                  marketCap={crypto.marketCap}
+                  volume={crypto.volume24h}
+                  icon="₿"
+                  index={index}
+                />
               ))
             ) : (
               <div className="col-span-full text-center py-12">

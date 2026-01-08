@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Filter, CalendarIcon } from "lucide-react";
@@ -8,39 +8,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface Transaction {
   id: string;
-  type: "buy" | "sell";
-  coin: string;
-  symbol: string;
+  type: string;
+  symbol?: string;
   amount: number;
-  price: number;
-  total: number;
-  date: Date;
+  description?: string;
+  createdAt: string;
 }
-
-const mockTransactions: Transaction[] = [
-  { id: "1", type: "buy", coin: "Bitcoin", symbol: "BTC", amount: 0.5, price: 67234, total: 33617, date: new Date("2026-01-05") },
-  { id: "2", type: "sell", coin: "Ethereum", symbol: "ETH", amount: 2.0, price: 3456, total: 6912, date: new Date("2026-01-04") },
-  { id: "3", type: "buy", coin: "Solana", symbol: "SOL", amount: 25, price: 178, total: 4450, date: new Date("2026-01-03") },
-  { id: "4", type: "buy", coin: "Cardano", symbol: "ADA", amount: 1000, price: 0.89, total: 890, date: new Date("2026-01-02") },
-  { id: "5", type: "sell", coin: "Bitcoin", symbol: "BTC", amount: 0.2, price: 65890, total: 13178, date: new Date("2025-12-28") },
-  { id: "6", type: "buy", coin: "Ethereum", symbol: "ETH", amount: 1.5, price: 3234, total: 4851, date: new Date("2025-12-25") },
-  { id: "7", type: "sell", coin: "Solana", symbol: "SOL", amount: 10, price: 165, total: 1650, date: new Date("2025-12-20") },
-  { id: "8", type: "buy", coin: "Bitcoin", symbol: "BTC", amount: 0.3, price: 62500, total: 18750, date: new Date("2025-12-15") },
-];
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
-  const filteredTransactions = mockTransactions.filter((tx) => {
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.transactions.getAll();
+        setTransactions(response.transactions || []);
+      } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        setTransactions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  const filteredTransactions = transactions.filter((tx) => {
     if (typeFilter !== "all" && tx.type !== typeFilter) return false;
-    if (startDate && tx.date < startDate) return false;
-    if (endDate && tx.date > endDate) return false;
+
+    const txDate = new Date(tx.createdAt);
+    if (startDate && txDate < startDate) return false;
+    if (endDate && txDate > endDate) return false;
     return true;
   });
 
@@ -149,53 +158,60 @@ const TransactionHistory = () => {
         {/* Transactions List */}
         <Card>
           <CardHeader>
-            <CardTitle>Transactions ({filteredTransactions.length})</CardTitle>
+            <CardTitle>Transactions ({isLoading ? "Loading..." : filteredTransactions.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredTransactions.length === 0 ? (
+            {isLoading ? (
+              <p className="text-center text-muted-foreground py-8">Loading transactions...</p>
+            ) : filteredTransactions.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No transactions found</p>
             ) : (
               <div className="space-y-3">
-                {filteredTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={cn(
-                          "p-2 rounded-full",
-                          tx.type === "buy" ? "bg-green-500/20" : "bg-red-500/20"
-                        )}
-                      >
-                        {tx.type === "buy" ? (
-                          <ArrowDownLeft className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <ArrowUpRight className="h-5 w-5 text-red-500" />
-                        )}
+                {filteredTransactions.map((tx) => {
+                  const isBuy = tx.type === "buy";
+                  const txDate = new Date(tx.createdAt);
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={cn(
+                            "p-2 rounded-full",
+                            isBuy ? "bg-green-500/20" : "bg-red-500/20"
+                          )}
+                        >
+                          {isBuy ? (
+                            <ArrowDownLeft className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <ArrowUpRight className="h-5 w-5 text-red-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold">
+                            {isBuy ? "Bought" : "Sold"} {tx.symbol || "Crypto"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {tx.amount} {tx.symbol} {tx.description && `- ${tx.description}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">
-                          {tx.type === "buy" ? "Bought" : "Sold"} {tx.coin}
+                      <div className="text-right">
+                        <p
+                          className={cn(
+                            "font-semibold",
+                            isBuy ? "text-green-500" : "text-red-500"
+                          )}
+                        >
+                          {isBuy ? "-" : "+"}${tx.amount.toLocaleString()}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {tx.amount} {tx.symbol} @ ${tx.price.toLocaleString()}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{format(txDate, "MMM d, yyyy")}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p
-                        className={cn(
-                          "font-semibold",
-                          tx.type === "buy" ? "text-green-500" : "text-red-500"
-                        )}
-                      >
-                        {tx.type === "buy" ? "-" : "+"}${tx.total.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{format(tx.date, "MMM d, yyyy")}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
