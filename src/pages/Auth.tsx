@@ -134,6 +134,47 @@ const Auth = () => {
     return error ? error.message : null;
   };
 
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!verificationCode.trim()) {
+      toast({
+        title: "Verification code required",
+        description: "Please enter the verification code or paste the token",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await api.auth.verifyEmail(verificationCode, pendingEmail);
+
+      toast({
+        title: "Email verified!",
+        description: "Your email has been verified. You can now sign in.",
+      });
+
+      // Reset form and show login
+      setEmailVerificationStep(false);
+      setVerificationCode("");
+      setPendingEmail("");
+      setIsLogin(true);
+      setEmail("");
+      setPassword("");
+      setName("");
+    } catch (error: any) {
+      toast({
+        title: "Verification failed",
+        description: error.message || "Invalid or expired verification token",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -141,26 +182,54 @@ const Auth = () => {
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-      const result = isLogin 
-        ? await signIn(email, password)
-        : await signUp(email, password, name);
-      
-      if (result.error) {
-        toast({
-          title: isLogin ? "Sign in failed" : "Sign up failed",
-          description: result.error,
-          variant: "destructive",
-        });
+      if (isLogin) {
+        const result = await signIn(email, password);
+
+        if (result.error) {
+          // Check if error is due to unverified email
+          if (result.error.includes("Email not verified")) {
+            toast({
+              title: "Email not verified",
+              description: "Please verify your email address first. Check your inbox for a verification link.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Sign in failed",
+              description: result.error,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in",
+          });
+          navigate("/");
+        }
       } else {
-        toast({
-          title: isLogin ? "Welcome back!" : "Account created!",
-          description: isLogin ? "You have successfully signed in" : "Your account has been created",
-        });
-        navigate("/");
+        const result = await signUp(email, password, name);
+
+        if (result.error) {
+          toast({
+            title: "Sign up failed",
+            description: result.error,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Please verify your email address. Check your inbox for a verification link.",
+          });
+
+          // Move to email verification step
+          setPendingEmail(email);
+          setEmailVerificationStep(true);
+        }
       }
     } finally {
       setIsLoading(false);
