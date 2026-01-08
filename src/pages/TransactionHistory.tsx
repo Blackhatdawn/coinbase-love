@@ -158,53 +158,60 @@ const TransactionHistory = () => {
         {/* Transactions List */}
         <Card>
           <CardHeader>
-            <CardTitle>Transactions ({filteredTransactions.length})</CardTitle>
+            <CardTitle>Transactions ({isLoading ? "Loading..." : filteredTransactions.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredTransactions.length === 0 ? (
+            {isLoading ? (
+              <p className="text-center text-muted-foreground py-8">Loading transactions...</p>
+            ) : filteredTransactions.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No transactions found</p>
             ) : (
               <div className="space-y-3">
-                {filteredTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={cn(
-                          "p-2 rounded-full",
-                          tx.type === "buy" ? "bg-green-500/20" : "bg-red-500/20"
-                        )}
-                      >
-                        {tx.type === "buy" ? (
-                          <ArrowDownLeft className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <ArrowUpRight className="h-5 w-5 text-red-500" />
-                        )}
+                {filteredTransactions.map((tx) => {
+                  const isBuy = tx.type === "buy";
+                  const txDate = new Date(tx.createdAt);
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={cn(
+                            "p-2 rounded-full",
+                            isBuy ? "bg-green-500/20" : "bg-red-500/20"
+                          )}
+                        >
+                          {isBuy ? (
+                            <ArrowDownLeft className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <ArrowUpRight className="h-5 w-5 text-red-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold">
+                            {isBuy ? "Bought" : "Sold"} {tx.symbol || "Crypto"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {tx.amount} {tx.symbol} {tx.description && `- ${tx.description}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">
-                          {tx.type === "buy" ? "Bought" : "Sold"} {tx.coin}
+                      <div className="text-right">
+                        <p
+                          className={cn(
+                            "font-semibold",
+                            isBuy ? "text-green-500" : "text-red-500"
+                          )}
+                        >
+                          {isBuy ? "-" : "+"}${tx.amount.toLocaleString()}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {tx.amount} {tx.symbol} @ ${tx.price.toLocaleString()}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{format(txDate, "MMM d, yyyy")}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p
-                        className={cn(
-                          "font-semibold",
-                          tx.type === "buy" ? "text-green-500" : "text-red-500"
-                        )}
-                      >
-                        {tx.type === "buy" ? "-" : "+"}${tx.total.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{format(tx.date, "MMM d, yyyy")}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
