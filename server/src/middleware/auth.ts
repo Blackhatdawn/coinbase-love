@@ -40,9 +40,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 export const generateToken = (userId: string, email: string) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not configured');
+  }
   return jwt.sign(
     { id: userId, email },
-    process.env.JWT_SECRET || 'secret',
+    secret,
     { expiresIn: process.env.JWT_EXPIRY || '7d' }
   );
 };
