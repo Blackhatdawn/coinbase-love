@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Zap, Globe } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const HeroSection = () => {
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
       {/* Background Effects */}
@@ -35,12 +39,16 @@ const HeroSection = () => {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button variant="hero" size="xl" className="group">
-              Start Trading Now
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            <Button variant="hero" size="xl" className="group" asChild>
+              <Link to={user ? "/dashboard" : "/auth"}>
+                Start Trading Now
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
             </Button>
-            <Button variant="outline" size="xl">
-              View Markets
+            <Button variant="outline" size="xl" asChild>
+              <Link to="/markets">
+                View Markets
+              </Link>
             </Button>
           </div>
 

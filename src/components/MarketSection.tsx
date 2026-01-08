@@ -1,5 +1,6 @@
 import CryptoCard from "./CryptoCard";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const marketData = [
   { symbol: "BTC", name: "Bitcoin", price: 97423.50, change: 2.34, marketCap: "$1.9T", volume: "$42B", icon: "₿" },
@@ -25,8 +26,10 @@ const MarketSection = () => {
               Track real-time prices across 200+ cryptocurrencies. Trade with confidence using advanced charts and analytics.
             </p>
           </div>
-          <Button variant="outline" className="mt-4 md:mt-0">
-            View All Markets
+          <Button variant="outline" className="mt-4 md:mt-0" asChild>
+            <Link to="/markets">
+              View All Markets
+            </Link>
           </Button>
         </div>
 
