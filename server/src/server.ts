@@ -1,25 +1,48 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { initializeDatabase } from '@/config/database';
 import authRoutes from '@/routes/auth';
 import cryptoRoutes from '@/routes/cryptocurrencies';
 import portfolioRoutes from '@/routes/portfolio';
 import orderRoutes from '@/routes/orders';
 import transactionRoutes from '@/routes/transactions';
+import {
+  generalLimiter,
+  getCorsOptions,
+  securityHeaders,
+} from '@/middleware/security';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Middleware
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
-    credentials: true,
-  })
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ============================================================================
+// SECURITY MIDDLEWARE (Applied First)
+// ============================================================================
+
+// Helmet for security headers
+app.use(helmet());
+
+// Custom security headers
+app.use(securityHeaders);
+
+// CORS with dynamic origin configuration
+app.use(cors(getCorsOptions()));
+
+// Rate limiting (general API - applied to all routes except health)
+app.use(generalLimiter);
+
+// ============================================================================
+// BODY PARSING MIDDLEWARE
+// ============================================================================
+
+// Parse JSON with size limit to prevent large payload attacks
+app.use(express.json({ limit: '10kb' }));
+
+// Parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
