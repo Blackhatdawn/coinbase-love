@@ -198,7 +198,8 @@ router.post(
     }
 
     // Verify refresh token
-    const decoded = require('@/middleware/auth').verifyToken(refreshToken, true);
+    const { verifyToken: verify } = await import('@/middleware/auth');
+    const decoded = verify(refreshToken, true);
 
     if (!decoded) {
       clearAuthCookies(res);
