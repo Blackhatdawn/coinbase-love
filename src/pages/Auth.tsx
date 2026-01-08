@@ -20,6 +20,9 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [emailVerificationStep, setEmailVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
