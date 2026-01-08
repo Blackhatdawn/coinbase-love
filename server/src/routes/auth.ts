@@ -87,6 +87,11 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = signInSchema.parse(req.body);
 
+    // Check rate limit
+    if (!checkLoginRateLimit(email.toLowerCase())) {
+      return res.status(429).json({ error: 'Too many login attempts. Please try again in 15 minutes.' });
+    }
+
     // Find user
     const result = await query(
       'SELECT id, email, name, password_hash, created_at FROM users WHERE email = $1',
