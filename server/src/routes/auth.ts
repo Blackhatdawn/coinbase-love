@@ -5,6 +5,7 @@ import {
   authMiddleware,
   generateAccessToken,
   generateRefreshToken,
+  verifyToken,
   AuthRequest,
   setAuthCookies,
   clearAuthCookies,
