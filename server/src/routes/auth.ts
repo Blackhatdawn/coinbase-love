@@ -126,7 +126,7 @@ router.post(
 
     // Find user by email
     const result = await query(
-      'SELECT id, email, name, password_hash, created_at FROM users WHERE email = $1',
+      'SELECT id, email, name, password_hash, email_verified, created_at FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -135,6 +135,15 @@ router.post(
     }
 
     const user = result.rows[0];
+
+    // Check if email is verified
+    if (!user.email_verified) {
+      return res.status(403).json({
+        error: 'Email not verified',
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email address before signing in. Check your inbox for a verification link.'
+      });
+    }
 
     // Compare password
     const isPasswordValid = await comparePassword(password, user.password_hash);
@@ -155,6 +164,7 @@ router.post(
         email: user.email,
         name: user.name,
         createdAt: user.created_at,
+        emailVerified: user.email_verified,
       },
     });
   })
