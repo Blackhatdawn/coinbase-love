@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { api } from "@/lib/api";
 
 interface User {
   id: string;
@@ -17,8 +18,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_KEY = "cryptovault_users";
-const SESSION_KEY = "cryptovault_session";
+const TOKEN_KEY = "auth_token";
+const USER_KEY = "auth_user";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -26,76 +27,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Check for existing session
-    const session = localStorage.getItem(SESSION_KEY);
-    if (session) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const userData = localStorage.getItem(USER_KEY);
+
+    if (token && userData) {
       try {
-        setUser(JSON.parse(session));
+        setUser(JSON.parse(userData));
       } catch {
-        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
       }
     }
     setIsLoading(false);
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
-    const usersData = localStorage.getItem(USERS_KEY);
-    const users = usersData ? JSON.parse(usersData) : {};
-    
-    const userRecord = users[email.toLowerCase()];
-    if (!userRecord) {
-      return { error: "No account found with this email" };
+    try {
+      const response = await api.auth.login(email, password);
+
+      const userData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        createdAt: response.user.createdAt,
+      };
+
+      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setUser(userData);
+
+      return {};
+    } catch (error: any) {
+      return { error: error.message || "Failed to sign in" };
     }
-    
-    if (userRecord.password !== password) {
-      return { error: "Incorrect password" };
-    }
-    
-    const userData: User = {
-      id: userRecord.id,
-      email: userRecord.email,
-      name: userRecord.name,
-      createdAt: userRecord.createdAt,
-    };
-    
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
-    return {};
   };
 
   const signUp = async (email: string, password: string, name: string): Promise<{ error?: string }> => {
-    const usersData = localStorage.getItem(USERS_KEY);
-    const users = usersData ? JSON.parse(usersData) : {};
-    
-    if (users[email.toLowerCase()]) {
-      return { error: "An account with this email already exists" };
+    try {
+      const response = await api.auth.signup(email, password, name);
+
+      const userData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        createdAt: response.user.createdAt,
+      };
+
+      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setUser(userData);
+
+      return {};
+    } catch (error: any) {
+      return { error: error.message || "Failed to create account" };
     }
-    
-    const newUser = {
-      id: crypto.randomUUID(),
-      email: email.toLowerCase(),
-      name,
-      password,
-      createdAt: new Date().toISOString(),
-    };
-    
-    users[email.toLowerCase()] = newUser;
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    
-    const userData: User = {
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
-      createdAt: newUser.createdAt,
-    };
-    
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
-    return {};
   };
 
   const signOut = () => {
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   };
 
   return (
