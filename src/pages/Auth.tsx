@@ -31,98 +31,19 @@ const Auth = () => {
   const { toast } = useToast();
 
   /**
-   * Validate email format
-   */
-  const validateEmail = (email: string): string | null => {
-    const trimmed = email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!trimmed) {
-      return "Email is required";
-    }
-
-    if (!emailRegex.test(trimmed)) {
-      return "Please enter a valid email address";
-    }
-
-    return null;
-  };
-
-  /**
-   * Validate password strength
-   * Requirements: min 8 chars, at least one uppercase, one lowercase, one number
-   */
-  const validatePassword = (password: string): string | null => {
-    if (!password) {
-      return "Password is required";
-    }
-
-    if (password.length < 8) {
-      return "Password must be at least 8 characters long";
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      return "Password must contain at least one uppercase letter";
-    }
-
-    if (!/[a-z]/.test(password)) {
-      return "Password must contain at least one lowercase letter";
-    }
-
-    if (!/[0-9]/.test(password)) {
-      return "Password must contain at least one number";
-    }
-
-    return null;
-  };
-
-  /**
-   * Validate name
-   * Requirements: 2-100 characters
-   */
-  const validateName = (name: string): string | null => {
-    const trimmed = name.trim();
-
-    if (!trimmed) {
-      return "Full name is required";
-    }
-
-    if (trimmed.length < 2) {
-      return "Name must be at least 2 characters long";
-    }
-
-    if (trimmed.length > 100) {
-      return "Name must not exceed 100 characters";
-    }
-
-    return null;
-  };
-
-  /**
-   * Validate form based on current mode (login/signup)
+   * Validate form using Zod schema based on current mode (login/signup)
    */
   const validateForm = (): boolean => {
-    const newErrors: ValidationError[] = [];
+    const schema = isLogin ? signInSchema : signUpSchema;
+    const formData = isLogin
+      ? { email, password }
+      : { email, password, name };
 
-    // Validate email
-    const emailError = validateEmail(email);
-    if (emailError) {
-      newErrors.push({ field: "email", message: emailError });
-    }
-
-    // Validate password
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      newErrors.push({ field: "password", message: passwordError });
-    }
-
-    // Validate name if signing up
-    if (!isLogin) {
-      const nameError = validateName(name);
-      if (nameError) {
-        newErrors.push({ field: "name", message: nameError });
-      }
-    }
+    const fieldErrors = validateFormData(schema, formData);
+    const newErrors: ValidationError[] = Object.entries(fieldErrors).map(([field, message]) => ({
+      field,
+      message,
+    }));
 
     setErrors(newErrors);
     return newErrors.length === 0;
