@@ -12,6 +12,7 @@ import {
   isTokenRevoked,
   revokeRefreshToken,
 } from '@/middleware/auth';
+import { logAuditEvent, AuditAction, AuditResource, AuditStatus, getClientInfo } from '@/utils/auditLog';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
 import { generateVerificationToken, getVerificationTokenExpiry, sendVerificationEmail } from '@/utils/email';
