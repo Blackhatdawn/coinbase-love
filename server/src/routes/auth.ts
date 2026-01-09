@@ -201,17 +201,31 @@ router.get(
 );
 
 // ============================================================================
-// LOGOUT ROUTE - Clear authentication cookies
+// LOGOUT ROUTE - Clear authentication cookies and revoke refresh token
 // ============================================================================
 router.post(
   '/logout',
   authMiddleware,
-  (req: AuthRequest, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    // Revoke the refresh token for explicit logout
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken && req.user?.id) {
+      try {
+        const decoded = verifyToken(refreshToken, true);
+        if (decoded && decoded.jti) {
+          await revokeRefreshToken(req.user.id, decoded.jti);
+        }
+      } catch (error) {
+        console.warn('Could not revoke token on logout:', error);
+        // Continue with logout even if revocation fails
+      }
+    }
+
     // Clear HttpOnly cookies
     clearAuthCookies(res);
 
     res.json({ message: 'Logged out successfully' });
-  }
+  })
 );
 
 // ============================================================================
