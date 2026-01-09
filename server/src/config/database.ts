@@ -116,6 +116,17 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // Revoked Refresh Tokens table (for explicit token revocation on logout)
+    await query(`
+      CREATE TABLE IF NOT EXISTS revoked_refresh_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_jti VARCHAR(255) NOT NULL UNIQUE,
+        revoked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
+
     // Create indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id)`);
