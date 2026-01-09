@@ -91,7 +91,7 @@ export const generateRefreshToken = (userId: string, email: string) => {
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is not configured');
   }
-  const jti = uuidv4(); // Unique token ID for revocation tracking
+  const jti = randomUUID(); // Unique token ID for revocation tracking
   return jwt.sign(
     { id: userId, email, type: 'refresh', jti },
     secret,
