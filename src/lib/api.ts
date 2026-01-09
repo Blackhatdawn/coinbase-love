@@ -181,4 +181,40 @@ export const api = {
     getStats: () =>
       request('/transactions/stats/overview'),
   },
+
+  // Two-Factor Authentication
+  auth: {
+    // ... existing methods ...
+    setup2FA: () =>
+      request('/auth/2fa/setup', { method: 'POST' }),
+    verify2FA: (code: string) =>
+      request('/auth/2fa/verify', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      }),
+    get2FAStatus: () =>
+      request('/auth/2fa/status'),
+    disable2FA: (password: string) =>
+      request('/auth/2fa/disable', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }),
+    getBackupCodes: () =>
+      request('/auth/2fa/backup-codes', { method: 'POST' }),
+  },
+
+  // Audit Logs
+  auditLogs: {
+    getLogs: (limit = 50, offset = 0, action?: string) => {
+      let url = `/audit-logs?limit=${limit}&offset=${offset}`;
+      if (action) url += `&action=${action}`;
+      return request(url);
+    },
+    getSummary: (days = 30) =>
+      request(`/audit-logs/summary?days=${days}`),
+    exportLogs: (days = 90) =>
+      request(`/audit-logs/export?days=${days}`),
+    getLog: (id: string) =>
+      request(`/audit-logs/${id}`),
+  },
 };
