@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Mail, Lock, User, ArrowLeft, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Wallet, Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import { signUpSchema, signInSchema, validateFormData } from "@/lib/validation";
 
 interface ValidationError {
   field: string;
