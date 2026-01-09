@@ -9,6 +9,8 @@ import cryptoRoutes from '@/routes/cryptocurrencies';
 import portfolioRoutes from '@/routes/portfolio';
 import orderRoutes from '@/routes/orders';
 import transactionRoutes from '@/routes/transactions';
+import twoFARoutes from '@/routes/2fa';
+import auditLogRoutes from '@/routes/auditLogs';
 import {
   generalLimiter,
   getCorsOptions,
