@@ -133,6 +133,8 @@ export const initializeDatabase = async () => {
     await query(`CREATE INDEX IF NOT EXISTS idx_holdings_portfolio_id ON holdings(portfolio_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_user_id ON revoked_refresh_tokens(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_refresh_tokens(expires_at)`);
 
     console.log('✓ Database schema initialized');
   } catch (error) {
