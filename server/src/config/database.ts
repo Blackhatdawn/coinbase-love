@@ -127,6 +127,35 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // User 2FA Settings table
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_2fa (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        totp_secret VARCHAR(32),
+        totp_enabled BOOLEAN DEFAULT FALSE,
+        backup_codes TEXT[] DEFAULT ARRAY[]::TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Audit Logs table (immutable record of sensitive operations)
+    await query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(100) NOT NULL,
+        resource VARCHAR(100),
+        resource_id UUID,
+        status VARCHAR(20) DEFAULT 'success',
+        ip_address INET,
+        user_agent TEXT,
+        details JSONB DEFAULT '{}'::JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id)`);
