@@ -293,6 +293,15 @@ router.post(
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
+    // Check if token has been revoked (explicitly logged out)
+    if (decoded.jti) {
+      const revoked = await isTokenRevoked(decoded.jti);
+      if (revoked) {
+        clearAuthCookies(res);
+        return res.status(401).json({ error: 'Refresh token has been revoked. Please log in again.' });
+      }
+    }
+
     // Verify user still exists
     const userResult = await query(
       'SELECT id, email, name FROM users WHERE id = $1',
