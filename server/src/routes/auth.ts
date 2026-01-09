@@ -234,6 +234,8 @@ router.post(
   '/logout',
   authMiddleware,
   asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { ipAddress, userAgent } = getClientInfo(req);
+
     // Revoke the refresh token for explicit logout
     const refreshToken = req.cookies?.refreshToken;
     if (refreshToken && req.user?.id) {
@@ -250,6 +252,19 @@ router.post(
 
     // Clear HttpOnly cookies
     clearAuthCookies(res);
+
+    // Log logout event
+    if (req.user?.id) {
+      await logAuditEvent(
+        req.user.id,
+        AuditAction.LOGOUT,
+        AuditResource.AUTH,
+        req.user.id,
+        AuditStatus.SUCCESS,
+        ipAddress,
+        userAgent
+      );
+    }
 
     res.json({ message: 'Logged out successfully' });
   })
