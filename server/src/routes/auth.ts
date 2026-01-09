@@ -293,9 +293,21 @@ router.post(
     }
 
     const user = result.rows[0];
+    const { ipAddress, userAgent } = getClientInfo(req);
 
     // Check if token is expired
     if (user.email_verification_expires < new Date()) {
+      await logAuditEvent(
+        user.id,
+        AuditAction.EMAIL_VERIFICATION_FAILED,
+        AuditResource.USER,
+        user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'token_expired' }
+      );
+
       return res.status(400).json({ error: 'Verification token has expired. Please request a new one.' });
     }
 
@@ -308,6 +320,17 @@ router.post(
     await query(
       'UPDATE users SET email_verified = true, email_verification_token = NULL, email_verification_expires = NULL WHERE id = $1',
       [user.id]
+    );
+
+    // Log successful email verification
+    await logAuditEvent(
+      user.id,
+      AuditAction.EMAIL_VERIFIED,
+      AuditResource.USER,
+      user.id,
+      AuditStatus.SUCCESS,
+      ipAddress,
+      userAgent
     );
 
     res.json({ message: 'Email verified successfully. You can now sign in.' });
