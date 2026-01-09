@@ -150,7 +150,22 @@ router.post(
 
     // Compare password
     const isPasswordValid = await comparePassword(password, user.password_hash);
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+
     if (!isPasswordValid) {
+      // Log failed login attempt
+      await logAuditEvent(
+        user.id,
+        AuditAction.LOGIN_FAILED,
+        AuditResource.AUTH,
+        user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'invalid_password' }
+      );
+
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -160,6 +175,17 @@ router.post(
 
     // Set HttpOnly cookies
     setAuthCookies(res, accessToken, refreshToken);
+
+    // Log successful login
+    await logAuditEvent(
+      user.id,
+      AuditAction.LOGIN,
+      AuditResource.AUTH,
+      user.id,
+      AuditStatus.SUCCESS,
+      ipAddress,
+      userAgent
+    );
 
     res.json({
       user: {
