@@ -7,6 +7,16 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'cryptovault',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
+
+  // Pool sizing configuration (optimized for typical load)
+  max: parseInt(process.env.DB_POOL_MAX || '20'),        // Max 20 connections
+  min: parseInt(process.env.DB_POOL_MIN || '5'),         // Min 5 connections
+  idleTimeoutMillis: 30000,                               // Close idle connections after 30s
+  connectionTimeoutMillis: 2000,                          // Fail fast if can't connect
+
+  // Connection settings
+  statement_timeout: '30s',                               // Query timeout
+  application_name: 'cryptovault',
 });
 
 pool.on('error', (err) => {
