@@ -9,6 +9,8 @@ import {
   AuthRequest,
   setAuthCookies,
   clearAuthCookies,
+  isTokenRevoked,
+  revokeRefreshToken,
 } from '@/middleware/auth';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
