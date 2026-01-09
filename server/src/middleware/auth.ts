@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import { query } from '@/config/database';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,6 +17,7 @@ export interface AuthRequest extends Request {
  */
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '7d';
+const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 export const verifyToken = (token: string, isRefresh: boolean = false) => {
   try {
