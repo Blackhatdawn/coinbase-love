@@ -71,6 +71,8 @@ app.use('/api/crypto', cryptoRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/auth/2fa', twoFARoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
