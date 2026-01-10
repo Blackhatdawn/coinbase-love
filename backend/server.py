@@ -589,7 +589,8 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
 
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(data: ForgotPasswordRequest):
+@limiter.limit("3/minute")  # Strict rate limit for password reset requests
+async def forgot_password(data: ForgotPasswordRequest, request: Request):
     """Request password reset email"""
     users_collection = db_manager.db.users
     
