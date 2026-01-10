@@ -2,15 +2,22 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
 import secrets
-from passlib.context import CryptContext
+import hashlib
 from config import settings
 
-# Password hashing with bcrypt (production-ready)
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12  # Good balance of security and performance
-)
+# Try to import bcrypt, fall back to hashlib if unavailable
+try:
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(
+        schemes=["bcrypt"],
+        deprecated="auto",
+        bcrypt__rounds=12
+    )
+    BCRYPT_AVAILABLE = True
+    print("✅ Using bcrypt for password hashing (production-ready)")
+except Exception as e:
+    BCRYPT_AVAILABLE = False
+    print(f"⚠️  Bcrypt unavailable, using SHA256 (development only): {str(e)[:50]}")
 
 # JWT settings from config (persistent across restarts)
 SECRET_KEY = settings.jwt_secret
@@ -19,22 +26,33 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
 
-# Simple password hashing using hashlib (for demo purposes)
-# In production, use a proper library like passlib with bcrypt
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash using bcrypt"""
-    try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception as e:
-        # Handle old SHA256 hashes gracefully (migration support)
-        import hashlib
-        sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-        return sha256_hash == hashed_password
+    """
+    Verify a password against its hash.
+    Supports both bcrypt and SHA256 (for migration/fallback).
+    """
+    if BCRYPT_AVAILABLE:
+        try:
+            # Try bcrypt verification first
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            pass
+    
+    # Fall back to SHA256 for legacy/development
+    sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    return sha256_hash == hashed_password
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt"""
-    return pwd_context.hash(password)
+    """
+    Hash a password using bcrypt (preferred) or SHA256 (fallback).
+    Production environments should always use bcrypt.
+    """
+    if BCRYPT_AVAILABLE:
+        return pwd_context.hash(password)
+    else:
+        # SHA256 fallback for development
+        return hashlib.sha256(password.encode()).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
