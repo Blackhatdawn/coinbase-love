@@ -22,7 +22,8 @@ class EmailService:
     """
     
     def __init__(self):
-        self.provider = os.environ.get('EMAIL_PROVIDER', 'console')  # console, sendgrid, ses, smtp
+        # EMAIL_SERVICE: mock (default), sendgrid, resend, ses, smtp
+        self.provider = os.environ.get('EMAIL_SERVICE', 'mock')
         self.from_email = os.environ.get('EMAIL_FROM', 'noreply@cryptovault.com')
         self.from_name = os.environ.get('EMAIL_FROM_NAME', 'CryptoVault')
         
