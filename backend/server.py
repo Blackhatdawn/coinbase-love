@@ -148,6 +148,172 @@ async def get_collections():
     }
 
 
+async def log_audit(user_id: str, action: str, resource: Optional[str] = None, 
+                   ip_address: Optional[str] = None, details: Optional[dict] = None):
+    """Log an audit event"""
+    collections = await get_collections()
+    audit_log = AuditLog(
+        user_id=user_id,
+        action=action,
+        resource=resource,
+        ip_address=ip_address,
+        details=details
+    )
+    await collections['audit_logs'].insert_one(audit_log.dict())
+
+
+# ============================================
+# AUTHENTICATION ENDPOINTS
+# ============================================
+
+@api_router.post("/auth/signup")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def signup(user_data: UserCreate, request: Request):
+    """Register a new user"""
+    collections = await get_collections()
+    
+    # Check if user already exists
+    existing_user = await collections['users'].find_one({"email": user_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user
+    user = User(
+        email=user_data.email,
+        name=user_data.name,
+        password_hash=get_password_hash(user_data.password)
+    )
+    
+    await collections['users'].insert_one(user.dict())
+    
+    # Create empty portfolio for user
+    portfolio = Portfolio(user_id=user.id)
+    await collections['portfolios'].insert_one(portfolio.dict())
+    
+    # Create tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Log audit event
+    await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
+    
+    # Create response with cookies
+    response = JSONResponse(content={
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    })
+    
+    # Set httponly cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+    )
+    
+    return response
+
+
+@api_router.post("/auth/login")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def login(credentials: UserLogin, request: Request):
+    """Login user"""
+    collections = await get_collections()
+    
+    # Find user
+    user_doc = await collections['users'].find_one({"email": credentials.email})
+    if not user_doc:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    user = User(**user_doc)
+    
+    # Verify password
+    if not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Create tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Log audit event
+    await log_audit(user.id, "USER_LOGIN", ip_address=request.client.host)
+    
+    # Create response with cookies
+    response = JSONResponse(content={
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    })
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+    )
+    
+    return response
+
+
+@api_router.post("/auth/logout")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
+    """Logout user"""
+    await log_audit(user_id, "USER_LOGOUT", ip_address=request.client.host)
+    
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
+
+
+@api_router.get("/auth/me")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def get_current_user(user_id: str = Depends(get_current_user_id)):
+    """Get current user profile"""
+    collections = await get_collections()
+    user_doc = await collections['users'].find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = User(**user_doc)
+    return {
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    }
+
+
 # ============================================
 # AUTHENTICATION ENDPOINTS
 # ============================================
