@@ -1349,6 +1349,10 @@ async def get_status_checks():
 
 app.include_router(api_router)
 
+# Add security middleware (must be added before CORS)
+app.add_middleware(SecurityMiddleware)
+app.add_middleware(CSRFMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
