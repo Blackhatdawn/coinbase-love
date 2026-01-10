@@ -224,7 +224,7 @@ router.post(
       return res.status(400).json({ error: 'Password required to disable 2FA' });
     }
 
-    // Verify password before allowing disable
+    // Verify password before allowing disable - CRITICAL SECURITY FIX
     const userResult = await query(
       'SELECT password_hash FROM users WHERE id = $1',
       [req.user.id]
@@ -234,11 +234,28 @@ router.post(
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // TODO: Implement password verification
-    // const passwordValid = await comparePassword(password, userResult.rows[0].password_hash);
-    // if (!passwordValid) {
-    //   return res.status(401).json({ error: 'Invalid password' });
-    // }
+    // CRITICAL SECURITY FIX: Verify password before disabling 2FA
+    const passwordValid = await comparePassword(
+      password,
+      userResult.rows[0].password_hash
+    );
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+
+    if (!passwordValid) {
+      await logAuditEvent(
+        req.user.id,
+        AuditAction.TWO_FA_DISABLED,
+        AuditResource.ACCOUNT,
+        req.user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'invalid_password' }
+      );
+
+      return res.status(401).json({ error: 'Invalid password' });
+    }
 
     // Disable 2FA
     await query(
@@ -248,7 +265,6 @@ router.post(
       [req.user.id]
     );
 
-    const { ipAddress, userAgent } = getClientInfo(req);
     await logAuditEvent(
       req.user.id,
       AuditAction.TWO_FA_DISABLED,
