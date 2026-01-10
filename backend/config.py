@@ -44,6 +44,21 @@ class Settings(BaseModel):
     # Rate Limiting
     rate_limit_per_minute: int = Field(default=60, env='RATE_LIMIT_PER_MINUTE')
     
+    # Email Configuration
+    email_service: str = Field(default="mock", env='EMAIL_SERVICE')
+    email_from: str = Field(default="noreply@cryptovault.com", env='EMAIL_FROM')
+    email_from_name: str = Field(default="CryptoVault", env='EMAIL_FROM_NAME')
+    app_url: str = Field(default="http://localhost:3000", env='APP_URL')
+    
+    # CoinGecko API Configuration
+    coingecko_api_key: Optional[str] = Field(default=None, env='COINGECKO_API_KEY')
+    use_mock_prices: bool = Field(default=False, env='USE_MOCK_PRICES')
+    
+    # Redis Configuration (Upstash)
+    use_redis: bool = Field(default=True, env='USE_REDIS')
+    upstash_redis_rest_url: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_URL')
+    upstash_redis_rest_token: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_TOKEN')
+    
     @validator('mongo_url')
     def validate_mongo_url(cls, v):
         if not v or not v.startswith('mongodb'):
