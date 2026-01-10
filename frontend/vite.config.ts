@@ -24,13 +24,13 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     host: '0.0.0.0',
     allowedHosts: true,
-    proxy: {
+    proxy: mode === 'development' ? {
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:8001",
         changeOrigin: true,
-        secure: mode === 'production',
+        secure: false,
       },
-    },
+    } : undefined,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

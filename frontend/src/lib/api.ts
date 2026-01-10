@@ -1,13 +1,26 @@
 /**
  * API Client Configuration
  *
- * In development: Uses /api proxy defined in vite.config.ts (targets localhost:5000)
- * In production: Uses relative /api path (requests go to same domain where frontend is hosted)
+ * Development: Uses /api proxy in vite.config.ts → http://localhost:8001
+ * Production: Uses VITE_API_URL environment variable → Render backend
  *
- * For separate domain deployments, update API_BASE environment variable
+ * The API base URL is determined by:
+ * 1. VITE_API_URL env var (production Render URL)
+ * 2. Falls back to '/api' (uses Vite proxy in dev)
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
+
+// Log API configuration (development only)
+if (import.meta.env.DEV) {
+  console.log('🔌 API Configuration:', {
+    base: API_BASE,
+    mode: import.meta.env.MODE,
+    viteApiUrl: import.meta.env.VITE_API_URL
+  });
+}
 
 export class APIError extends Error {
   constructor(
