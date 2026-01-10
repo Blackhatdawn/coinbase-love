@@ -198,10 +198,18 @@ class CryptoVaultTester:
                 data = await response.json()
                 
                 if response.status == 200:
-                    crypto = data.get("cryptocurrency")
+                    # Handle Redis cache format
+                    crypto_data = data.get("cryptocurrency")
+                    if isinstance(crypto_data, dict) and "value" in crypto_data:
+                        # Parse JSON string from Redis cache
+                        import json
+                        crypto = json.loads(crypto_data["value"])
+                    else:
+                        crypto = crypto_data
+                    
                     if crypto and crypto.get("id") == "bitcoin":
                         self.log_result("crypto_bitcoin", "pass", 
-                                      f"Bitcoin details loaded - Name: {crypto.get('name')}, Price: ${crypto.get('current_price', 'N/A')}")
+                                      f"Bitcoin details loaded - Name: {crypto.get('name')}, Price: ${crypto.get('price', 'N/A')}")
                     else:
                         self.log_result("crypto_bitcoin", "fail", 
                                       f"Invalid bitcoin data structure: {data}")
