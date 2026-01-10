@@ -972,6 +972,7 @@ async def get_orders(user_id: str = Depends(get_current_user_id)):
 
 
 @api_router.post("/orders")
+@limiter.limit("20/minute")  # Rate limit for creating orders
 async def create_order(order_data: OrderCreate, request: Request, user_id: str = Depends(get_current_user_id)):
     """Create new order"""
     orders_collection = db_manager.db.orders
