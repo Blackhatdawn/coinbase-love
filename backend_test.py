@@ -19,7 +19,7 @@ BACKEND_URL = "https://wallet-hub-9.preview.emergentagent.com"
 class CryptoVaultTester:
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
-        self.test_user_email = f"test-{int(time.time())}@cryptovault.test"
+        self.test_user_email = f"test-{int(time.time())}@example.com"
         self.test_user_password = "TestPass123!"
         self.test_user_name = "Test User"
         self.verification_code = None
