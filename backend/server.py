@@ -258,6 +258,7 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
 # ============================================
 
 @api_router.post("/auth/signup")
+@limiter.limit("5/minute")  # Strict rate limit for signups
 async def signup(user_data: UserCreate, request: Request):
     """Register a new user with email verification"""
     users_collection = db_manager.db.users
