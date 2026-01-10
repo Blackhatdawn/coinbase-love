@@ -43,7 +43,7 @@ class AuthFixTester:
         """Test authentication signup - CRITICAL (Was Broken)"""
         try:
             # Create test user with timestamp to ensure uniqueness
-            test_email = f"test-fixed-{self.timestamp}@cryptovault.test"
+            test_email = f"test-fixed-{self.timestamp}@example.com"
             signup_data = {
                 "email": test_email,
                 "password": "TestPass123!",
