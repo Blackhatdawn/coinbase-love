@@ -443,7 +443,8 @@ async def refresh_token(request: Request):
 
 
 @api_router.post("/auth/verify-email")
-async def verify_email(data: VerifyEmailRequest):
+@limiter.limit("10/minute")  # Rate limit for verification attempts
+async def verify_email(data: VerifyEmailRequest, request: Request):
     """Verify email with code or token"""
     users_collection = db_manager.db.users
     
