@@ -84,6 +84,22 @@ class Settings(BaseModel):
             raise ValueError(f'ENVIRONMENT must be one of: {allowed}')
         return v
     
+    @validator('email_service')
+    def validate_email_service(cls, v):
+        allowed = ['mock', 'sendgrid', 'resend', 'ses', 'smtp']
+        if v not in allowed:
+            raise ValueError(f'EMAIL_SERVICE must be one of: {allowed}')
+        return v
+    
+    @validator('use_redis')
+    def validate_redis_config(cls, v, values):
+        """Ensure Redis URL and token are provided if use_redis is True"""
+        if v and not values.get('upstash_redis_rest_url'):
+            raise ValueError('UPSTASH_REDIS_REST_URL is required when USE_REDIS=true')
+        if v and not values.get('upstash_redis_rest_token'):
+            raise ValueError('UPSTASH_REDIS_REST_TOKEN is required when USE_REDIS=true')
+        return v
+    
     def get_cors_origins_list(self) -> list:
         """Parse CORS origins string into list."""
         if self.cors_origins == "*":
