@@ -11,6 +11,7 @@ import orderRoutes from '@/routes/orders';
 import transactionRoutes from '@/routes/transactions';
 import twoFARoutes from '@/routes/2fa';
 import auditLogRoutes from '@/routes/auditLogs';
+import { cleanupOldAuditLogs } from '@/utils/auditLog';
 import {
   generalLimiter,
   getCorsOptions,
