@@ -55,13 +55,15 @@ class EmailService:
         try:
             if self.provider == 'sendgrid':
                 return await self._send_sendgrid(to_email, subject, html_content, text_content)
+            elif self.provider == 'resend':
+                return await self._send_resend(to_email, subject, html_content, text_content)
             elif self.provider == 'ses':
                 return await self._send_ses(to_email, subject, html_content, text_content)
             elif self.provider == 'smtp':
                 return await self._send_smtp(to_email, subject, html_content, text_content)
             else:
-                # Console provider for development
-                return await self._send_console(to_email, subject, html_content, text_content)
+                # Mock provider for development (default)
+                return await self._send_mock(to_email, subject, html_content, text_content)
                 
         except Exception as e:
             logger.error(f"❌ Email send failed to {to_email}: {str(e)}")
