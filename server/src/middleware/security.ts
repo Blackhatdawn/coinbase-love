@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { body, validationResult, Result, ValidationError } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
+import { query as dbQuery } from '@/config/database';
 
 /**
  * PRODUCTION SECURITY MIDDLEWARE
