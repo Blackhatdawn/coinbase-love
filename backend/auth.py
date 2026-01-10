@@ -4,8 +4,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 import secrets
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - configure bcrypt with proper settings
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12
+)
 
 # JWT settings
 SECRET_KEY = secrets.token_urlsafe(32)
