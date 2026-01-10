@@ -1357,6 +1357,9 @@ async def get_status_checks():
 
 app.include_router(api_router)
 
+# Add SlowAPI middleware for rate limiting
+app.add_middleware(SlowAPIMiddleware)
+
 # Add security middleware (must be added before CORS)
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(CSRFMiddleware)
