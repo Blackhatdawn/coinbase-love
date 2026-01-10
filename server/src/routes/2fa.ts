@@ -9,6 +9,7 @@ import {
   hashBackupCode,
   verifyBackupCode,
 } from '@/utils/2fa';
+import { comparePassword } from '@/utils/password';
 import { asyncHandler, strictLimiter } from '@/middleware/security';
 import { logAuditEvent, AuditAction, AuditResource, AuditStatus, getClientInfo } from '@/utils/auditLog';
 
