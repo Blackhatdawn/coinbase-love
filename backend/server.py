@@ -659,7 +659,8 @@ async def validate_reset_token(token: str):
 
 
 @api_router.post("/auth/reset-password")
-async def reset_password(data: ResetPasswordRequest):
+@limiter.limit("5/minute")  # Rate limit for password reset
+async def reset_password(data: ResetPasswordRequest, request: Request):
     """Reset password with valid token"""
     users_collection = db_manager.db.users
     
