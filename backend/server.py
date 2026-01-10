@@ -814,34 +814,45 @@ MOCK_CRYPTOS = [
 
 @api_router.get("/crypto")
 async def get_all_cryptocurrencies():
-    """Get all cryptocurrencies"""
-    cryptos = []
-    for crypto in MOCK_CRYPTOS:
-        variation = random.uniform(-0.02, 0.02)
-        cryptos.append({
-            **crypto,
-            "price": crypto["price"] * (1 + variation),
-            "last_updated": datetime.utcnow().isoformat()
-        })
-    
-    return {"cryptocurrencies": cryptos}
+    """Get all cryptocurrencies with real prices from CoinGecko"""
+    try:
+        prices = await coingecko_service.get_prices()
+        return {"cryptocurrencies": prices}
+    except Exception as e:
+        logger.error(f"❌ Error fetching cryptocurrencies: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch cryptocurrency prices")
 
 
-@api_router.get("/crypto/{symbol}")
-async def get_cryptocurrency(symbol: str):
-    """Get specific cryptocurrency"""
-    crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == symbol.upper()), None)
-    if not crypto:
-        raise HTTPException(status_code=404, detail="Cryptocurrency not found")
-    
-    variation = random.uniform(-0.02, 0.02)
-    return {
-        "cryptocurrency": {
-            **crypto,
-            "price": crypto["price"] * (1 + variation),
-            "last_updated": datetime.utcnow().isoformat()
-        }
-    }
+@api_router.get("/crypto/{coin_id}")
+async def get_cryptocurrency(coin_id: str):
+    """Get specific cryptocurrency details"""
+    try:
+        coin_data = await coingecko_service.get_coin_details(coin_id.lower())
+        if not coin_data:
+            raise HTTPException(status_code=404, detail="Cryptocurrency not found")
+        
+        return {"cryptocurrency": coin_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching {coin_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch cryptocurrency details")
+
+
+@api_router.get("/crypto/{coin_id}/history")
+async def get_price_history(coin_id: str, days: int = 7):
+    """Get historical price data for charting"""
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+        
+        history = await coingecko_service.get_price_history(coin_id.lower(), days)
+        return {"coin_id": coin_id, "days": days, "history": history}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching history for {coin_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch price history")
 
 
 # ============================================
