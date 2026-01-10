@@ -857,6 +857,128 @@ async def get_price_history(coin_id: str, days: int = 7):
 
 
 # ============================================
+# WEBSOCKET FOR LIVE PRICE UPDATES
+# ============================================
+
+class WebSocketConnectionManager:
+    """Manages WebSocket connections for live price updates."""
+    
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+        self.update_task: Optional[asyncio.Task] = None
+        logger.info("🔌 WebSocket Manager initialized")
+    
+    async def connect(self, websocket: WebSocket):
+        """Accept and register a new WebSocket connection."""
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"✅ WebSocket connected. Total connections: {len(self.active_connections)}")
+        
+        # Start price update task if not already running
+        if not self.update_task or self.update_task.done():
+            self.update_task = asyncio.create_task(self.broadcast_prices())
+    
+    def disconnect(self, websocket: WebSocket):
+        """Remove a WebSocket connection."""
+        self.active_connections.discard(websocket)
+        logger.info(f"❌ WebSocket disconnected. Total connections: {len(self.active_connections)}")
+        
+        # Stop update task if no connections
+        if not self.active_connections and self.update_task:
+            self.update_task.cancel()
+    
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        """Send message to a specific WebSocket."""
+        try:
+            await websocket.send_json(message)
+        except Exception as e:
+            logger.error(f"❌ Failed to send message: {str(e)}")
+            self.disconnect(websocket)
+    
+    async def broadcast(self, message: dict):
+        """Broadcast message to all connected WebSockets."""
+        disconnected = []
+        for websocket in self.active_connections:
+            try:
+                await websocket.send_json(message)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to send to websocket: {str(e)}")
+                disconnected.append(websocket)
+        
+        # Clean up disconnected clients
+        for websocket in disconnected:
+            self.disconnect(websocket)
+    
+    async def broadcast_prices(self):
+        """Continuously fetch and broadcast price updates every 10 seconds."""
+        logger.info("📊 Starting price broadcast loop...")
+        
+        while self.active_connections:
+            try:
+                # Fetch latest prices
+                prices = await coingecko_service.get_prices()
+                
+                # Broadcast to all connected clients
+                await self.broadcast({
+                    "type": "price_update",
+                    "data": prices,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                
+                logger.info(f"📡 Broadcasted prices to {len(self.active_connections)} clients")
+                
+                # Wait 10 seconds before next update
+                await asyncio.sleep(10)
+                
+            except asyncio.CancelledError:
+                logger.info("📊 Price broadcast loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"❌ Error in price broadcast: {str(e)}")
+                await asyncio.sleep(10)  # Continue even if error
+
+# Global WebSocket manager
+ws_manager = WebSocketConnectionManager()
+
+
+@app.websocket("/ws/prices")
+async def websocket_prices(websocket: WebSocket):
+    """
+    WebSocket endpoint for live cryptocurrency price updates.
+    Broadcasts price updates every 10 seconds to all connected clients.
+    """
+    await ws_manager.connect(websocket)
+    
+    try:
+        # Send initial price data immediately
+        prices = await coingecko_service.get_prices()
+        await ws_manager.send_personal_message({
+            "type": "initial_prices",
+            "data": prices,
+            "timestamp": datetime.utcnow().isoformat()
+        }, websocket)
+        
+        # Keep connection alive and listen for client messages
+        while True:
+            # Receive any messages from client (ping, subscribe, etc.)
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            if message.get("type") == "ping":
+                await ws_manager.send_personal_message({
+                    "type": "pong",
+                    "timestamp": datetime.utcnow().isoformat()
+                }, websocket)
+            
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+        logger.info("Client disconnected normally")
+    except Exception as e:
+        logger.error(f"❌ WebSocket error: {str(e)}")
+        ws_manager.disconnect(websocket)
+
+
+# ============================================
 # PORTFOLIO ENDPOINTS  
 # ============================================
 
