@@ -69,16 +69,16 @@ class EmailService:
             logger.error(f"❌ Email send failed to {to_email}: {str(e)}")
             return False
     
-    async def _send_console(self, to_email: str, subject: str, html_content: str, text_content: Optional[str]) -> bool:
-        """Console output for development (no actual email sent)"""
+    async def _send_mock(self, to_email: str, subject: str, html_content: str, text_content: Optional[str]) -> bool:
+        """Mock email provider for development (logs to console, returns success)"""
         logger.info("="*80)
-        logger.info(f"📧 EMAIL (Console Mode - Development Only)")
+        logger.info(f"📧 MOCK EMAIL SERVICE (Development Mode)")
         logger.info("="*80)
         logger.info(f"To: {to_email}")
         logger.info(f"From: {self.from_name} <{self.from_email}>")
         logger.info(f"Subject: {subject}")
         logger.info("-"*80)
-        logger.info(f"Content:\n{text_content or html_content[:200]}...")
+        logger.info(f"Content:\n{text_content or html_content[:300]}...")
         logger.info("="*80)
         return True
     
