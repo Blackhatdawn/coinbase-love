@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import TransactionHistory from "./pages/TransactionHistory";
 import Markets from "./pages/Markets";
 import Trade from "./pages/Trade";
+import EnhancedTrade from "./pages/EnhancedTrade";
 import Earn from "./pages/Earn";
 import Learn from "./pages/Learn";
 import Contact from "./pages/Contact";
