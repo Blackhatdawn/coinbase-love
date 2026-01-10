@@ -536,7 +536,8 @@ async def verify_email(data: VerifyEmailRequest, request: Request):
 
 
 @api_router.post("/auth/resend-verification")
-async def resend_verification(data: ResendVerificationRequest):
+@limiter.limit("3/minute")  # Strict rate limit for resend requests
+async def resend_verification(data: ResendVerificationRequest, request: Request):
     """Resend verification email"""
     users_collection = db_manager.db.users
     
