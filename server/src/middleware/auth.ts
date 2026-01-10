@@ -127,6 +127,7 @@ export const generateToken = (userId: string, email: string) => {
 /**
  * Middleware to authenticate requests using HttpOnly cookies
  * Falls back to Authorization header for backwards compatibility during migration
+ * CRITICAL: Enforces access token type
  */
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   // Try to get token from HttpOnly cookie first (preferred)
@@ -144,10 +145,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     return res.status(401).json({ error: 'No authorization token' });
   }
 
+  // Verify it's an ACCESS token (isRefresh=false)
   const decoded = verifyToken(token, false);
 
   if (!decoded) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res
+      .status(401)
+      .json({ error: 'Invalid or expired token' });
   }
 
   req.user = decoded;
