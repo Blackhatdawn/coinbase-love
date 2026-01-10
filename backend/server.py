@@ -47,6 +47,9 @@ from auth import (
 # Import dependencies
 from dependencies import get_current_user_id, optional_current_user_id
 
+# Import CoinGecko service
+from coingecko_service import coingecko_service
+
 
 # Configure structured logging
 logging.basicConfig(
