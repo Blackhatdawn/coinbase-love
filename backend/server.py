@@ -329,6 +329,7 @@ async def signup(user_data: UserCreate, request: Request):
 
 
 @api_router.post("/auth/login")
+@limiter.limit("10/minute")  # Rate limit for login attempts
 async def login(credentials: UserLogin, request: Request):
     """Login user"""
     users_collection = db_manager.db.users
