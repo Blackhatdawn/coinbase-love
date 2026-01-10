@@ -170,15 +170,18 @@ backend:
 
   - task: "Authentication Login"
     implemented: true
-    working: true
+    working: false
     file: "server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: true
           agent: "testing"
           comment: "Login endpoint correctly rejects unverified accounts with 401 Invalid credentials. Security working as expected."
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL SECURITY ISSUE: Login endpoint allows unverified accounts to log in successfully (returns 200 OK with tokens). Missing email_verified check in login function at line 349-353 in server.py. This bypasses email verification requirement."
 
   - task: "Email Verification Resend"
     implemented: true
