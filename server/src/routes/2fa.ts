@@ -125,15 +125,22 @@ router.post(
         userAgent
       );
 
-      return res.status(401).json({ error: 'Invalid verification code. Please try again.' });
+      return res
+        .status(401)
+        .json({ error: 'Invalid verification code. Please try again.' });
     }
 
-    // Enable 2FA
+    // SECURITY FIX: Hash backup codes before storing
+    const hashedBackupCodes = await Promise.all(
+      backup_codes.map((code: string) => hashBackupCode(code))
+    );
+
+    // Enable 2FA with hashed backup codes
     await query(
       `UPDATE user_2fa
-       SET totp_enabled = true, updated_at = CURRENT_TIMESTAMP
+       SET totp_enabled = true, backup_codes = $2, updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $1`,
-      [req.user.id]
+      [req.user.id, hashedBackupCodes]
     );
 
     await logAuditEvent(
@@ -150,7 +157,8 @@ router.post(
     res.json({
       message: '2FA successfully enabled!',
       backupCodes,
-      warning: 'Save your backup codes in a safe place. You can use them to recover your account if you lose your authenticator.',
+      warning:
+        'Save your backup codes in a safe place. You can use them to recover your account if you lose your authenticator.',
     });
   })
 );
