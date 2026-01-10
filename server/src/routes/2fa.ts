@@ -276,12 +276,17 @@ router.post(
     // Generate new backup codes
     const newBackupCodes = generateBackupCodes(10);
 
+    // SECURITY FIX: Hash backup codes before storing
+    const hashedBackupCodes = await Promise.all(
+      newBackupCodes.map((code: string) => hashBackupCode(code))
+    );
+
     // Update backup codes
     await query(
       `UPDATE user_2fa
        SET backup_codes = $2, updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $1`,
-      [req.user.id, newBackupCodes]
+      [req.user.id, hashedBackupCodes]
     );
 
     const { ipAddress, userAgent } = getClientInfo(req);
