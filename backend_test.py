@@ -254,7 +254,7 @@ class CryptoVaultTester:
             
             for i in range(6):
                 signup_data = {
-                    "email": f"ratetest{i}-{int(time.time())}@test.com",
+                    "email": f"ratetest{i}-{int(time.time())}@example.com",
                     "password": "TestPass123!",
                     "name": f"Rate Test {i}"
                 }
