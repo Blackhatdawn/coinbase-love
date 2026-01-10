@@ -134,11 +134,18 @@ db_manager = DatabaseManager()
 # CREATE FASTAPI APP
 # ============================================
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="CryptoVault API",
     version="1.0.0",
     description="Production-ready cryptocurrency trading platform"
 )
+
+# Add rate limit exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Create API router
 api_router = APIRouter(prefix="/api")
