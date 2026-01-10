@@ -5,14 +5,9 @@ import secrets
 import hashlib
 from config import settings
 
-# Try to import bcrypt, fall back to hashlib if unavailable
+# Try to import bcrypt directly (more reliable than passlib)
 try:
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(
-        schemes=["bcrypt"],
-        deprecated="auto",
-        bcrypt__rounds=12
-    )
+    import bcrypt
     BCRYPT_AVAILABLE = True
     print("✅ Using bcrypt for password hashing (production-ready)")
 except Exception as e:
@@ -33,8 +28,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     if BCRYPT_AVAILABLE:
         try:
-            # Try bcrypt verification first
-            return pwd_context.verify(plain_password, hashed_password)
+            # Bcrypt verification
+            return bcrypt.checkpw(
+                plain_password.encode('utf-8'),
+                hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
+            )
         except Exception:
             pass
     
@@ -49,7 +47,10 @@ def get_password_hash(password: str) -> str:
     Production environments should always use bcrypt.
     """
     if BCRYPT_AVAILABLE:
-        return pwd_context.hash(password)
+        # Generate salt and hash password
+        salt = bcrypt.gensalt(rounds=12)
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
     else:
         # SHA256 fallback for development
         return hashlib.sha256(password.encode()).hexdigest()
