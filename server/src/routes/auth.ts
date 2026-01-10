@@ -83,8 +83,8 @@ router.post(
       console.warn(`Failed to send verification email to ${user.email}`);
     }
 
-    // For development: return verification token in response
-    // In production, only send via email
+    // SECURITY FIX: Don't expose verification token in response (even in development)
+    // Verification token should only be sent via email
     const responseData: any = {
       user: {
         id: user.id,
@@ -96,8 +96,7 @@ router.post(
     };
 
     if (process.env.NODE_ENV === 'development') {
-      responseData.verificationToken = verificationToken;
-      responseData.message = 'Check console for verification email link. In development, you can use the verificationToken to verify your email.';
+      responseData.message = 'Verification email sent. Please check your inbox to verify your email address.';
     } else {
       responseData.message = 'Verification email sent. Please check your inbox to verify your email address.';
     }
