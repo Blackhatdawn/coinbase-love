@@ -269,11 +269,12 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Authentication Signup"
+    - "Authentication Login"
     - "Rate Limiting"
     - "Security Headers"
   stuck_tasks:
-    - "Authentication Signup"
+    - "Authentication Login"
+    - "Rate Limiting"
   test_all: false
   test_priority: "high_first"
 
