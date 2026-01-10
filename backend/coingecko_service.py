@@ -144,10 +144,22 @@ class CoinGeckoService:
         return results
     
     async def get_coin_details(self, coin_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information for a specific coin."""
+        """
+        Get detailed information for a specific coin.
+        Uses Redis cache (5-minute TTL).
+        """
+        # Check cache first
+        cached_details = await redis_cache.get_cached_coin_details(coin_id)
+        if cached_details:
+            logger.info(f"✅ Using cached details for {coin_id}")
+            return cached_details
+        
         if self.use_mock:
             prices = self._get_mock_prices([coin_id])
-            return prices[0] if prices else None
+            details = prices[0] if prices else None
+            if details:
+                await redis_cache.cache_coin_details(coin_id, details)
+            return details
         
         try:
             headers = {}
@@ -170,7 +182,7 @@ class CoinGeckoService:
             
             market_data = data.get("market_data", {})
             
-            return {
+            details = {
                 "id": data["id"],
                 "symbol": data["symbol"].upper(),
                 "name": data["name"],
@@ -187,6 +199,11 @@ class CoinGeckoService:
                 "description": data.get("description", {}).get("en", "")[:500],  # Truncate
                 "last_updated": datetime.utcnow().isoformat()
             }
+            
+            # Cache the details
+            await redis_cache.cache_coin_details(coin_id, details)
+            
+            return details
             
         except Exception as e:
             logger.error(f"❌ Failed to fetch details for {coin_id}: {str(e)}")
