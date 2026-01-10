@@ -59,6 +59,10 @@ class Settings(BaseModel):
     upstash_redis_rest_url: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_URL')
     upstash_redis_rest_token: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_TOKEN')
     
+    def is_redis_available(self) -> bool:
+        """Check if Redis is properly configured and should be used."""
+        return self.use_redis and bool(self.upstash_redis_rest_url) and bool(self.upstash_redis_rest_token)
+    
     @validator('mongo_url')
     def validate_mongo_url(cls, v):
         if not v or not v.startswith('mongodb'):
