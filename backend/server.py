@@ -1,17 +1,15 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
 import logging
+from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timedelta
 import random
 
-# Import configuration and database
-from config import settings
-from database import initialize_database, close_database, get_database
 from models import (
     User, UserCreate, UserLogin, UserResponse,
     Cryptocurrency, Portfolio, Holding, HoldingCreate,
@@ -26,132 +24,41 @@ from auth import (
 from dependencies import get_current_user_id, optional_current_user_id
 
 
-# Configure structured logging
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+# Collections
+users_collection = db.users
+portfolios_collection = db.portfolios
+orders_collection = db.orders
+transactions_collection = db.transactions
+audit_logs_collection = db.audit_logs
+crypto_collection = db.cryptocurrencies
+
+# Create the main app without a prefix
+app = FastAPI()
+
+# Create a router with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Create the main app
-app = FastAPI(
-    title="CryptoVault API",
-    version="1.0.0",
-    description="Production-ready cryptocurrency trading platform API"
-)
 
-# Rate limiter setup
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
-
-
-# ============================================
-# STARTUP AND SHUTDOWN EVENTS
-# ============================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize connections and perform health checks on startup."""
-    logger.info("="*60)
-    logger.info("🚀 Starting CryptoVault API Server...")
-    logger.info("="*60)
-    
-    try:
-        # Initialize database with connection pooling
-        logger.info("📦 Initializing database connection...")
-        await initialize_database(
-            mongo_url=settings.mongo_url,
-            db_name=settings.db_name,
-            max_pool_size=settings.mongo_max_pool_size,
-            min_pool_size=settings.mongo_min_pool_size,
-            server_selection_timeout_ms=settings.mongo_server_selection_timeout_ms
-        )
-        
-        logger.info("="*60)
-        logger.info("✅ Server startup complete!")
-        logger.info(f"   Environment: {settings.environment}")
-        logger.info(f"   Database: {settings.db_name}")
-        logger.info(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
-        logger.info("="*60)
-        
-    except Exception as e:
-        logger.critical(f"💥 Failed to start server: {str(e)}")
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Gracefully shutdown connections."""
-    logger.info("="*60)
-    logger.info("🛑 Shutting down CryptoVault API Server...")
-    logger.info("="*60)
-    
-    try:
-        await close_database()
-        logger.info("✅ Graceful shutdown complete")
-    except Exception as e:
-        logger.error(f"❌ Error during shutdown: {str(e)}")
-
-
-# ============================================
-# HEALTH CHECK ENDPOINT
-# ============================================
-
-@app.get("/health")
-@limiter.exempt
-async def health_check():
-    """
-    Health check endpoint for monitoring and load balancers.
-    Returns service status and database connectivity.
-    """
-    try:
-        db_conn = await get_database()
-        db_healthy = await db_conn.health_check()
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "environment": settings.environment,
-            "database": "connected" if db_healthy else "disconnected",
-            "version": "1.0.0"
-        }
-    except Exception as e:
-        logger.error(f"❌ Health check failed: {str(e)}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
-
-
-# ============================================
-# HELPER FUNCTIONS
-# ============================================
-
-async def get_collections():
-    """Get database collections."""
-    db_conn = await get_database()
-    return {
-        'users': db_conn.get_collection('users'),
-        'portfolios': db_conn.get_collection('portfolios'),
-        'orders': db_conn.get_collection('orders'),
-        'transactions': db_conn.get_collection('transactions'),
-        'audit_logs': db_conn.get_collection('audit_logs'),
-        'cryptocurrencies': db_conn.get_collection('cryptocurrencies')
-    }
-
-
+# Helper function to log audit events
 async def log_audit(user_id: str, action: str, resource: Optional[str] = None, 
                    ip_address: Optional[str] = None, details: Optional[dict] = None):
     """Log an audit event"""
-    collections = await get_collections()
     audit_log = AuditLog(
         user_id=user_id,
         action=action,
@@ -159,159 +66,7 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
         ip_address=ip_address,
         details=details
     )
-    await collections['audit_logs'].insert_one(audit_log.dict())
-
-
-# ============================================
-# AUTHENTICATION ENDPOINTS
-# ============================================
-
-@api_router.post("/auth/signup")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def signup(user_data: UserCreate, request: Request):
-    """Register a new user"""
-    collections = await get_collections()
-    
-    # Check if user already exists
-    existing_user = await collections['users'].find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
-    user = User(
-        email=user_data.email,
-        name=user_data.name,
-        password_hash=get_password_hash(user_data.password)
-    )
-    
-    await collections['users'].insert_one(user.dict())
-    
-    # Create empty portfolio for user
-    portfolio = Portfolio(user_id=user.id)
-    await collections['portfolios'].insert_one(portfolio.dict())
-    
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
-    
-    # Log audit event
-    await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
-    
-    # Create response with cookies
-    response = JSONResponse(content={
-        "user": UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            createdAt=user.created_at.isoformat()
-        ).dict()
-    })
-    
-    # Set httponly cookies
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
-    )
-    
-    return response
-
-
-@api_router.post("/auth/login")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def login(credentials: UserLogin, request: Request):
-    """Login user"""
-    collections = await get_collections()
-    
-    # Find user
-    user_doc = await collections['users'].find_one({"email": credentials.email})
-    if not user_doc:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    user = User(**user_doc)
-    
-    # Verify password
-    if not verify_password(credentials.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
-    
-    # Log audit event
-    await log_audit(user.id, "USER_LOGIN", ip_address=request.client.host)
-    
-    # Create response with cookies
-    response = JSONResponse(content={
-        "user": UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            createdAt=user.created_at.isoformat()
-        ).dict()
-    })
-    
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
-    )
-    
-    return response
-
-
-@api_router.post("/auth/logout")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
-    """Logout user"""
-    await log_audit(user_id, "USER_LOGOUT", ip_address=request.client.host)
-    
-    response = JSONResponse(content={"message": "Logged out successfully"})
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
-    return response
-
-
-@api_router.get("/auth/me")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def get_current_user(user_id: str = Depends(get_current_user_id)):
-    """Get current user profile"""
-    collections = await get_collections()
-    user_doc = await collections['users'].find_one({"id": user_id})
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user = User(**user_doc)
-    return {
-        "user": UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            createdAt=user.created_at.isoformat()
-        ).dict()
-    }
+    await audit_logs_collection.insert_one(audit_log.dict())
 
 
 # ============================================
