@@ -87,22 +87,23 @@ export const generateBackupCodes = (count: number = 10): string[] => {
 };
 
 /**
- * Hash a backup code for safe storage
- * Use bcryptjs in actual implementation
+ * Hash a backup code for safe storage using bcryptjs
+ * SECURITY FIX: Prevents plaintext storage of backup codes
  */
-export const hashBackupCode = (code: string): string => {
-  // In production, use bcryptjs.hash()
-  // For now, return as-is (should be encrypted in database)
-  return code;
+export const hashBackupCode = async (code: string): Promise<string> => {
+  const SALT_ROUNDS = 10;
+  return bcrypt.hash(code, SALT_ROUNDS);
 };
 
 /**
- * Verify a backup code
+ * Verify a backup code against its hash
+ * SECURITY FIX: Uses bcrypt constant-time comparison
  */
-export const verifyBackupCode = (code: string, hashedCode: string): boolean => {
-  // In production, use bcryptjs.compare()
-  // For now, simple comparison
-  return code === hashedCode;
+export const verifyBackupCode = async (
+  code: string,
+  hashedCode: string
+): Promise<boolean> => {
+  return bcrypt.compare(code, hashedCode);
 };
 
 /**
