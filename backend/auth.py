@@ -4,6 +4,12 @@ from typing import Optional
 import secrets
 import hashlib
 
+# JWT settings
+SECRET_KEY = secrets.token_urlsafe(32)
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
 # Simple password hashing using hashlib (for demo purposes)
 # In production, use a proper library like passlib with bcrypt
 def verify_password(plain_password: str, hashed_password: str) -> bool:
