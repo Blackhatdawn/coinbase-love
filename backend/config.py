@@ -128,6 +128,18 @@ def load_and_validate_settings() -> Settings:
             'mongo_min_pool_size': int(os.environ.get('MONGO_MIN_POOL_SIZE', '10')),
             'mongo_server_selection_timeout_ms': int(os.environ.get('MONGO_TIMEOUT_MS', '5000')),
             'rate_limit_per_minute': int(os.environ.get('RATE_LIMIT_PER_MINUTE', '60')),
+            # Email settings
+            'email_service': os.environ.get('EMAIL_SERVICE', 'mock'),
+            'email_from': os.environ.get('EMAIL_FROM', 'noreply@cryptovault.com'),
+            'email_from_name': os.environ.get('EMAIL_FROM_NAME', 'CryptoVault'),
+            'app_url': os.environ.get('APP_URL', 'http://localhost:3000'),
+            # CoinGecko settings
+            'coingecko_api_key': os.environ.get('COINGECKO_API_KEY'),
+            'use_mock_prices': os.environ.get('USE_MOCK_PRICES', 'false').lower() == 'true',
+            # Redis settings
+            'use_redis': os.environ.get('USE_REDIS', 'true').lower() == 'true',
+            'upstash_redis_rest_url': os.environ.get('UPSTASH_REDIS_REST_URL'),
+            'upstash_redis_rest_token': os.environ.get('UPSTASH_REDIS_REST_TOKEN'),
         }
         
         # Remove None values to use defaults
