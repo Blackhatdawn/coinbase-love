@@ -20,7 +20,16 @@ from models import (
     User, UserCreate, UserLogin, UserResponse,
     Cryptocurrency, Portfolio, Holding, HoldingCreate,
     Order, OrderCreate, Transaction, TransactionCreate,
-    AuditLog, TwoFactorSetup, TwoFactorVerify, BackupCodes
+    AuditLog, TwoFactorSetup, TwoFactorVerify, BackupCodes,
+    VerifyEmailRequest, ResendVerificationRequest,
+    ForgotPasswordRequest, ResetPasswordRequest
+)
+from email_service import (
+    email_service,
+    generate_verification_code,
+    generate_verification_token,
+    generate_password_reset_token,
+    get_token_expiration
 )
 
 # Import auth utilities
