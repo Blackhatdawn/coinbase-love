@@ -1,40 +1,53 @@
-"""
-Production-ready FastAPI server with proper startup checks and error handling.
-"""
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+import os
 import logging
+from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timedelta
 import random
-import asyncio
 
-# Import configuration
-from config import settings
-
-# Import models
 from models import (
     User, UserCreate, UserLogin, UserResponse,
     Cryptocurrency, Portfolio, Holding, HoldingCreate,
     Order, OrderCreate, Transaction, TransactionCreate,
     AuditLog, TwoFactorSetup, TwoFactorVerify, BackupCodes
 )
-
-# Import auth utilities
 from auth import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token,
     decode_token, generate_backup_codes, generate_2fa_secret
 )
-
-# Import dependencies
 from dependencies import get_current_user_id, optional_current_user_id
 
 
-# Configure structured logging
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+# Collections
+users_collection = db.users
+portfolios_collection = db.portfolios
+orders_collection = db.orders
+transactions_collection = db.transactions
+audit_logs_collection = db.audit_logs
+crypto_collection = db.cryptocurrencies
+
+# Create the main app without a prefix
+app = FastAPI()
+
+# Create a router with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -42,186 +55,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ============================================
-# DATABASE CONNECTION WITH HEALTH CHECKS
-# ============================================
-
-class DatabaseManager:
-    """Manages MongoDB connection with health checks and retries."""
-    
-    def __init__(self):
-        self.client: Optional[AsyncIOMotorClient] = None
-        self.db = None
-        self._is_connected = False
-    
-    async def connect(self, max_retries: int = 3, retry_delay: int = 2):
-        """Establish database connection with retries."""
-        for attempt in range(1, max_retries + 1):
-            try:
-                logger.info(f"🔌 Connecting to MongoDB (attempt {attempt}/{max_retries})...")
-                
-                self.client = AsyncIOMotorClient(
-                    settings.mongo_url,
-                    maxPoolSize=settings.mongo_max_pool_size,
-                    minPoolSize=settings.mongo_min_pool_size,
-                    serverSelectionTimeoutMS=settings.mongo_server_selection_timeout_ms,
-                    retryWrites=True,
-                    retryReads=True
-                )
-                
-                self.db = self.client[settings.db_name]
-                
-                # Perform health check
-                await self.client.admin.command('ping')
-                
-                self._is_connected = True
-                logger.info(f"✅ MongoDB connected: {settings.db_name}")
-                logger.info(f"   Pool: {settings.mongo_min_pool_size}-{settings.mongo_max_pool_size} connections")
-                return
-                
-            except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-                logger.error(f"❌ MongoDB connection failed: {str(e)}")
-                
-                if attempt < max_retries:
-                    logger.info(f"⏳ Retrying in {retry_delay}s...")
-                    await asyncio.sleep(retry_delay)
-                else:
-                    logger.critical("💥 Failed to connect after all retries")
-                    raise ConnectionError(f"MongoDB connection failed: {str(e)}")
-    
-    async def health_check(self) -> bool:
-        """Check if database connection is healthy."""
-        try:
-            await self.client.admin.command('ping')
-            return True
-        except Exception as e:
-            logger.error(f"❌ Database health check failed: {str(e)}")
-            self._is_connected = False
-            return False
-    
-    async def disconnect(self):
-        """Gracefully close database connection."""
-        if self.client:
-            logger.info("🔌 Closing MongoDB connection...")
-            self.client.close()
-            self._is_connected = False
-            logger.info("✅ MongoDB disconnected")
-    
-    @property
-    def is_connected(self) -> bool:
-        return self._is_connected
-
-
-# Global database manager
-db_manager = DatabaseManager()
-
-
-# ============================================
-# CREATE FASTAPI APP
-# ============================================
-
-app = FastAPI(
-    title="CryptoVault API",
-    version="1.0.0",
-    description="Production-ready cryptocurrency trading platform"
-)
-
-# Create API router
-api_router = APIRouter(prefix="/api")
-
-
-# ============================================
-# STARTUP AND SHUTDOWN EVENTS
-# ============================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize connections and perform health checks."""
-    logger.info("="*70)
-    logger.info("🚀 Starting CryptoVault API Server")
-    logger.info("="*70)
-    
-    try:
-        # Connect to database with health check
-        await db_manager.connect()
-        
-        logger.info("="*70)
-        logger.info("✅ Server startup complete!")
-        logger.info(f"   Environment: {settings.environment}")
-        logger.info(f"   Database: {settings.db_name}")
-        logger.info(f"   JWT Secret: ***[{len(settings.jwt_secret)} chars]***")
-        logger.info(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
-        logger.info("="*70)
-        
-    except Exception as e:
-        logger.critical(f"💥 Startup failed: {str(e)}")
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Gracefully shutdown connections."""
-    logger.info("="*70)
-    logger.info("🛑 Shutting down CryptoVault API Server")
-    logger.info("="*70)
-    
-    try:
-        await db_manager.disconnect()
-        logger.info("✅ Graceful shutdown complete")
-    except Exception as e:
-        logger.error(f"❌ Shutdown error: {str(e)}")
-
-
-# ============================================
-# HEALTH CHECK ENDPOINT
-# ============================================
-
-@app.get("/health")
-async def health_check():
-    """
-    Health check endpoint for monitoring and load balancers.
-    Returns 200 if healthy, 503 if database is down.
-    """
-    try:
-        db_healthy = await db_manager.health_check()
-        
-        if not db_healthy:
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "unhealthy",
-                    "database": "disconnected",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            )
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "environment": settings.environment,
-            "version": "1.0.0",
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"❌ Health check failed: {str(e)}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "error",
-                "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
-
-
-# ============================================
-# HELPER FUNCTIONS
-# ============================================
-
+# Helper function to log audit events
 async def log_audit(user_id: str, action: str, resource: Optional[str] = None, 
                    ip_address: Optional[str] = None, details: Optional[dict] = None):
-    """Log an audit event."""
+    """Log an audit event"""
     audit_log = AuditLog(
         user_id=user_id,
         action=action,
@@ -229,7 +66,7 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
         ip_address=ip_address,
         details=details
     )
-    await db_manager.db.audit_logs.insert_one(audit_log.dict())
+    await audit_logs_collection.insert_one(audit_log.dict())
 
 
 # ============================================
@@ -239,9 +76,6 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
 @api_router.post("/auth/signup")
 async def signup(user_data: UserCreate, request: Request):
     """Register a new user"""
-    users_collection = db_manager.db.users
-    portfolios_collection = db_manager.db.portfolios
-    
     # Check if user already exists
     existing_user = await users_collection.find_one({"email": user_data.email})
     if existing_user:
@@ -256,7 +90,7 @@ async def signup(user_data: UserCreate, request: Request):
     
     await users_collection.insert_one(user.dict())
     
-    # Create empty portfolio
+    # Create empty portfolio for user
     portfolio = Portfolio(user_id=user.id)
     await portfolios_collection.insert_one(portfolio.dict())
     
@@ -267,7 +101,7 @@ async def signup(user_data: UserCreate, request: Request):
     # Log audit event
     await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
     
-    # Create response
+    # Create response with cookies
     response = JSONResponse(content={
         "user": UserResponse(
             id=user.id,
@@ -277,22 +111,22 @@ async def signup(user_data: UserCreate, request: Request):
         ).dict()
     })
     
-    # Set secure cookies
+    # Set httponly cookies
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.environment == 'production',
+        secure=False,  # Set to True in production with HTTPS
         samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
+        max_age=30 * 60  # 30 minutes
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=settings.environment == 'production',
+        secure=False,
         samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+        max_age=7 * 24 * 60 * 60  # 7 days
     )
     
     return response
@@ -301,8 +135,6 @@ async def signup(user_data: UserCreate, request: Request):
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin, request: Request):
     """Login user"""
-    users_collection = db_manager.db.users
-    
     # Find user
     user_doc = await users_collection.find_one({"email": credentials.email})
     if not user_doc:
@@ -318,9 +150,10 @@ async def login(credentials: UserLogin, request: Request):
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
     
-    # Log audit
+    # Log audit event
     await log_audit(user.id, "USER_LOGIN", ip_address=request.client.host)
     
+    # Create response with cookies
     response = JSONResponse(content={
         "user": UserResponse(
             id=user.id,
@@ -334,17 +167,17 @@ async def login(credentials: UserLogin, request: Request):
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.environment == 'production',
+        secure=False,
         samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
+        max_age=30 * 60
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=settings.environment == 'production',
+        secure=False,
         samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+        max_age=7 * 24 * 60 * 60
     )
     
     return response
@@ -364,7 +197,6 @@ async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
 @api_router.get("/auth/me")
 async def get_current_user(user_id: str = Depends(get_current_user_id)):
     """Get current user profile"""
-    users_collection = db_manager.db.users
     user_doc = await users_collection.find_one({"id": user_id})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
@@ -382,7 +214,7 @@ async def get_current_user(user_id: str = Depends(get_current_user_id)):
 
 @api_router.post("/auth/refresh")
 async def refresh_token(request: Request):
-    """Refresh access token"""
+    """Refresh access token using refresh token"""
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token not found")
@@ -403,16 +235,13 @@ async def refresh_token(request: Request):
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.environment == 'production',
+        secure=False,
         samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
+        max_age=30 * 60
     )
     
     return response
 
-# ============================================
-# 2FA ENDPOINTS
-# ============================================
 
 @api_router.post("/auth/verify-email")
 async def verify_email(data: dict):
@@ -423,9 +252,9 @@ async def verify_email(data: dict):
 @api_router.post("/auth/2fa/setup")
 async def setup_2fa(user_id: str = Depends(get_current_user_id)):
     """Setup 2FA for user"""
-    users_collection = db_manager.db.users
     secret = generate_2fa_secret()
     
+    # Update user with 2FA secret
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {"two_factor_secret": secret}}
@@ -440,11 +269,11 @@ async def setup_2fa(user_id: str = Depends(get_current_user_id)):
 @api_router.post("/auth/2fa/verify")
 async def verify_2fa(data: TwoFactorVerify, user_id: str = Depends(get_current_user_id)):
     """Verify and enable 2FA"""
-    users_collection = db_manager.db.users
-    
+    # For demo purposes, accept any 6-digit code
     if len(data.code) != 6 or not data.code.isdigit():
         raise HTTPException(status_code=400, detail="Invalid code")
     
+    # Enable 2FA for user
     backup_codes = generate_backup_codes()
     await users_collection.update_one(
         {"id": user_id},
@@ -463,7 +292,6 @@ async def verify_2fa(data: TwoFactorVerify, user_id: str = Depends(get_current_u
 @api_router.get("/auth/2fa/status")
 async def get_2fa_status(user_id: str = Depends(get_current_user_id)):
     """Get 2FA status"""
-    users_collection = db_manager.db.users
     user_doc = await users_collection.find_one({"id": user_id})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
@@ -474,7 +302,6 @@ async def get_2fa_status(user_id: str = Depends(get_current_user_id)):
 @api_router.post("/auth/2fa/disable")
 async def disable_2fa(data: dict, user_id: str = Depends(get_current_user_id)):
     """Disable 2FA"""
-    users_collection = db_manager.db.users
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {
@@ -490,7 +317,6 @@ async def disable_2fa(data: dict, user_id: str = Depends(get_current_user_id)):
 @api_router.post("/auth/2fa/backup-codes")
 async def get_backup_codes(user_id: str = Depends(get_current_user_id)):
     """Get new backup codes"""
-    users_collection = db_manager.db.users
     backup_codes = generate_backup_codes()
     await users_collection.update_one(
         {"id": user_id},
@@ -522,6 +348,7 @@ MOCK_CRYPTOS = [
 @api_router.get("/crypto")
 async def get_all_cryptocurrencies():
     """Get all cryptocurrencies"""
+    # Add some randomness to prices for realism
     cryptos = []
     for crypto in MOCK_CRYPTOS:
         variation = random.uniform(-0.02, 0.02)
@@ -552,25 +379,28 @@ async def get_cryptocurrency(symbol: str):
 
 
 # ============================================
-# PORTFOLIO ENDPOINTS  
+# PORTFOLIO ENDPOINTS
 # ============================================
 
 @api_router.get("/portfolio")
 async def get_portfolio(user_id: str = Depends(get_current_user_id)):
     """Get user portfolio"""
-    portfolios_collection = db_manager.db.portfolios
     portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
     
     if not portfolio_doc:
+        # Create empty portfolio if doesn't exist
         portfolio = Portfolio(user_id=user_id)
         await portfolios_collection.insert_one(portfolio.dict())
         return {"portfolio": {"totalBalance": 0, "holdings": []}}
     
     holdings = portfolio_doc.get("holdings", [])
+    
+    # Calculate current values
     total_balance = 0
     updated_holdings = []
     
     for holding in holdings:
+        # Get current price
         crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == holding["symbol"]), None)
         if crypto:
             current_value = holding["amount"] * crypto["price"]
@@ -578,9 +408,10 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
             updated_holdings.append({
                 **holding,
                 "value": current_value,
-                "allocation": 0
+                "allocation": 0  # Will calculate after total
             })
     
+    # Calculate allocations
     for holding in updated_holdings:
         holding["allocation"] = (holding["value"] / total_balance * 100) if total_balance > 0 else 0
     
@@ -595,7 +426,6 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
 @api_router.get("/portfolio/holding/{symbol}")
 async def get_holding(symbol: str, user_id: str = Depends(get_current_user_id)):
     """Get specific holding"""
-    portfolios_collection = db_manager.db.portfolios
     portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
     if not portfolio_doc:
         raise HTTPException(status_code=404, detail="Portfolio not found")
@@ -612,7 +442,6 @@ async def get_holding(symbol: str, user_id: str = Depends(get_current_user_id)):
 @api_router.post("/portfolio/holding")
 async def add_holding(holding_data: HoldingCreate, user_id: str = Depends(get_current_user_id)):
     """Add or update holding"""
-    portfolios_collection = db_manager.db.portfolios
     portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
     
     if not portfolio_doc:
@@ -622,8 +451,10 @@ async def add_holding(holding_data: HoldingCreate, user_id: str = Depends(get_cu
     else:
         holdings = portfolio_doc.get("holdings", [])
     
+    # Check if holding exists
     existing_idx = next((i for i, h in enumerate(holdings) if h["symbol"] == holding_data.symbol.upper()), None)
     
+    # Get current price
     crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == holding_data.symbol.upper()), None)
     if not crypto:
         raise HTTPException(status_code=404, detail="Cryptocurrency not found")
@@ -653,7 +484,6 @@ async def add_holding(holding_data: HoldingCreate, user_id: str = Depends(get_cu
 @api_router.delete("/portfolio/holding/{symbol}")
 async def delete_holding(symbol: str, user_id: str = Depends(get_current_user_id)):
     """Delete holding"""
-    portfolios_collection = db_manager.db.portfolios
     portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
     if not portfolio_doc:
         raise HTTPException(status_code=404, detail="Portfolio not found")
@@ -676,7 +506,6 @@ async def delete_holding(symbol: str, user_id: str = Depends(get_current_user_id
 @api_router.get("/orders")
 async def get_orders(user_id: str = Depends(get_current_user_id)):
     """Get all orders for user"""
-    orders_collection = db_manager.db.orders
     orders = await orders_collection.find({"user_id": user_id}).sort("created_at", -1).to_list(100)
     return {"orders": orders}
 
@@ -684,9 +513,6 @@ async def get_orders(user_id: str = Depends(get_current_user_id)):
 @api_router.post("/orders")
 async def create_order(order_data: OrderCreate, request: Request, user_id: str = Depends(get_current_user_id)):
     """Create new order"""
-    orders_collection = db_manager.db.orders
-    transactions_collection = db_manager.db.transactions
-    
     order = Order(
         user_id=user_id,
         trading_pair=order_data.trading_pair,
@@ -694,12 +520,13 @@ async def create_order(order_data: OrderCreate, request: Request, user_id: str =
         side=order_data.side,
         amount=order_data.amount,
         price=order_data.price,
-        status="filled",
+        status="filled",  # Auto-fill for demo
         filled_at=datetime.utcnow()
     )
     
     await orders_collection.insert_one(order.dict())
     
+    # Create transaction
     transaction = Transaction(
         user_id=user_id,
         type="trade",
@@ -709,6 +536,7 @@ async def create_order(order_data: OrderCreate, request: Request, user_id: str =
     )
     await transactions_collection.insert_one(transaction.dict())
     
+    # Log audit event
     await log_audit(user_id, "ORDER_CREATED", resource=order.id, ip_address=request.client.host)
     
     return {"message": "Order created successfully", "order": order.dict()}
@@ -717,7 +545,6 @@ async def create_order(order_data: OrderCreate, request: Request, user_id: str =
 @api_router.get("/orders/{order_id}")
 async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
     """Get specific order"""
-    orders_collection = db_manager.db.orders
     order = await orders_collection.find_one({"id": order_id, "user_id": user_id})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -728,7 +555,6 @@ async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
 @api_router.post("/orders/{order_id}/cancel")
 async def cancel_order(order_id: str, user_id: str = Depends(get_current_user_id)):
     """Cancel order"""
-    orders_collection = db_manager.db.orders
     result = await orders_collection.update_one(
         {"id": order_id, "user_id": user_id, "status": "pending"},
         {"$set": {"status": "cancelled"}}
@@ -747,7 +573,6 @@ async def cancel_order(order_id: str, user_id: str = Depends(get_current_user_id
 @api_router.get("/transactions")
 async def get_transactions(limit: int = 50, offset: int = 0, user_id: str = Depends(get_current_user_id)):
     """Get transaction history"""
-    transactions_collection = db_manager.db.transactions
     transactions = await transactions_collection.find({"user_id": user_id})\
         .sort("created_at", -1)\
         .skip(offset)\
@@ -767,7 +592,6 @@ async def get_transactions(limit: int = 50, offset: int = 0, user_id: str = Depe
 @api_router.get("/transactions/{transaction_id}")
 async def get_transaction(transaction_id: str, user_id: str = Depends(get_current_user_id)):
     """Get specific transaction"""
-    transactions_collection = db_manager.db.transactions
     transaction = await transactions_collection.find_one({"id": transaction_id, "user_id": user_id})
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -778,7 +602,6 @@ async def get_transaction(transaction_id: str, user_id: str = Depends(get_curren
 @api_router.post("/transactions")
 async def create_transaction(txn_data: TransactionCreate, user_id: str = Depends(get_current_user_id)):
     """Create new transaction"""
-    transactions_collection = db_manager.db.transactions
     transaction = Transaction(
         user_id=user_id,
         type=txn_data.type,
@@ -795,7 +618,6 @@ async def create_transaction(txn_data: TransactionCreate, user_id: str = Depends
 @api_router.get("/transactions/stats/overview")
 async def get_transaction_stats(user_id: str = Depends(get_current_user_id)):
     """Get transaction statistics"""
-    transactions_collection = db_manager.db.transactions
     transactions = await transactions_collection.find({"user_id": user_id}).to_list(1000)
     
     total_deposits = sum(t["amount"] for t in transactions if t["type"] == "deposit")
@@ -820,7 +642,6 @@ async def get_transaction_stats(user_id: str = Depends(get_current_user_id)):
 async def get_audit_logs(limit: int = 50, offset: int = 0, action: Optional[str] = None,
                         user_id: str = Depends(get_current_user_id)):
     """Get audit logs"""
-    audit_logs_collection = db_manager.db.audit_logs
     query = {"user_id": user_id}
     if action:
         query["action"] = action
@@ -844,7 +665,6 @@ async def get_audit_logs(limit: int = 50, offset: int = 0, action: Optional[str]
 @api_router.get("/audit-logs/summary")
 async def get_audit_summary(days: int = 30, user_id: str = Depends(get_current_user_id)):
     """Get audit log summary"""
-    audit_logs_collection = db_manager.db.audit_logs
     since = datetime.utcnow() - timedelta(days=days)
     
     logs = await audit_logs_collection.find({
@@ -869,7 +689,6 @@ async def get_audit_summary(days: int = 30, user_id: str = Depends(get_current_u
 @api_router.get("/audit-logs/export")
 async def export_audit_logs(days: int = 90, user_id: str = Depends(get_current_user_id)):
     """Export audit logs"""
-    audit_logs_collection = db_manager.db.audit_logs
     since = datetime.utcnow() - timedelta(days=days)
     
     logs = await audit_logs_collection.find({
@@ -883,7 +702,6 @@ async def export_audit_logs(days: int = 90, user_id: str = Depends(get_current_u
 @api_router.get("/audit-logs/{log_id}")
 async def get_audit_log(log_id: str, user_id: str = Depends(get_current_user_id)):
     """Get specific audit log"""
-    audit_logs_collection = db_manager.db.audit_logs
     log = await audit_logs_collection.find_one({"id": log_id, "user_id": user_id})
     if not log:
         raise HTTPException(status_code=404, detail="Audit log not found")
@@ -892,7 +710,7 @@ async def get_audit_log(log_id: str, user_id: str = Depends(get_current_user_id)
 
 
 # ============================================
-# LEGACY ENDPOINTS
+# LEGACY ENDPOINTS (for backward compatibility)
 # ============================================
 
 @api_router.get("/")
@@ -912,16 +730,19 @@ async def get_status_checks():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
-# ============================================
-# INCLUDE ROUTER AND MIDDLEWARE
-# ============================================
-
+# Include the router in the main app
 app.include_router(api_router)
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=settings.get_cors_origins_list(),
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
