@@ -12,9 +12,17 @@ class User(BaseModel):
     password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     email_verified: bool = False
+    email_verification_token: Optional[str] = None
+    email_verification_code: Optional[str] = None
+    email_verification_expires: Optional[datetime] = None
     two_factor_enabled: bool = False
     two_factor_secret: Optional[str] = None
     backup_codes: List[str] = Field(default_factory=list)
+    password_reset_token: Optional[str] = None
+    password_reset_expires: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    failed_login_attempts: int = 0
+    locked_until: Optional[datetime] = None
 
 
 class UserCreate(BaseModel):
