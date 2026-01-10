@@ -160,7 +160,15 @@ class CryptoVaultTester:
                 data = await response.json()
                 
                 if response.status == 200:
-                    cryptos = data.get("cryptocurrencies", [])
+                    # Handle Redis cache format
+                    cryptos_data = data.get("cryptocurrencies", [])
+                    if isinstance(cryptos_data, dict) and "value" in cryptos_data:
+                        # Parse JSON string from Redis cache
+                        import json
+                        cryptos = json.loads(cryptos_data["value"])
+                    else:
+                        cryptos = cryptos_data
+                    
                     if isinstance(cryptos, list) and len(cryptos) > 0:
                         # Check if we have expected coins
                         symbols = [crypto.get("symbol", "").upper() for crypto in cryptos]
