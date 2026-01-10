@@ -102,7 +102,7 @@ class AuthFixTester:
             success_count = 0
             
             for i in range(6):
-                test_email = f"ratetest{i}-{self.timestamp}@cryptovault.test"
+                test_email = f"ratetest{i}-{self.timestamp}@example.com"
                 signup_data = {
                     "email": test_email,
                     "password": "TestPass123!",
