@@ -155,15 +155,18 @@ backend:
 
   - task: "Authentication Signup"
     implemented: true
-    working: false
+    working: true
     file: "server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: false
           agent: "testing"
           comment: "CRITICAL: Signup endpoint returning 520 Internal Server Error. Root cause: bcrypt library initialization error - 'password cannot be longer than 72 bytes' during passlib initialization. This is a library compatibility issue, not user password issue."
+        - working: true
+          agent: "testing"
+          comment: "✅ BCRYPT FIX VERIFIED: Signup now working correctly! Main agent successfully switched from passlib to direct bcrypt library. Tested with test-fixed-1768078183@example.com - returns 200 OK with verification message and 6-digit code in mock email logs."
 
   - task: "Authentication Login"
     implemented: true
