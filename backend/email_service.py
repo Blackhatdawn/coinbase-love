@@ -117,6 +117,43 @@ class EmailService:
             logger.error(f"❌ SendGrid error: {str(e)}")
             return False
     
+    async def _send_resend(self, to_email: str, subject: str, html_content: str, text_content: Optional[str]) -> bool:
+        """Send email via Resend (modern email API)"""
+        resend_api_key = os.environ.get('RESEND_API_KEY')
+        if not resend_api_key:
+            logger.error("❌ Resend API key not configured")
+            return False
+        
+        try:
+            import httpx
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    'https://api.resend.com/emails',
+                    headers={
+                        'Authorization': f'Bearer {resend_api_key}',
+                        'Content-Type': 'application/json'
+                    },
+                    json={
+                        'from': f'{self.from_name} <{self.from_email}>',
+                        'to': [to_email],
+                        'subject': subject,
+                        'html': html_content,
+                        'text': text_content
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    logger.info(f"✅ Email sent via Resend to {to_email}")
+                    return True
+                else:
+                    logger.error(f"❌ Resend returned status {response.status_code}: {response.text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Resend error: {str(e)}")
+            return False
+    
     async def _send_ses(self, to_email: str, subject: str, html_content: str, text_content: Optional[str]) -> bool:
         """Send email via AWS SES"""
         try:
