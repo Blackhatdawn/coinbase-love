@@ -3,6 +3,7 @@ import { Wallet, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { WalletConnect } from "@/components/WalletConnect";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -47,6 +48,7 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
+            {user && <WalletConnect />}
             {user ? (
               <>
                 <Button variant="ghost" size="sm" asChild>
