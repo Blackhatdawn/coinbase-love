@@ -34,17 +34,31 @@ class CoinGeckoService:
     async def get_prices(self, coin_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Fetch current prices for specified coins.
+        Uses Redis cache for performance (60-second TTL).
         Falls back to mock data if USE_MOCK_PRICES=true or on API failure.
         """
+        # Check cache first
+        cached_prices = await redis_cache.get_cached_prices()
+        if cached_prices:
+            logger.info("✅ Using cached prices")
+            return cached_prices
+        
         if self.use_mock:
             logger.info("📊 Using mock price data")
-            return self._get_mock_prices(coin_ids or self.tracked_coins)
+            prices = self._get_mock_prices(coin_ids or self.tracked_coins)
+            await redis_cache.cache_prices(prices)
+            return prices
         
         try:
-            return await self._fetch_real_prices(coin_ids or self.tracked_coins)
+            prices = await self._fetch_real_prices(coin_ids or self.tracked_coins)
+            # Cache the results
+            await redis_cache.cache_prices(prices)
+            return prices
         except Exception as e:
             logger.error(f"❌ CoinGecko API error: {str(e)}. Falling back to mock data.")
-            return self._get_mock_prices(coin_ids or self.tracked_coins)
+            prices = self._get_mock_prices(coin_ids or self.tracked_coins)
+            await redis_cache.cache_prices(prices)
+            return prices
     
     async def _fetch_real_prices(self, coin_ids: List[str]) -> List[Dict[str, Any]]:
         """Fetch real prices from CoinGecko API."""
