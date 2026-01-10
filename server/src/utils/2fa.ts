@@ -6,6 +6,7 @@
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { randomBytes } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 /**
  * Configuration for TOTP
