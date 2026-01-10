@@ -3,12 +3,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 import secrets
 import hashlib
+from config import settings
 
-# JWT settings
-SECRET_KEY = secrets.token_urlsafe(32)
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+# JWT settings from config (persistent across restarts)
+SECRET_KEY = settings.jwt_secret
+ALGORITHM = settings.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
+REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
 # Simple password hashing using hashlib (for demo purposes)
 # In production, use a proper library like passlib with bcrypt
