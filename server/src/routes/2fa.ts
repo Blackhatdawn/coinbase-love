@@ -327,17 +327,26 @@ export const verifyBackupCodeAndRemove = async (
   const { backup_codes } = result.rows[0];
   const normalizedCode = normalizeBackupCode(code);
 
-  // Check if code exists in array
-  const codeIndex = backup_codes?.findIndex(
-    (c: string) => normalizeBackupCode(c) === normalizedCode
-  );
+  // SECURITY FIX: Compare against hashed codes using bcrypt
+  // Find the first matching code by comparing with each hash
+  let matchingIndex = -1;
 
-  if (codeIndex === undefined || codeIndex < 0) {
+  for (let i = 0; i < backup_codes.length; i++) {
+    const hashedCode = backup_codes[i];
+    const matches = await verifyBackupCode(normalizedCode, hashedCode);
+
+    if (matches) {
+      matchingIndex = i;
+      break;
+    }
+  }
+
+  if (matchingIndex < 0) {
     return false;
   }
 
   // Remove used backup code
-  const updatedCodes = backup_codes.filter((_: string, idx: number) => idx !== codeIndex);
+  const updatedCodes = backup_codes.filter((_: string, idx: number) => idx !== matchingIndex);
 
   await query(
     'UPDATE user_2fa SET backup_codes = $2 WHERE user_id = $1',
