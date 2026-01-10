@@ -1,0 +1,748 @@
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import logging
+from pathlib import Path
+from typing import List, Optional
+from datetime import datetime, timedelta
+import random
+
+from models import (
+    User, UserCreate, UserLogin, UserResponse,
+    Cryptocurrency, Portfolio, Holding, HoldingCreate,
+    Order, OrderCreate, Transaction, TransactionCreate,
+    AuditLog, TwoFactorSetup, TwoFactorVerify, BackupCodes
+)
+from auth import (
+    verify_password, get_password_hash,
+    create_access_token, create_refresh_token,
+    decode_token, generate_backup_codes, generate_2fa_secret
+)
+from dependencies import get_current_user_id, optional_current_user_id
+
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+# Collections
+users_collection = db.users
+portfolios_collection = db.portfolios
+orders_collection = db.orders
+transactions_collection = db.transactions
+audit_logs_collection = db.audit_logs
+crypto_collection = db.cryptocurrencies
+
+# Create the main app without a prefix
+app = FastAPI()
+
+# Create a router with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+# Helper function to log audit events
+async def log_audit(user_id: str, action: str, resource: Optional[str] = None, 
+                   ip_address: Optional[str] = None, details: Optional[dict] = None):
+    """Log an audit event"""
+    audit_log = AuditLog(
+        user_id=user_id,
+        action=action,
+        resource=resource,
+        ip_address=ip_address,
+        details=details
+    )
+    await audit_logs_collection.insert_one(audit_log.dict())
+
+
+# ============================================
+# AUTHENTICATION ENDPOINTS
+# ============================================
+
+@api_router.post("/auth/signup")
+async def signup(user_data: UserCreate, request: Request):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = await users_collection.find_one({"email": user_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user
+    user = User(
+        email=user_data.email,
+        name=user_data.name,
+        password_hash=get_password_hash(user_data.password)
+    )
+    
+    await users_collection.insert_one(user.dict())
+    
+    # Create empty portfolio for user
+    portfolio = Portfolio(user_id=user.id)
+    await portfolios_collection.insert_one(portfolio.dict())
+    
+    # Create tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Log audit event
+    await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
+    
+    # Create response with cookies
+    response = JSONResponse(content={
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    })
+    
+    # Set httponly cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=30 * 60  # 30 minutes
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60  # 7 days
+    )
+    
+    return response
+
+
+@api_router.post("/auth/login")
+async def login(credentials: UserLogin, request: Request):
+    """Login user"""
+    # Find user
+    user_doc = await users_collection.find_one({"email": credentials.email})
+    if not user_doc:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    user = User(**user_doc)
+    
+    # Verify password
+    if not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Create tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Log audit event
+    await log_audit(user.id, "USER_LOGIN", ip_address=request.client.host)
+    
+    # Create response with cookies
+    response = JSONResponse(content={
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    })
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=30 * 60
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60
+    )
+    
+    return response
+
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
+    """Logout user"""
+    await log_audit(user_id, "USER_LOGOUT", ip_address=request.client.host)
+    
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
+
+
+@api_router.get("/auth/me")
+async def get_current_user(user_id: str = Depends(get_current_user_id)):
+    """Get current user profile"""
+    user_doc = await users_collection.find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = User(**user_doc)
+    return {
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    }
+
+
+@api_router.post("/auth/refresh")
+async def refresh_token(request: Request):
+    """Refresh access token using refresh token"""
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token not found")
+    
+    payload = decode_token(refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Create new access token
+    access_token = create_access_token(data={"sub": user_id})
+    
+    response = JSONResponse(content={"message": "Token refreshed"})
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=30 * 60
+    )
+    
+    return response
+
+
+@api_router.post("/auth/verify-email")
+async def verify_email(data: dict):
+    """Verify email (placeholder)"""
+    return {"message": "Email verification not yet implemented"}
+
+
+@api_router.post("/auth/2fa/setup")
+async def setup_2fa(user_id: str = Depends(get_current_user_id)):
+    """Setup 2FA for user"""
+    secret = generate_2fa_secret()
+    
+    # Update user with 2FA secret
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"two_factor_secret": secret}}
+    )
+    
+    return {
+        "secret": secret,
+        "qr_code_url": f"otpauth://totp/CryptoVault:{user_id}?secret={secret}&issuer=CryptoVault"
+    }
+
+
+@api_router.post("/auth/2fa/verify")
+async def verify_2fa(data: TwoFactorVerify, user_id: str = Depends(get_current_user_id)):
+    """Verify and enable 2FA"""
+    # For demo purposes, accept any 6-digit code
+    if len(data.code) != 6 or not data.code.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid code")
+    
+    # Enable 2FA for user
+    backup_codes = generate_backup_codes()
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {
+            "two_factor_enabled": True,
+            "backup_codes": backup_codes
+        }}
+    )
+    
+    return {
+        "message": "2FA enabled successfully",
+        "backup_codes": backup_codes
+    }
+
+
+@api_router.get("/auth/2fa/status")
+async def get_2fa_status(user_id: str = Depends(get_current_user_id)):
+    """Get 2FA status"""
+    user_doc = await users_collection.find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"enabled": user_doc.get("two_factor_enabled", False)}
+
+
+@api_router.post("/auth/2fa/disable")
+async def disable_2fa(data: dict, user_id: str = Depends(get_current_user_id)):
+    """Disable 2FA"""
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {
+            "two_factor_enabled": False,
+            "two_factor_secret": None,
+            "backup_codes": []
+        }}
+    )
+    
+    return {"message": "2FA disabled successfully"}
+
+
+@api_router.post("/auth/2fa/backup-codes")
+async def get_backup_codes(user_id: str = Depends(get_current_user_id)):
+    """Get new backup codes"""
+    backup_codes = generate_backup_codes()
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"backup_codes": backup_codes}}
+    )
+    
+    return {"codes": backup_codes}
+
+
+# ============================================
+# CRYPTOCURRENCY ENDPOINTS
+# ============================================
+
+# Mock cryptocurrency data
+MOCK_CRYPTOS = [
+    {"symbol": "BTC", "name": "Bitcoin", "price": 65000, "market_cap": 1200000000000, "volume_24h": 28000000000, "change_24h": 2.5},
+    {"symbol": "ETH", "name": "Ethereum", "price": 3500, "market_cap": 420000000000, "volume_24h": 15000000000, "change_24h": 1.8},
+    {"symbol": "USDT", "name": "Tether", "price": 1.0, "market_cap": 95000000000, "volume_24h": 45000000000, "change_24h": 0.01},
+    {"symbol": "BNB", "name": "Binance Coin", "price": 580, "market_cap": 89000000000, "volume_24h": 2000000000, "change_24h": 0.9},
+    {"symbol": "SOL", "name": "Solana", "price": 145, "market_cap": 62000000000, "volume_24h": 2500000000, "change_24h": 3.2},
+    {"symbol": "XRP", "name": "Ripple", "price": 0.55, "market_cap": 29000000000, "volume_24h": 1200000000, "change_24h": -0.5},
+    {"symbol": "USDC", "name": "USD Coin", "price": 1.0, "market_cap": 28000000000, "volume_24h": 5000000000, "change_24h": 0.0},
+    {"symbol": "ADA", "name": "Cardano", "price": 0.48, "market_cap": 16800000000, "volume_24h": 350000000, "change_24h": 1.2},
+    {"symbol": "DOGE", "name": "Dogecoin", "price": 0.08, "market_cap": 11500000000, "volume_24h": 450000000, "change_24h": -1.3},
+    {"symbol": "TRX", "name": "TRON", "price": 0.12, "market_cap": 10500000000, "volume_24h": 280000000, "change_24h": 0.4},
+]
+
+
+@api_router.get("/crypto")
+async def get_all_cryptocurrencies():
+    """Get all cryptocurrencies"""
+    # Add some randomness to prices for realism
+    cryptos = []
+    for crypto in MOCK_CRYPTOS:
+        variation = random.uniform(-0.02, 0.02)
+        cryptos.append({
+            **crypto,
+            "price": crypto["price"] * (1 + variation),
+            "last_updated": datetime.utcnow().isoformat()
+        })
+    
+    return {"cryptocurrencies": cryptos}
+
+
+@api_router.get("/crypto/{symbol}")
+async def get_cryptocurrency(symbol: str):
+    """Get specific cryptocurrency"""
+    crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == symbol.upper()), None)
+    if not crypto:
+        raise HTTPException(status_code=404, detail="Cryptocurrency not found")
+    
+    variation = random.uniform(-0.02, 0.02)
+    return {
+        "cryptocurrency": {
+            **crypto,
+            "price": crypto["price"] * (1 + variation),
+            "last_updated": datetime.utcnow().isoformat()
+        }
+    }
+
+
+# ============================================
+# PORTFOLIO ENDPOINTS
+# ============================================
+
+@api_router.get("/portfolio")
+async def get_portfolio(user_id: str = Depends(get_current_user_id)):
+    """Get user portfolio"""
+    portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
+    
+    if not portfolio_doc:
+        # Create empty portfolio if doesn't exist
+        portfolio = Portfolio(user_id=user_id)
+        await portfolios_collection.insert_one(portfolio.dict())
+        return {"portfolio": {"totalBalance": 0, "holdings": []}}
+    
+    holdings = portfolio_doc.get("holdings", [])
+    
+    # Calculate current values
+    total_balance = 0
+    updated_holdings = []
+    
+    for holding in holdings:
+        # Get current price
+        crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == holding["symbol"]), None)
+        if crypto:
+            current_value = holding["amount"] * crypto["price"]
+            total_balance += current_value
+            updated_holdings.append({
+                **holding,
+                "value": current_value,
+                "allocation": 0  # Will calculate after total
+            })
+    
+    # Calculate allocations
+    for holding in updated_holdings:
+        holding["allocation"] = (holding["value"] / total_balance * 100) if total_balance > 0 else 0
+    
+    return {
+        "portfolio": {
+            "totalBalance": total_balance,
+            "holdings": updated_holdings
+        }
+    }
+
+
+@api_router.get("/portfolio/holding/{symbol}")
+async def get_holding(symbol: str, user_id: str = Depends(get_current_user_id)):
+    """Get specific holding"""
+    portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
+    if not portfolio_doc:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    
+    holdings = portfolio_doc.get("holdings", [])
+    holding = next((h for h in holdings if h["symbol"] == symbol.upper()), None)
+    
+    if not holding:
+        raise HTTPException(status_code=404, detail="Holding not found")
+    
+    return {"holding": holding}
+
+
+@api_router.post("/portfolio/holding")
+async def add_holding(holding_data: HoldingCreate, user_id: str = Depends(get_current_user_id)):
+    """Add or update holding"""
+    portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
+    
+    if not portfolio_doc:
+        portfolio = Portfolio(user_id=user_id)
+        await portfolios_collection.insert_one(portfolio.dict())
+        holdings = []
+    else:
+        holdings = portfolio_doc.get("holdings", [])
+    
+    # Check if holding exists
+    existing_idx = next((i for i, h in enumerate(holdings) if h["symbol"] == holding_data.symbol.upper()), None)
+    
+    # Get current price
+    crypto = next((c for c in MOCK_CRYPTOS if c["symbol"] == holding_data.symbol.upper()), None)
+    if not crypto:
+        raise HTTPException(status_code=404, detail="Cryptocurrency not found")
+    
+    new_holding = {
+        "symbol": holding_data.symbol.upper(),
+        "name": holding_data.name,
+        "amount": holding_data.amount,
+        "value": holding_data.amount * crypto["price"],
+        "allocation": 0
+    }
+    
+    if existing_idx is not None:
+        holdings[existing_idx]["amount"] += holding_data.amount
+        holdings[existing_idx]["value"] = holdings[existing_idx]["amount"] * crypto["price"]
+    else:
+        holdings.append(new_holding)
+    
+    await portfolios_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "Holding added successfully", "holding": new_holding}
+
+
+@api_router.delete("/portfolio/holding/{symbol}")
+async def delete_holding(symbol: str, user_id: str = Depends(get_current_user_id)):
+    """Delete holding"""
+    portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
+    if not portfolio_doc:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    
+    holdings = portfolio_doc.get("holdings", [])
+    holdings = [h for h in holdings if h["symbol"] != symbol.upper()]
+    
+    await portfolios_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "Holding deleted successfully"}
+
+
+# ============================================
+# ORDER ENDPOINTS
+# ============================================
+
+@api_router.get("/orders")
+async def get_orders(user_id: str = Depends(get_current_user_id)):
+    """Get all orders for user"""
+    orders = await orders_collection.find({"user_id": user_id}).sort("created_at", -1).to_list(100)
+    return {"orders": orders}
+
+
+@api_router.post("/orders")
+async def create_order(order_data: OrderCreate, request: Request, user_id: str = Depends(get_current_user_id)):
+    """Create new order"""
+    order = Order(
+        user_id=user_id,
+        trading_pair=order_data.trading_pair,
+        order_type=order_data.order_type,
+        side=order_data.side,
+        amount=order_data.amount,
+        price=order_data.price,
+        status="filled",  # Auto-fill for demo
+        filled_at=datetime.utcnow()
+    )
+    
+    await orders_collection.insert_one(order.dict())
+    
+    # Create transaction
+    transaction = Transaction(
+        user_id=user_id,
+        type="trade",
+        amount=order_data.amount,
+        symbol=order_data.trading_pair,
+        description=f"{order_data.side.upper()} {order_data.amount} {order_data.trading_pair} @ {order_data.price}"
+    )
+    await transactions_collection.insert_one(transaction.dict())
+    
+    # Log audit event
+    await log_audit(user_id, "ORDER_CREATED", resource=order.id, ip_address=request.client.host)
+    
+    return {"message": "Order created successfully", "order": order.dict()}
+
+
+@api_router.get("/orders/{order_id}")
+async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get specific order"""
+    order = await orders_collection.find_one({"id": order_id, "user_id": user_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {"order": order}
+
+
+@api_router.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, user_id: str = Depends(get_current_user_id)):
+    """Cancel order"""
+    result = await orders_collection.update_one(
+        {"id": order_id, "user_id": user_id, "status": "pending"},
+        {"$set": {"status": "cancelled"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found or already processed")
+    
+    return {"message": "Order cancelled successfully"}
+
+
+# ============================================
+# TRANSACTION ENDPOINTS
+# ============================================
+
+@api_router.get("/transactions")
+async def get_transactions(limit: int = 50, offset: int = 0, user_id: str = Depends(get_current_user_id)):
+    """Get transaction history"""
+    transactions = await transactions_collection.find({"user_id": user_id})\
+        .sort("created_at", -1)\
+        .skip(offset)\
+        .limit(limit)\
+        .to_list(limit)
+    
+    total = await transactions_collection.count_documents({"user_id": user_id})
+    
+    return {
+        "transactions": transactions,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@api_router.get("/transactions/{transaction_id}")
+async def get_transaction(transaction_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get specific transaction"""
+    transaction = await transactions_collection.find_one({"id": transaction_id, "user_id": user_id})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return {"transaction": transaction}
+
+
+@api_router.post("/transactions")
+async def create_transaction(txn_data: TransactionCreate, user_id: str = Depends(get_current_user_id)):
+    """Create new transaction"""
+    transaction = Transaction(
+        user_id=user_id,
+        type=txn_data.type,
+        amount=txn_data.amount,
+        symbol=txn_data.symbol,
+        description=txn_data.description
+    )
+    
+    await transactions_collection.insert_one(transaction.dict())
+    
+    return {"message": "Transaction created successfully", "transaction": transaction.dict()}
+
+
+@api_router.get("/transactions/stats/overview")
+async def get_transaction_stats(user_id: str = Depends(get_current_user_id)):
+    """Get transaction statistics"""
+    transactions = await transactions_collection.find({"user_id": user_id}).to_list(1000)
+    
+    total_deposits = sum(t["amount"] for t in transactions if t["type"] == "deposit")
+    total_withdrawals = sum(t["amount"] for t in transactions if t["type"] == "withdrawal")
+    total_trades = len([t for t in transactions if t["type"] == "trade"])
+    
+    return {
+        "stats": {
+            "total_deposits": total_deposits,
+            "total_withdrawals": total_withdrawals,
+            "total_trades": total_trades,
+            "net_balance": total_deposits - total_withdrawals
+        }
+    }
+
+
+# ============================================
+# AUDIT LOG ENDPOINTS
+# ============================================
+
+@api_router.get("/audit-logs")
+async def get_audit_logs(limit: int = 50, offset: int = 0, action: Optional[str] = None,
+                        user_id: str = Depends(get_current_user_id)):
+    """Get audit logs"""
+    query = {"user_id": user_id}
+    if action:
+        query["action"] = action
+    
+    logs = await audit_logs_collection.find(query)\
+        .sort("created_at", -1)\
+        .skip(offset)\
+        .limit(limit)\
+        .to_list(limit)
+    
+    total = await audit_logs_collection.count_documents(query)
+    
+    return {
+        "logs": logs,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@api_router.get("/audit-logs/summary")
+async def get_audit_summary(days: int = 30, user_id: str = Depends(get_current_user_id)):
+    """Get audit log summary"""
+    since = datetime.utcnow() - timedelta(days=days)
+    
+    logs = await audit_logs_collection.find({
+        "user_id": user_id,
+        "created_at": {"$gte": since}
+    }).to_list(1000)
+    
+    action_counts = {}
+    for log in logs:
+        action = log["action"]
+        action_counts[action] = action_counts.get(action, 0) + 1
+    
+    return {
+        "summary": {
+            "total_events": len(logs),
+            "action_counts": action_counts,
+            "period_days": days
+        }
+    }
+
+
+@api_router.get("/audit-logs/export")
+async def export_audit_logs(days: int = 90, user_id: str = Depends(get_current_user_id)):
+    """Export audit logs"""
+    since = datetime.utcnow() - timedelta(days=days)
+    
+    logs = await audit_logs_collection.find({
+        "user_id": user_id,
+        "created_at": {"$gte": since}
+    }).sort("created_at", -1).to_list(10000)
+    
+    return {"logs": logs, "count": len(logs)}
+
+
+@api_router.get("/audit-logs/{log_id}")
+async def get_audit_log(log_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get specific audit log"""
+    log = await audit_logs_collection.find_one({"id": log_id, "user_id": user_id})
+    if not log:
+        raise HTTPException(status_code=404, detail="Audit log not found")
+    
+    return {"log": log}
+
+
+# ============================================
+# LEGACY ENDPOINTS (for backward compatibility)
+# ============================================
+
+@api_router.get("/")
+async def root():
+    return {"message": "CryptoVault API v1.0", "status": "operational"}
+
+
+@api_router.post("/status")
+async def create_status_check(data: dict):
+    """Legacy status check endpoint"""
+    return {"message": "Status check received", "timestamp": datetime.utcnow().isoformat()}
+
+
+@api_router.get("/status")
+async def get_status_checks():
+    """Legacy status check endpoint"""
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+# Include the router in the main app
+app.include_router(api_router)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
