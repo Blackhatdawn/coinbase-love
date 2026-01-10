@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { Web3Provider } from "@/contexts/Web3Context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
 import Index from "./pages/Index";
