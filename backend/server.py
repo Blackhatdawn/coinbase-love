@@ -247,7 +247,7 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
 
 @api_router.post("/auth/signup")
 async def signup(user_data: UserCreate, request: Request):
-    """Register a new user"""
+    """Register a new user with email verification"""
     users_collection = db_manager.db.users
     portfolios_collection = db_manager.db.portfolios
     
@@ -256,11 +256,20 @@ async def signup(user_data: UserCreate, request: Request):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create new user
+    # Generate verification tokens
+    verification_code = generate_verification_code()  # 6-digit code
+    verification_token = generate_verification_token()  # UUID token
+    verification_expires = get_token_expiration(hours=24)
+    
+    # Create new user (email not verified yet)
     user = User(
         email=user_data.email,
         name=user_data.name,
-        password_hash=get_password_hash(user_data.password)
+        password_hash=get_password_hash(user_data.password),
+        email_verified=False,
+        email_verification_code=verification_code,
+        email_verification_token=verification_token,
+        email_verification_expires=verification_expires
     )
     
     await users_collection.insert_one(user.dict())
@@ -269,42 +278,41 @@ async def signup(user_data: UserCreate, request: Request):
     portfolio = Portfolio(user_id=user.id)
     await portfolios_collection.insert_one(portfolio.dict())
     
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    # Send verification email
+    import os
+    app_url = os.environ.get('APP_URL', 'http://localhost:3000')
+    subject, html_content, text_content = email_service.get_verification_email(
+        name=user.name,
+        code=verification_code,
+        token=verification_token,
+        app_url=app_url
+    )
+    
+    email_sent = await email_service.send_email(
+        to_email=user.email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content
+    )
+    
+    if not email_sent:
+        logger.warning(f"⚠️ Verification email failed to send to {user.email}")
     
     # Log audit event
     await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
     
-    # Create response
-    response = JSONResponse(content={
+    # Return user data (without session tokens - verification required first)
+    return {
         "user": UserResponse(
             id=user.id,
             email=user.email,
             name=user.name,
             createdAt=user.created_at.isoformat()
-        ).dict()
-    })
-    
-    # Set secure cookies
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
-    )
-    
-    return response
+        ).dict(),
+        "message": "Account created! Please check your email to verify your account.",
+        "emailSent": email_sent,
+        "verificationRequired": True
+    }
 
 
 @api_router.post("/auth/login")
