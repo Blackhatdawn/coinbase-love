@@ -58,7 +58,9 @@ class CryptoVaultTester:
     async def test_health_check(self):
         """Test /health endpoint"""
         try:
-            async with self.session.get(f"{BACKEND_URL}/health") as response:
+            # Use internal backend URL for health check since external routes to frontend
+            health_url = "http://localhost:8001/health"
+            async with self.session.get(health_url) as response:
                 data = await response.json()
                 
                 if response.status == 200:
