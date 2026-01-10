@@ -170,7 +170,7 @@ CORS_ORIGINS="*"
 
 ### Frontend (`/app/frontend/.env`)
 ```env
-REACT_APP_BACKEND_URL=https://cleanup-maestro.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://wallet-hub-9.preview.emergentagent.com
 WDS_SOCKET_PORT=443
 ENABLE_HEALTH_CHECK=false
 ```

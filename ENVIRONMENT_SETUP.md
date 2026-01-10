@@ -56,7 +56,7 @@ CORS_ORIGINS="*"
 
 ```bash
 # Backend API URL (automatically configured by platform)
-REACT_APP_BACKEND_URL=https://cleanup-maestro.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://wallet-hub-9.preview.emergentagent.com
 
 # WebSocket port for HMR (Hot Module Replacement)
 WDS_SOCKET_PORT=443
@@ -112,7 +112,7 @@ CORS_ORIGINS="*"
 
 **Frontend** (`/app/frontend/.env`):
 ```bash
-REACT_APP_BACKEND_URL=https://cleanup-maestro.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://wallet-hub-9.preview.emergentagent.com
 WDS_SOCKET_PORT=443
 ENABLE_HEALTH_CHECK=false
 ```
@@ -233,7 +233,7 @@ CORS_ORIGINS="http://localhost:3000,https://your-frontend-url.com"
 **Solution**: Verify `REACT_APP_BACKEND_URL` points to correct backend
 ```bash
 # Check in browser DevTools → Network tab
-# API calls should go to: https://cleanup-maestro.preview.emergentagent.com/api/*
+# API calls should go to: https://wallet-hub-9.preview.emergentagent.com/api/*
 ```
 
 ### Issue: "JWT token invalid"
