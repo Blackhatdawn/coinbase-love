@@ -6,6 +6,8 @@ import {
   verifyTOTPToken,
   generateBackupCodes,
   normalizeBackupCode,
+  hashBackupCode,
+  verifyBackupCode,
 } from '@/utils/2fa';
 import { asyncHandler, strictLimiter } from '@/middleware/security';
 import { logAuditEvent, AuditAction, AuditResource, AuditStatus, getClientInfo } from '@/utils/auditLog';
