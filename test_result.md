@@ -211,13 +211,16 @@ backend:
     implemented: true
     working: false
     file: "server.py"
-    stuck_count: 1
+    stuck_count: 2
     priority: "medium"
     needs_retesting: true
     status_history:
         - working: false
           agent: "testing"
           comment: "Rate limiting test failed due to signup endpoint 520 errors. Cannot test rate limiting until signup bcrypt issue is resolved."
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL: Rate limiting not working - tested 6 rapid signup attempts, all succeeded (should be limited after 5). Signup endpoint has @limiter.limit('5/minute') decorator but rate limiting is not being enforced. Possible slowapi configuration issue."
 
   - task: "Security Headers"
     implemented: true
