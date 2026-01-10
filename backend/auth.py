@@ -2,8 +2,15 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
 import secrets
-import hashlib
+from passlib.context import CryptContext
 from config import settings
+
+# Password hashing with bcrypt (production-ready)
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # Good balance of security and performance
+)
 
 # JWT settings from config (persistent across restarts)
 SECRET_KEY = settings.jwt_secret
@@ -11,19 +18,23 @@ ALGORITHM = settings.jwt_algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
+
 # Simple password hashing using hashlib (for demo purposes)
 # In production, use a proper library like passlib with bcrypt
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    # Simple SHA256 hash for demo
-    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-    return password_hash == hashed_password
+    """Verify a password against its hash using bcrypt"""
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        # Handle old SHA256 hashes gracefully (migration support)
+        import hashlib
+        sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+        return sha256_hash == hashed_password
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    # Simple SHA256 hash for demo
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash a password using bcrypt"""
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
