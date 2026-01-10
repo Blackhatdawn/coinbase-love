@@ -7,6 +7,16 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'cryptovault',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
+
+  // Pool sizing configuration (optimized for typical load)
+  max: parseInt(process.env.DB_POOL_MAX || '20'),        // Max 20 connections
+  min: parseInt(process.env.DB_POOL_MIN || '5'),         // Min 5 connections
+  idleTimeoutMillis: 30000,                               // Close idle connections after 30s
+  connectionTimeoutMillis: 2000,                          // Fail fast if can't connect
+
+  // Connection settings
+  statement_timeout: '30s',                               // Query timeout
+  application_name: 'cryptovault',
 });
 
 pool.on('error', (err) => {
@@ -106,12 +116,58 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // Revoked Refresh Tokens table (for explicit token revocation on logout)
+    await query(`
+      CREATE TABLE IF NOT EXISTS revoked_refresh_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_jti VARCHAR(255) NOT NULL UNIQUE,
+        revoked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
+
+    // User 2FA Settings table
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_2fa (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        totp_secret VARCHAR(32),
+        totp_enabled BOOLEAN DEFAULT FALSE,
+        backup_codes TEXT[] DEFAULT ARRAY[]::TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Audit Logs table (immutable record of sensitive operations)
+    await query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(100) NOT NULL,
+        resource VARCHAR(100),
+        resource_id UUID,
+        status VARCHAR(20) DEFAULT 'success',
+        ip_address INET,
+        user_agent TEXT,
+        details JSONB DEFAULT '{}'::JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_holdings_portfolio_id ON holdings(portfolio_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_user_id ON revoked_refresh_tokens(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_refresh_tokens(expires_at)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_user_2fa_user_id ON user_2fa(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`);
 
     console.log('✓ Database schema initialized');
   } catch (error) {

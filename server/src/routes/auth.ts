@@ -9,7 +9,10 @@ import {
   AuthRequest,
   setAuthCookies,
   clearAuthCookies,
+  isTokenRevoked,
+  revokeRefreshToken,
 } from '@/middleware/auth';
+import { logAuditEvent, AuditAction, AuditResource, AuditStatus, getClientInfo } from '@/utils/auditLog';
 import { hashPassword, comparePassword } from '@/utils/password';
 import { signUpSchema, signInSchema } from '@/utils/validation';
 import { generateVerificationToken, getVerificationTokenExpiry, sendVerificationEmail } from '@/utils/email';
@@ -147,7 +150,22 @@ router.post(
 
     // Compare password
     const isPasswordValid = await comparePassword(password, user.password_hash);
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+
     if (!isPasswordValid) {
+      // Log failed login attempt
+      await logAuditEvent(
+        user.id,
+        AuditAction.LOGIN_FAILED,
+        AuditResource.AUTH,
+        user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'invalid_password' }
+      );
+
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -157,6 +175,17 @@ router.post(
 
     // Set HttpOnly cookies
     setAuthCookies(res, accessToken, refreshToken);
+
+    // Log successful login
+    await logAuditEvent(
+      user.id,
+      AuditAction.LOGIN,
+      AuditResource.AUTH,
+      user.id,
+      AuditStatus.SUCCESS,
+      ipAddress,
+      userAgent
+    );
 
     res.json({
       user: {
@@ -199,17 +228,46 @@ router.get(
 );
 
 // ============================================================================
-// LOGOUT ROUTE - Clear authentication cookies
+// LOGOUT ROUTE - Clear authentication cookies and revoke refresh token
 // ============================================================================
 router.post(
   '/logout',
   authMiddleware,
-  (req: AuthRequest, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { ipAddress, userAgent } = getClientInfo(req);
+
+    // Revoke the refresh token for explicit logout
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken && req.user?.id) {
+      try {
+        const decoded = verifyToken(refreshToken, true);
+        if (decoded && decoded.jti) {
+          await revokeRefreshToken(req.user.id, decoded.jti);
+        }
+      } catch (error) {
+        console.warn('Could not revoke token on logout:', error);
+        // Continue with logout even if revocation fails
+      }
+    }
+
     // Clear HttpOnly cookies
     clearAuthCookies(res);
 
+    // Log logout event
+    if (req.user?.id) {
+      await logAuditEvent(
+        req.user.id,
+        AuditAction.LOGOUT,
+        AuditResource.AUTH,
+        req.user.id,
+        AuditStatus.SUCCESS,
+        ipAddress,
+        userAgent
+      );
+    }
+
     res.json({ message: 'Logged out successfully' });
-  }
+  })
 );
 
 // ============================================================================
@@ -235,9 +293,21 @@ router.post(
     }
 
     const user = result.rows[0];
+    const { ipAddress, userAgent } = getClientInfo(req);
 
     // Check if token is expired
     if (user.email_verification_expires < new Date()) {
+      await logAuditEvent(
+        user.id,
+        AuditAction.EMAIL_VERIFICATION_FAILED,
+        AuditResource.USER,
+        user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'token_expired' }
+      );
+
       return res.status(400).json({ error: 'Verification token has expired. Please request a new one.' });
     }
 
@@ -250,6 +320,17 @@ router.post(
     await query(
       'UPDATE users SET email_verified = true, email_verification_token = NULL, email_verification_expires = NULL WHERE id = $1',
       [user.id]
+    );
+
+    // Log successful email verification
+    await logAuditEvent(
+      user.id,
+      AuditAction.EMAIL_VERIFIED,
+      AuditResource.USER,
+      user.id,
+      AuditStatus.SUCCESS,
+      ipAddress,
+      userAgent
     );
 
     res.json({ message: 'Email verified successfully. You can now sign in.' });
@@ -275,6 +356,15 @@ router.post(
     if (!decoded) {
       clearAuthCookies(res);
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Check if token has been revoked (explicitly logged out)
+    if (decoded.jti) {
+      const revoked = await isTokenRevoked(decoded.jti);
+      if (revoked) {
+        clearAuthCookies(res);
+        return res.status(401).json({ error: 'Refresh token has been revoked. Please log in again.' });
+      }
     }
 
     // Verify user still exists

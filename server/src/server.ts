@@ -9,6 +9,8 @@ import cryptoRoutes from '@/routes/cryptocurrencies';
 import portfolioRoutes from '@/routes/portfolio';
 import orderRoutes from '@/routes/orders';
 import transactionRoutes from '@/routes/transactions';
+import twoFARoutes from '@/routes/2fa';
+import auditLogRoutes from '@/routes/auditLogs';
 import {
   generalLimiter,
   getCorsOptions,
@@ -69,6 +71,8 @@ app.use('/api/crypto', cryptoRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/auth/2fa', twoFARoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
