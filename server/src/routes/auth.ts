@@ -380,6 +380,17 @@ router.post(
 
     const user = userResult.rows[0];
 
+    // CRITICAL FIX: Revoke old refresh token to prevent token reuse
+    // This is refresh token rotation - ensures only the latest refresh token is valid
+    if (decoded.jti) {
+      try {
+        await revokeRefreshToken(user.id, decoded.jti);
+      } catch (error) {
+        console.error('Failed to revoke old refresh token:', error);
+        // Continue with issuing new token even if revocation fails
+      }
+    }
+
     // Generate new access and refresh tokens
     const newAccessToken = generateAccessToken(user.id, user.email);
     const newRefreshToken = generateRefreshToken(user.id, user.email);
