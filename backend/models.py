@@ -43,6 +43,23 @@ class UserResponse(BaseModel):
     createdAt: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str  # Can be 6-digit code or UUID token
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 # Cryptocurrency Models
 class Cryptocurrency(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
