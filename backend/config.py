@@ -155,8 +155,9 @@ def load_and_validate_settings() -> Settings:
         print(f"   App URL: {settings.app_url}")
         print(f"   CoinGecko API: {'configured' if settings.coingecko_api_key else 'not configured'}")
         print(f"   Use Mock Prices: {settings.use_mock_prices}")
-        print(f"   Redis: {'enabled' if settings.use_redis else 'disabled'}")
-        if settings.use_redis:
+        redis_status = "enabled" if settings.is_redis_available() else "disabled"
+        print(f"   Redis: {redis_status}")
+        if settings.is_redis_available():
             print(f"   Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
         
         return settings
