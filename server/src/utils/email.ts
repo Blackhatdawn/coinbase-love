@@ -17,46 +17,82 @@ export const getVerificationTokenExpiry = (): Date => {
 };
 
 /**
- * Email service - currently a mock for development
- * In production, integrate with SendGrid, AWS SES, or similar service
+ * Production email service with SendGrid support
+ * Requires: npm install @sendgrid/mail
+ * Environment variables:
+ *   - SENDGRID_API_KEY: Your SendGrid API key
+ *   - SENDER_EMAIL: From address (e.g., noreply@cryptovault.com)
+ *   - FRONTEND_URL: Frontend URL for verification links
  */
-export const sendVerificationEmail = async (email: string, name: string, verificationToken: string): Promise<boolean> => {
+export const sendVerificationEmail = async (
+  email: string,
+  name: string,
+  verificationToken: string
+): Promise<boolean> => {
   try {
-    const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-    
-    // Mock email logging for development
+    const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/verify?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    const htmlContent = generateVerificationEmailHTML(name, verificationLink);
+
+    // PRODUCTION: Use SendGrid if API key is configured
+    if (process.env.SENDGRID_API_KEY && process.env.NODE_ENV === 'production') {
+      try {
+        // Dynamic import to allow optional dependency
+        const sgMail = await import('@sendgrid/mail').then((m) => m.default);
+
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+        const senderEmail =
+          process.env.SENDER_EMAIL || 'noreply@cryptovault.com';
+
+        const msg = {
+          to: email,
+          from: senderEmail,
+          subject: 'Verify Your CryptoVault Account',
+          html: htmlContent,
+          replyTo: 'support@cryptovault.com',
+        };
+
+        await sgMail.send(msg);
+
+        console.log(`✅ Verification email sent to ${email}`);
+        return true;
+      } catch (sendGridError: any) {
+        console.error('❌ SendGrid email failed:', sendGridError.message);
+
+        // Log the error but don't fail the signup - user can request resend
+        // In production, you might want to alert your monitoring system
+        return false;
+      }
+    }
+
+    // DEVELOPMENT: Log to console
     if (process.env.NODE_ENV === 'development') {
       console.log(`
-        📧 EMAIL VERIFICATION LINK (Development Only)
+        📧 EMAIL VERIFICATION (Development Mode)
         =====================================
         To: ${email}
         Name: ${name}
-        
+
         Verification Link:
         ${verificationLink}
-        
-        Copy and paste the token in your app:
+
         Token: ${verificationToken}
         =====================================
       `);
       return true;
     }
 
-    // In production, integrate with email service here
-    // Example with SendGrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // await sgMail.send({
-    //   to: email,
-    //   from: 'noreply@cryptovault.com',
-    //   subject: 'Verify your CryptoVault email address',
-    //   html: generateVerificationEmailHTML(name, verificationLink),
-    // });
-
-    console.log(`Email verification sent to ${email}`);
-    return true;
+    // FALLBACK: Log warning in non-development, non-configured production
+    console.warn(
+      '⚠️  Email service not configured. Verification email not sent to:',
+      email
+    );
+    console.warn(
+      'Configure SENDGRID_API_KEY environment variable to enable email sending'
+    );
+    return true; // Don't fail signup if email is misconfigured
   } catch (error) {
-    console.error('Failed to send verification email:', error);
+    console.error('❌ Failed to send verification email:', error);
     return false;
   }
 };

@@ -6,7 +6,10 @@ import {
   verifyTOTPToken,
   generateBackupCodes,
   normalizeBackupCode,
+  hashBackupCode,
+  verifyBackupCode,
 } from '@/utils/2fa';
+import { comparePassword } from '@/utils/password';
 import { asyncHandler, strictLimiter } from '@/middleware/security';
 import { logAuditEvent, AuditAction, AuditResource, AuditStatus, getClientInfo } from '@/utils/auditLog';
 
@@ -123,15 +126,22 @@ router.post(
         userAgent
       );
 
-      return res.status(401).json({ error: 'Invalid verification code. Please try again.' });
+      return res
+        .status(401)
+        .json({ error: 'Invalid verification code. Please try again.' });
     }
 
-    // Enable 2FA
+    // SECURITY FIX: Hash backup codes before storing
+    const hashedBackupCodes = await Promise.all(
+      backup_codes.map((code: string) => hashBackupCode(code))
+    );
+
+    // Enable 2FA with hashed backup codes
     await query(
       `UPDATE user_2fa
-       SET totp_enabled = true, updated_at = CURRENT_TIMESTAMP
+       SET totp_enabled = true, backup_codes = $2, updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $1`,
-      [req.user.id]
+      [req.user.id, hashedBackupCodes]
     );
 
     await logAuditEvent(
@@ -148,7 +158,8 @@ router.post(
     res.json({
       message: '2FA successfully enabled!',
       backupCodes,
-      warning: 'Save your backup codes in a safe place. You can use them to recover your account if you lose your authenticator.',
+      warning:
+        'Save your backup codes in a safe place. You can use them to recover your account if you lose your authenticator.',
     });
   })
 );
@@ -213,7 +224,7 @@ router.post(
       return res.status(400).json({ error: 'Password required to disable 2FA' });
     }
 
-    // Verify password before allowing disable
+    // Verify password before allowing disable - CRITICAL SECURITY FIX
     const userResult = await query(
       'SELECT password_hash FROM users WHERE id = $1',
       [req.user.id]
@@ -223,11 +234,28 @@ router.post(
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // TODO: Implement password verification
-    // const passwordValid = await comparePassword(password, userResult.rows[0].password_hash);
-    // if (!passwordValid) {
-    //   return res.status(401).json({ error: 'Invalid password' });
-    // }
+    // CRITICAL SECURITY FIX: Verify password before disabling 2FA
+    const passwordValid = await comparePassword(
+      password,
+      userResult.rows[0].password_hash
+    );
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+
+    if (!passwordValid) {
+      await logAuditEvent(
+        req.user.id,
+        AuditAction.TWO_FA_DISABLED,
+        AuditResource.ACCOUNT,
+        req.user.id,
+        AuditStatus.FAILURE,
+        ipAddress,
+        userAgent,
+        { reason: 'invalid_password' }
+      );
+
+      return res.status(401).json({ error: 'Invalid password' });
+    }
 
     // Disable 2FA
     await query(
@@ -237,7 +265,6 @@ router.post(
       [req.user.id]
     );
 
-    const { ipAddress, userAgent } = getClientInfo(req);
     await logAuditEvent(
       req.user.id,
       AuditAction.TWO_FA_DISABLED,
@@ -266,12 +293,17 @@ router.post(
     // Generate new backup codes
     const newBackupCodes = generateBackupCodes(10);
 
+    // SECURITY FIX: Hash backup codes before storing
+    const hashedBackupCodes = await Promise.all(
+      newBackupCodes.map((code: string) => hashBackupCode(code))
+    );
+
     // Update backup codes
     await query(
       `UPDATE user_2fa
        SET backup_codes = $2, updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $1`,
-      [req.user.id, newBackupCodes]
+      [req.user.id, hashedBackupCodes]
     );
 
     const { ipAddress, userAgent } = getClientInfo(req);
@@ -312,17 +344,26 @@ export const verifyBackupCodeAndRemove = async (
   const { backup_codes } = result.rows[0];
   const normalizedCode = normalizeBackupCode(code);
 
-  // Check if code exists in array
-  const codeIndex = backup_codes?.findIndex(
-    (c: string) => normalizeBackupCode(c) === normalizedCode
-  );
+  // SECURITY FIX: Compare against hashed codes using bcrypt
+  // Find the first matching code by comparing with each hash
+  let matchingIndex = -1;
 
-  if (codeIndex === undefined || codeIndex < 0) {
+  for (let i = 0; i < backup_codes.length; i++) {
+    const hashedCode = backup_codes[i];
+    const matches = await verifyBackupCode(normalizedCode, hashedCode);
+
+    if (matches) {
+      matchingIndex = i;
+      break;
+    }
+  }
+
+  if (matchingIndex < 0) {
     return false;
   }
 
   // Remove used backup code
-  const updatedCodes = backup_codes.filter((_: string, idx: number) => idx !== codeIndex);
+  const updatedCodes = backup_codes.filter((_: string, idx: number) => idx !== matchingIndex);
 
   await query(
     'UPDATE user_2fa SET backup_codes = $2 WHERE user_id = $1',

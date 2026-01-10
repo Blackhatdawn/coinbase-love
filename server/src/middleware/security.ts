@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { body, validationResult, Result, ValidationError } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
+import { query as dbQuery } from '@/config/database';
 
 /**
  * PRODUCTION SECURITY MIDDLEWARE
@@ -49,6 +50,28 @@ export const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+});
+
+/**
+ * Per-user rate limiter for authenticated endpoints
+ * MEDIUM-PRIORITY IMPROVEMENT: Prevents abuse by individual users
+ * - 200 requests per hour per user
+ * - Used for endpoints that should have per-user limits
+ */
+export const perUserLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 200, // 200 requests per hour
+  message: 'You have exceeded your rate limit. Please try again later.',
+  keyGenerator: (req: Request) => {
+    // Use user ID if authenticated, otherwise fall back to IP
+    const user = (req as any).user;
+    return user?.id || req.ip || 'unknown';
+  },
+  skip: (req: Request) => {
+    // Skip rate limiting for non-authenticated requests (use IP limiter instead)
+    return !(req as any).user;
+  },
   standardHeaders: true,
 });
 

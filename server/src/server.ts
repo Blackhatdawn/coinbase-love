@@ -11,6 +11,7 @@ import orderRoutes from '@/routes/orders';
 import transactionRoutes from '@/routes/transactions';
 import twoFARoutes from '@/routes/2fa';
 import auditLogRoutes from '@/routes/auditLogs';
+import { cleanupOldAuditLogs } from '@/utils/auditLog';
 import {
   generalLimiter,
   getCorsOptions,
@@ -91,12 +92,41 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+/**
+ * Schedule periodic audit log cleanup (retention policy)
+ * Runs daily to delete logs older than 365 days
+ */
+const scheduleAuditLogCleanup = () => {
+  const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const AUDIT_RETENTION_DAYS = parseInt(process.env.AUDIT_RETENTION_DAYS || '365', 10);
+
+  setInterval(async () => {
+    try {
+      const deletedCount = await cleanupOldAuditLogs(AUDIT_RETENTION_DAYS);
+      if (deletedCount > 0) {
+        console.log(
+          `🧹 Cleaned up ${deletedCount} old audit logs (retention: ${AUDIT_RETENTION_DAYS} days)`
+        );
+      }
+    } catch (error) {
+      console.error('Error during audit log cleanup:', error);
+    }
+  }, CLEANUP_INTERVAL_MS);
+
+  console.log(
+    `📅 Scheduled daily audit log cleanup (retention: ${AUDIT_RETENTION_DAYS} days)`
+  );
+};
+
 // Initialize database and start server
 const startServer = async () => {
   try {
     console.log('🔧 Initializing database...');
     await initializeDatabase();
     console.log('✓ Database initialized');
+
+    // Schedule periodic maintenance tasks
+    scheduleAuditLogCleanup();
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Server running on port ${PORT}`);

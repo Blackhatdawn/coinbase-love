@@ -21,6 +21,7 @@ const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in millisecon
 
 /**
  * Verify JWT token and check revocation status for refresh tokens
+ * CRITICAL: Enforces token type (access vs refresh) to prevent token confusion attacks
  */
 export const verifyToken = (token: string, isRefresh: boolean = false) => {
   try {
@@ -28,8 +29,24 @@ export const verifyToken = (token: string, isRefresh: boolean = false) => {
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is not configured');
     }
-    const decoded = jwt.verify(token, secret);
-    return decoded as { id: string; email: string; type: string; jti?: string };
+    const decoded = jwt.verify(token, secret) as {
+      id: string;
+      email: string;
+      type: string;
+      jti?: string;
+    };
+
+    // CRITICAL SECURITY FIX: Enforce token type
+    // Prevent refresh tokens from being accepted as access tokens and vice versa
+    const expectedType = isRefresh ? 'refresh' : 'access';
+    if (decoded.type !== expectedType) {
+      console.warn(
+        `[SECURITY] Token type mismatch: expected '${expectedType}', got '${decoded.type}'`
+      );
+      return null;
+    }
+
+    return decoded;
   } catch (error) {
     return null;
   }
@@ -110,6 +127,7 @@ export const generateToken = (userId: string, email: string) => {
 /**
  * Middleware to authenticate requests using HttpOnly cookies
  * Falls back to Authorization header for backwards compatibility during migration
+ * CRITICAL: Enforces access token type
  */
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   // Try to get token from HttpOnly cookie first (preferred)
@@ -127,10 +145,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     return res.status(401).json({ error: 'No authorization token' });
   }
 
+  // Verify it's an ACCESS token (isRefresh=false)
   const decoded = verifyToken(token, false);
 
   if (!decoded) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res
+      .status(401)
+      .json({ error: 'Invalid or expired token' });
   }
 
   req.user = decoded;
