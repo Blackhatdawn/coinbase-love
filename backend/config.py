@@ -156,6 +156,13 @@ def load_and_validate_settings() -> Settings:
         print(f"   JWT_SECRET: ***[{len(settings.jwt_secret)} chars]***")
         print(f"   MongoDB Pool: {settings.mongo_min_pool_size}-{settings.mongo_max_pool_size}")
         print(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
+        print(f"   Email Service: {settings.email_service}")
+        print(f"   App URL: {settings.app_url}")
+        print(f"   CoinGecko API: {'configured' if settings.coingecko_api_key else 'not configured'}")
+        print(f"   Use Mock Prices: {settings.use_mock_prices}")
+        print(f"   Redis: {'enabled' if settings.use_redis else 'disabled'}")
+        if settings.use_redis:
+            print(f"   Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
         
         return settings
         
