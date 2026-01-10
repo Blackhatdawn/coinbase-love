@@ -53,6 +53,28 @@ export const strictLimiter = rateLimit({
   standardHeaders: true,
 });
 
+/**
+ * Per-user rate limiter for authenticated endpoints
+ * MEDIUM-PRIORITY IMPROVEMENT: Prevents abuse by individual users
+ * - 200 requests per hour per user
+ * - Used for endpoints that should have per-user limits
+ */
+export const perUserLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 200, // 200 requests per hour
+  message: 'You have exceeded your rate limit. Please try again later.',
+  keyGenerator: (req: Request) => {
+    // Use user ID if authenticated, otherwise fall back to IP
+    const user = (req as any).user;
+    return user?.id || req.ip || 'unknown';
+  },
+  skip: (req: Request) => {
+    // Skip rate limiting for non-authenticated requests (use IP limiter instead)
+    return !(req as any).user;
+  },
+  standardHeaders: true,
+});
+
 // ============================================================================
 // INPUT VALIDATION & SANITIZATION
 // ============================================================================
