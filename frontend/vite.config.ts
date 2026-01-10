@@ -8,27 +8,27 @@ export default defineConfig(({ mode }) => ({
   define: {
     __VERSION__: JSON.stringify(process.env.npm_package_version),
   },
-  server: {
-    host: "::",
-    port: 8080,
-    proxy: {
-      "/api": {
-        target: process.env.VITE_API_URL || "http://localhost:5000",
-        changeOrigin: true,
-        secure: mode === 'production', // Require HTTPS in production
-      },
-    },
-  },
   build: {
-    // Optimize build for production
+    outDir: 'build',
     minify: 'terser',
-    sourcemap: mode !== 'production', // No sourcemaps in production for security
+    sourcemap: mode !== 'production',
     rollupOptions: {
       output: {
-        // Optimize chunk splitting
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
         },
+      },
+    },
+  },
+  server: {
+    port: 3000,
+    host: '0.0.0.0',
+    allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_URL || "http://localhost:8001",
+        changeOrigin: true,
+        secure: mode === 'production',
       },
     },
   },
