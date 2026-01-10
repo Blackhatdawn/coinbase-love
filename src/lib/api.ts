@@ -104,8 +104,9 @@ const request = async (
 };
 
 export const api = {
-  // Auth
+  // Authentication & Auth-related
   auth: {
+    // Basic auth
     signup: (email: string, password: string, name: string) =>
       request('/auth/signup', {
         method: 'POST',
@@ -127,6 +128,24 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token, email }),
       }),
+
+    // Two-Factor Authentication
+    setup2FA: () =>
+      request('/auth/2fa/setup', { method: 'POST' }),
+    verify2FA: (code: string) =>
+      request('/auth/2fa/verify', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      }),
+    get2FAStatus: () =>
+      request('/auth/2fa/status'),
+    disable2FA: (password: string) =>
+      request('/auth/2fa/disable', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }),
+    getBackupCodes: () =>
+      request('/auth/2fa/backup-codes', { method: 'POST' }),
   },
 
   // Cryptocurrencies
@@ -180,27 +199,6 @@ export const api = {
       }),
     getStats: () =>
       request('/transactions/stats/overview'),
-  },
-
-  // Two-Factor Authentication
-  auth: {
-    // ... existing methods ...
-    setup2FA: () =>
-      request('/auth/2fa/setup', { method: 'POST' }),
-    verify2FA: (code: string) =>
-      request('/auth/2fa/verify', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-      }),
-    get2FAStatus: () =>
-      request('/auth/2fa/status'),
-    disable2FA: (password: string) =>
-      request('/auth/2fa/disable', {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      }),
-    getBackupCodes: () =>
-      request('/auth/2fa/backup-codes', { method: 'POST' }),
   },
 
   // Audit Logs
