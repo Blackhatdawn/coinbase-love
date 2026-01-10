@@ -51,6 +51,9 @@ from dependencies import get_current_user_id, optional_current_user_id
 # Import CoinGecko service
 from coingecko_service import coingecko_service
 
+# Import security middleware
+from security_middleware import SecurityMiddleware, CSRFMiddleware
+
 
 # Configure structured logging
 logging.basicConfig(
