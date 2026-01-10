@@ -1,0 +1,35 @@
+# Render Backend Deployment Configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  # FastAPI Backend Service
+  - type: web
+    name: cryptovault-backend
+    env: python
+    region: oregon
+    plan: free  # Change to 'starter' or higher for production
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGO_URL
+        sync: false  # Set manually in Render dashboard (MongoDB Atlas connection string)
+      - key: DB_NAME
+        value: cryptovault_production
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates secure secret
+      - key: CORS_ORIGINS
+        sync: false  # Set to your Vercel domain(s)
+      - key: MONGO_MAX_POOL_SIZE
+        value: 50
+      - key: MONGO_MIN_POOL_SIZE
+        value: 10
+      - key: MONGO_TIMEOUT_MS
+        value: 5000
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 60
+    healthCheckPath: /health
+    autoDeploy: true
