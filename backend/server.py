@@ -427,6 +427,261 @@ async def refresh_token(request: Request):
     
     return response
 
+
+@api_router.post("/auth/verify-email")
+async def verify_email(data: VerifyEmailRequest):
+    """Verify email with code or token"""
+    users_collection = db_manager.db.users
+    
+    # Find user by verification code or token
+    user_doc = await users_collection.find_one({
+        "$or": [
+            {"email_verification_code": data.token},
+            {"email_verification_token": data.token}
+        ]
+    })
+    
+    if not user_doc:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    user = User(**user_doc)
+    
+    # Check if already verified
+    if user.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
+    
+    # Check expiration
+    if user.email_verification_expires < datetime.utcnow():
+        raise HTTPException(
+            status_code=400, 
+            detail="Verification code expired. Please request a new one."
+        )
+    
+    # Mark as verified and clear tokens
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "email_verified": True,
+            "email_verification_code": None,
+            "email_verification_token": None,
+            "email_verification_expires": None
+        }}
+    )
+    
+    # Create session tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Log audit event
+    await log_audit(user.id, "EMAIL_VERIFIED")
+    
+    # Send welcome email
+    import os
+    app_url = os.environ.get('APP_URL', 'http://localhost:3000')
+    subject, html_content, text_content = email_service.get_welcome_email(
+        name=user.name,
+        app_url=app_url
+    )
+    await email_service.send_email(
+        to_email=user.email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content
+    )
+    
+    # Create response with cookies
+    response = JSONResponse(content={
+        "message": "Email verified successfully!",
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    })
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.environment == 'production',
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+    )
+    
+    return response
+
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification(data: ResendVerificationRequest):
+    """Resend verification email"""
+    users_collection = db_manager.db.users
+    
+    # Find user
+    user_doc = await users_collection.find_one({"email": data.email})
+    if not user_doc:
+        # Don't reveal if email exists
+        return {"message": "If this email is registered, a verification email has been sent."}
+    
+    user = User(**user_doc)
+    
+    # Check if already verified
+    if user.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
+    
+    # Generate new tokens
+    verification_code = generate_verification_code()
+    verification_token = generate_verification_token()
+    verification_expires = get_token_expiration(hours=24)
+    
+    # Update user
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "email_verification_code": verification_code,
+            "email_verification_token": verification_token,
+            "email_verification_expires": verification_expires
+        }}
+    )
+    
+    # Send email
+    import os
+    app_url = os.environ.get('APP_URL', 'http://localhost:3000')
+    subject, html_content, text_content = email_service.get_verification_email(
+        name=user.name,
+        code=verification_code,
+        token=verification_token,
+        app_url=app_url
+    )
+    
+    await email_service.send_email(
+        to_email=user.email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content
+    )
+    
+    return {"message": "Verification email sent! Please check your inbox."}
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    """Request password reset email"""
+    users_collection = db_manager.db.users
+    
+    # Find user
+    user_doc = await users_collection.find_one({"email": data.email})
+    
+    # Always return success (don't reveal if email exists)
+    if not user_doc:
+        return {"message": "If this email is registered, a password reset link has been sent."}
+    
+    user = User(**user_doc)
+    
+    # Generate reset token
+    reset_token = generate_password_reset_token()
+    reset_expires = get_token_expiration(hours=1)  # 1 hour expiration
+    
+    # Update user
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "password_reset_token": reset_token,
+            "password_reset_expires": reset_expires
+        }}
+    )
+    
+    # Send reset email
+    import os
+    app_url = os.environ.get('APP_URL', 'http://localhost:3000')
+    reset_link = f"{app_url}/reset-password?token={reset_token}"
+    
+    subject, html_content, text_content = email_service.get_password_reset_email(
+        name=user.name,
+        reset_link=reset_link
+    )
+    
+    await email_service.send_email(
+        to_email=user.email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content
+    )
+    
+    # Log audit event
+    await log_audit(user.id, "PASSWORD_RESET_REQUESTED")
+    
+    return {"message": "If this email is registered, a password reset link has been sent."}
+
+
+@api_router.get("/auth/validate-reset-token/{token}")
+async def validate_reset_token(token: str):
+    """Validate if password reset token is valid"""
+    users_collection = db_manager.db.users
+    
+    user_doc = await users_collection.find_one({"password_reset_token": token})
+    
+    if not user_doc:
+        return {"valid": False, "message": "Invalid reset token"}
+    
+    user = User(**user_doc)
+    
+    # Check expiration
+    if user.password_reset_expires < datetime.utcnow():
+        return {"valid": False, "message": "Reset token expired"}
+    
+    return {"valid": True, "message": "Token is valid"}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: ResetPasswordRequest):
+    """Reset password with valid token"""
+    users_collection = db_manager.db.users
+    
+    # Find user by reset token
+    user_doc = await users_collection.find_one({"password_reset_token": data.token})
+    
+    if not user_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    user = User(**user_doc)
+    
+    # Check expiration
+    if user.password_reset_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Reset token expired. Please request a new one.")
+    
+    # Validate new password
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    # Update password and clear reset token
+    new_password_hash = get_password_hash(data.new_password)
+    
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "password_hash": new_password_hash,
+            "password_reset_token": None,
+            "password_reset_expires": None,
+            "failed_login_attempts": 0,  # Reset failed attempts
+            "locked_until": None  # Unlock account
+        }}
+    )
+    
+    # Log audit event
+    await log_audit(user.id, "PASSWORD_RESET_COMPLETED")
+    
+    return {"message": "Password reset successfully! You can now log in with your new password."}
+
+
 # ============================================
 # 2FA ENDPOINTS
 # ============================================
