@@ -1,16 +1,17 @@
 """
 Production-ready FastAPI server with proper startup checks and error handling.
 """
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import logging
-from typing import List, Optional
+from typing import List, Optional, Set
 from datetime import datetime, timedelta
 import random
 import asyncio
+import json
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
