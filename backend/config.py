@@ -91,13 +91,20 @@ class Settings(BaseModel):
             raise ValueError(f'EMAIL_SERVICE must be one of: {allowed}')
         return v
     
-    @validator('use_redis')
-    def validate_redis_config(cls, v, values):
+    @validator('use_redis', always=True)
+    def validate_redis_config(cls, v, values, **kwargs):
         """Ensure Redis URL and token are provided if use_redis is True"""
-        if v and not values.get('upstash_redis_rest_url'):
-            raise ValueError('UPSTASH_REDIS_REST_URL is required when USE_REDIS=true')
-        if v and not values.get('upstash_redis_rest_token'):
-            raise ValueError('UPSTASH_REDIS_REST_TOKEN is required when USE_REDIS=true')
+        # Only validate if use_redis is True
+        if not v:
+            return v
+        # Check if Redis credentials are provided
+        upstash_url = values.get('upstash_redis_rest_url')
+        upstash_token = values.get('upstash_redis_rest_token')
+        if not upstash_url or not upstash_token:
+            # Gracefully disable Redis if credentials are missing
+            import logging
+            logging.warning("⚠️ Redis enabled but credentials missing. Falling back to in-memory cache.")
+            return False
         return v
     
     def get_cors_origins_list(self) -> list:
