@@ -53,13 +53,15 @@ let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
 
 /**
- * Generic request handler with authentication and error handling
+ * Generic request handler with authentication, error handling, and retry logic
  * Uses HttpOnly cookies for authentication (automatically sent with credentials)
  * Implements automatic token refresh on 401 responses
+ * Retries on network errors (for Render spin-down handling)
  */
 const request = async (
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0
 ): Promise<any> => {
   const url = `${API_BASE}${endpoint}`;
 
@@ -72,7 +74,7 @@ const request = async (
     let response = await fetch(url, {
       ...options,
       headers,
-      // IMPORTANT: Include credentials so cookies are sent with requests
+      // IMPORTANT: Set to 'include' for cookie-based auth, or 'omit' if not using cookies
       credentials: 'include',
     });
 
@@ -120,12 +122,28 @@ const request = async (
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
 
-      throw new APIError(response.status, error.error || 'Request failed');
+      throw new APIError(response.status, error.error || error.detail || 'Request failed');
     }
 
     return await response.json();
   } catch (error) {
     if (error instanceof APIError) throw error;
+    
+    // Network error - could be Render spin-down
+    // Retry with exponential backoff
+    if (retryCount < RETRY_CONFIG.maxRetries) {
+      const delay = RETRY_CONFIG.delays[retryCount];
+      console.log(`🔄 Retrying request (attempt ${retryCount + 1}/${RETRY_CONFIG.maxRetries}) after ${delay}ms...`);
+      
+      // Show user-friendly message for first retry (likely spin-down)
+      if (retryCount === 0) {
+        console.log('⏳ Backend is waking up... (Render free tier spin-down, may take 30-60s)');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return request(endpoint, options, retryCount + 1);
+    }
+    
     throw new APIError(0, error instanceof Error ? error.message : 'Network error');
   }
 };
