@@ -30,15 +30,19 @@ const Markets = () => {
         // Backend returns { cryptocurrencies: [...] }
         const cryptos = response.cryptocurrencies || [];
         
+        console.log('Fetched cryptos:', cryptos); // Debug log
+        
         // Transform backend data to match frontend interface
         const transformedData = cryptos.map((crypto: any) => ({
-          symbol: crypto.symbol,
-          name: crypto.name,
-          price: crypto.price,
-          change24h: crypto.change_24h,
-          marketCap: `$${(crypto.market_cap / 1e9).toFixed(2)}B`,
-          volume24h: `$${(crypto.volume_24h / 1e9).toFixed(2)}B`
+          symbol: crypto.symbol?.toUpperCase() || crypto.id?.toUpperCase() || '',
+          name: crypto.name || '',
+          price: crypto.price || 0,
+          change24h: crypto.change_24h || 0,
+          marketCap: `$${((crypto.market_cap || 0) / 1e9).toFixed(2)}B`,
+          volume24h: `$${((crypto.volume_24h || 0) / 1e9).toFixed(2)}B`
         }));
+        
+        console.log('Transformed data:', transformedData); // Debug log
         
         setMarketData(transformedData);
       } catch (error) {
