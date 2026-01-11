@@ -25,7 +25,10 @@ interface CryptoData {
 }
 
 const EnhancedTrade = () => {
-  const { user } = useAuth();
+  // Auth is optional - trading page works without login
+  const auth = useAuth();
+  const user = auth?.user ?? null;
+  
   const { isConnected, account } = useWeb3();
   
   const [cryptoList, setCryptoList] = useState<CryptoData[]>([]);
@@ -48,9 +51,14 @@ const EnhancedTrade = () => {
         if (cryptos.length > 0) {
           setSelectedCoin(cryptos[0]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch cryptocurrencies:", error);
-        toast.error("Failed to load market data");
+        // Don't show error toast for 401 - it's expected when not logged in
+        if (error.status !== 401) {
+          toast.error("Failed to load market data");
+        }
+        // Use empty array to prevent crash
+        setCryptoList([]);
       } finally {
         setIsLoading(false);
       }
