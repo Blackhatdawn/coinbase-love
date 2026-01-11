@@ -321,15 +321,18 @@ frontend:
 
   - task: "Gas Estimator Component"
     implemented: true
-    working: "NA"
+    working: false
     file: "src/components/GasEstimator.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
     needs_retesting: true
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Ready for testing - Gas Price Tracker card, gas prices (Slow, Average, Fast), network information display"
+        - working: false
+          agent: "testing"
+          comment: "❌ FAILED: Gas Price Tracker card not found on trade page. Component not rendering due to Enhanced Trade page crash. Cannot test gas price options (Slow, Average, Fast) or network information display."
 
   - task: "Trading Panel"
     implemented: true
