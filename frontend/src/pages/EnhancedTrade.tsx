@@ -40,7 +40,8 @@ const EnhancedTrade = () => {
       try {
         setIsLoading(true);
         const response = await api.crypto.getAll();
-        const cryptos = response.data || [];
+        // Backend returns { cryptocurrencies: [...] }
+        const cryptos = response.cryptocurrencies || [];
         setCryptoList(cryptos);
         
         // Select Bitcoin by default
