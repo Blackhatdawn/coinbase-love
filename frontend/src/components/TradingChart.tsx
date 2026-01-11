@@ -45,14 +45,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     setError(null);
 
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/crypto/${coinId}/history?days=${days}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch price history');
-      }
-
-      const data = await response.json();
+      const data = await api.crypto.getHistory(coinId, days);
       return data.history as PriceData[];
     } catch (err) {
       console.error('Error fetching price history:', err);
