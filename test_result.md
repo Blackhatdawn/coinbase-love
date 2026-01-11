@@ -276,15 +276,18 @@ frontend:
 
   - task: "Markets Page"
     implemented: true
-    working: "NA"
+    working: false
     file: "src/pages/Markets.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Ready for testing - Cryptocurrency list, prices display, search functionality, sort buttons (Price, Change, Market Cap), market data for BTC, ETH and other coins"
+        - working: false
+          agent: "testing"
+          comment: "❌ PARTIAL FAILURE: Markets page title found, search input and sort buttons present. API integration working (5 crypto items loaded). However, search functionality broken - searching for 'Bitcoin' shows 'No cryptocurrencies found matching your search'. Bitcoin and Ethereum not found in the displayed results despite API returning data."
 
   - task: "Enhanced Trade Page"
     implemented: true
