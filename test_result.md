@@ -390,9 +390,13 @@ test_plan:
     - "Enhanced Trade Page"
     - "Trading Chart Component"
     - "Markets Page"
-    - "Basic Navigation & Layout"
-    - "API Integration"
-  stuck_tasks: []
+    - "Trading Panel"
+    - "Gas Estimator Component"
+  stuck_tasks:
+    - "Enhanced Trade Page"
+    - "Trading Chart Component"
+    - "Trading Panel"
+    - "Gas Estimator Component"
   test_all: false
   test_priority: "high_first"
 
