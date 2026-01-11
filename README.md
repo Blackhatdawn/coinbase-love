@@ -170,7 +170,7 @@ CORS_ORIGINS="*"
 
 ### Frontend (`/app/frontend/.env`)
 ```env
-REACT_APP_BACKEND_URL=https://wallet-hub-9.preview.emergentagent.com
+VITE_API_URL=https://wallet-hub-9.preview.emergentagent.com
 WDS_SOCKET_PORT=443
 ENABLE_HEALTH_CHECK=false
 ```
@@ -374,7 +374,7 @@ tail -f /var/log/supervisor/frontend.out.log
 For production deployment:
 
 1. **Environment Variables:**
-   - Set `REACT_APP_BACKEND_URL` to production backend URL
+   - Set `VITE_API_URL` to production backend URL
    - Use strong `SECRET_KEY` for JWT
    - Configure proper `CORS_ORIGINS`
 
