@@ -50,10 +50,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <p className="text-muted-foreground">
                 We encountered an unexpected error. Please try refreshing the page.
               </p>
-              
-              {this.state.error && (
+
+              {this.state.error && import.meta.env.DEV && (
                 <div className="p-3 bg-secondary/30 rounded-lg">
                   <p className="text-xs font-mono text-muted-foreground break-all">
+                    <span className="text-xs font-semibold block mb-1">Development Error Info:</span>
                     {this.state.error.message}
                   </p>
                 </div>
