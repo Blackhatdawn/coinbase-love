@@ -339,34 +339,67 @@ async def signup(user_data: UserCreate, request: Request):
 @api_router.post("/auth/login")
 @limiter.limit("10/minute")  # Rate limit for login attempts
 async def login(credentials: UserLogin, request: Request):
-    """Login user"""
+    """Login user with account lockout protection"""
     users_collection = db_manager.db.users
-    
+
     # Find user
     user_doc = await users_collection.find_one({"email": credentials.email})
     if not user_doc:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     user = User(**user_doc)
-    
+
+    # Check if account is locked
+    if user.locked_until and user.locked_until > datetime.utcnow():
+        minutes_left = int((user.locked_until - datetime.utcnow()).total_seconds() / 60)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Account locked due to too many failed attempts. Try again in {minutes_left} minutes."
+        )
+
     # Verify password
     if not verify_password(credentials.password, user.password_hash):
+        # Increment failed attempts
+        failed_attempts = user.failed_login_attempts + 1
+        update_data = {"failed_login_attempts": failed_attempts}
+
+        # Lock account after 5 failed attempts
+        if failed_attempts >= 5:
+            update_data["locked_until"] = datetime.utcnow() + timedelta(minutes=15)
+            await users_collection.update_one({"id": user.id}, {"$set": update_data})
+            await log_audit(user.id, "ACCOUNT_LOCKED", ip_address=request.client.host)
+            raise HTTPException(
+                status_code=429,
+                detail="Account locked for 15 minutes due to too many failed login attempts."
+            )
+
+        await users_collection.update_one({"id": user.id}, {"$set": update_data})
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     # Check if email is verified
     if not user.email_verified:
         raise HTTPException(
-            status_code=401, 
+            status_code=401,
             detail="Email not verified. Please check your email and verify your account."
         )
-    
+
+    # Reset failed attempts and update last login
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "failed_login_attempts": 0,
+            "locked_until": None,
+            "last_login": datetime.utcnow()
+        }}
+    )
+
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
-    
+
     # Log audit
     await log_audit(user.id, "USER_LOGIN", ip_address=request.client.host)
-    
+
     response = JSONResponse(content={
         "user": UserResponse(
             id=user.id,
@@ -375,7 +408,7 @@ async def login(credentials: UserLogin, request: Request):
             createdAt=user.created_at.isoformat()
         ).dict()
     })
-    
+
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -392,7 +425,7 @@ async def login(credentials: UserLogin, request: Request):
         samesite="lax",
         max_age=settings.refresh_token_expire_days * 24 * 60 * 60
     )
-    
+
     return response
 
 
@@ -718,12 +751,6 @@ async def reset_password(data: ResetPasswordRequest, request: Request):
 # ============================================
 # 2FA ENDPOINTS
 # ============================================
-
-@api_router.post("/auth/verify-email")
-async def verify_email(data: dict):
-    """Verify email (placeholder)"""
-    return {"message": "Email verification not yet implemented"}
-
 
 @api_router.post("/auth/2fa/setup")
 async def setup_2fa(user_id: str = Depends(get_current_user_id)):

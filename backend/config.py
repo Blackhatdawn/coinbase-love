@@ -29,6 +29,8 @@ class Settings(BaseModel):
     refresh_token_expire_days: int = Field(default=7)
     
     # CORS Configuration
+    # For development: "*" is fine
+    # For production: Set to "https://your-vercel-app.vercel.app,https://yourdomain.com,http://localhost:3000"
     cors_origins: str = Field(default="*", env='CORS_ORIGINS')
     
     # Server Configuration
@@ -48,6 +50,8 @@ class Settings(BaseModel):
     email_service: str = Field(default="mock", env='EMAIL_SERVICE')
     email_from: str = Field(default="noreply@cryptovault.com", env='EMAIL_FROM')
     email_from_name: str = Field(default="CryptoVault", env='EMAIL_FROM_NAME')
+    # Production: Must set APP_URL env var to https://your-vercel-app.vercel.app
+    # Dev: Defaults to localhost:3000
     app_url: str = Field(default="http://localhost:3000", env='APP_URL')
     
     # CoinGecko API Configuration
