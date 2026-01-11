@@ -12,10 +12,35 @@ export default defineConfig(({ mode }) => ({
     outDir: 'build',
     minify: 'terser',
     sourcemap: mode !== 'production',
+    target: 'ES2020',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        manualChunks: (id) => {
+          // Vendor chunk
+          if (id.includes('node_modules')) {
+            if (id.includes('ethers')) {
+              return 'web3-vendor';
+            }
+            if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('recharts') || id.includes('lightweight-charts')) {
+              return 'charts-vendor';
+            }
+            return 'vendor';
+          }
+          // Page chunks
+          if (id.includes('/pages/')) {
+            const match = id.match(/\/pages\/(\w+)\./);
+            if (match) {
+              return `pages/${match[1]}`;
+            }
+          }
+          // Context and utilities chunk
+          if (id.includes('/contexts/') || id.includes('/hooks/')) {
+            return 'core';
+          }
         },
       },
     },
