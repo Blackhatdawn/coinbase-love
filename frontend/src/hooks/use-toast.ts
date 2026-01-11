@@ -3,7 +3,7 @@ import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 5000;  // 5 seconds - reduced from 1000000ms (16.67 minutes!)
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -85,16 +85,8 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId);
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
-        });
-      }
-
+      // Pure reducer: only update state, no side effects
+      // Side effects are handled in the dismissToast() function below
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -132,6 +124,21 @@ function dispatch(action: Action) {
   });
 }
 
+// Handle side effects of dismissal separately from reducer
+function dismissToastWithRemoval(toastId?: string) {
+  // Dispatch dismiss action to update UI immediately
+  dispatch({ type: "DISMISS_TOAST", toastId });
+
+  // Schedule removal after TOAST_REMOVE_DELAY
+  if (toastId) {
+    addToRemoveQueue(toastId);
+  } else {
+    memoryState.toasts.forEach((toast) => {
+      addToRemoveQueue(toast.id);
+    });
+  }
+}
+
 type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
@@ -142,7 +149,7 @@ function toast({ ...props }: Toast) {
       type: "UPDATE_TOAST",
       toast: { ...props, id },
     });
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+  const dismiss = () => dismissToastWithRemoval(id);
 
   dispatch({
     type: "ADD_TOAST",
@@ -167,6 +174,8 @@ function useToast() {
   const [state, setState] = React.useState<State>(memoryState);
 
   React.useEffect(() => {
+    // Register listener once on mount, remove on unmount
+    // Empty dependency array ensures this runs only on mount/unmount
     listeners.push(setState);
     return () => {
       const index = listeners.indexOf(setState);
@@ -174,12 +183,12 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []);  // Fixed: was [state], causing memory leak
 
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => dismissToastWithRemoval(toastId),
   };
 }
 

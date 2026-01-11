@@ -1,33 +1,53 @@
 /**
  * API Client Configuration
  *
- * Development: Uses /api proxy in vite.config.ts → http://localhost:8001
- * Production: Uses VITE_API_URL environment variable → Render backend
+ * DEVELOPMENT:
+ * - Uses /api proxy in vite.config.ts
+ * - Proxies to http://localhost:8001 (backend)
+ * - No VITE_API_URL needed
  *
- * The API base URL is determined by:
- * 1. VITE_API_URL env var (production Render URL)
- * 2. Falls back to '/api' for local development
+ * PRODUCTION (Vercel):
+ * - Uses VITE_API_URL environment variable
+ * - Must be set in Vercel project settings
+ * - Format: https://your-backend.com (without /api, we append it)
  *
- * IMPORTANT: In Vercel dashboard, set environment variable:
- * VITE_API_URL = https://coinbase-love.onrender.com
+ * CRITICAL: If VITE_API_URL is not set in Vercel, all API calls will fail!
+ * Set in Vercel Dashboard > Settings > Environment Variables:
+ * Key: VITE_API_URL
+ * Value: https://your-backend.com (replace with actual backend URL)
  */
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
-
+const VITE_API_URL = import.meta.env.VITE_API_URL;
 const IS_PRODUCTION = import.meta.env.PROD;
 
-// Log API configuration
-if (import.meta.env.DEV) {
-  console.log('🔌 API Configuration:', {
-    base: API_BASE,
-    mode: import.meta.env.MODE,
-    viteApiUrl: import.meta.env.VITE_API_URL || '[proxy to localhost:8001]',
-    isProduction: IS_PRODUCTION
-  });
+// Determine API base
+let API_BASE: string;
+
+if (VITE_API_URL) {
+  // Production: use the environment variable
+  API_BASE = `${VITE_API_URL}/api`;
+} else if (IS_PRODUCTION) {
+  // Production build without VITE_API_URL set - this is an error!
+  console.error('❌ CRITICAL: VITE_API_URL is not set in production!');
+  console.error('🔧 Set VITE_API_URL in Vercel environment variables.');
+  API_BASE = '/api'; // Fallback, but will likely fail
 } else {
-  console.log(`✅ Connected to: ${API_BASE}`);
+  // Development: use /api proxy
+  API_BASE = '/api';
+}
+
+// Log API configuration
+if (IS_PRODUCTION) {
+  console.log(`🔌 API Base: ${API_BASE}`);
+  if (!VITE_API_URL) {
+    console.error('⚠️  VITE_API_URL not configured - API calls will fail!');
+  }
+} else {
+  console.log('🔌 API Configuration (Development):', {
+    base: API_BASE,
+    viteApiUrl: VITE_API_URL || '[using /api proxy]',
+    mode: import.meta.env.MODE
+  });
 }
 
 /**
@@ -134,7 +154,8 @@ const request = async (
   } catch (error) {
     if (error instanceof APIError) throw error;
 
-    const isNetworkError = error instanceof TypeError || error instanceof NetworkError;
+    // Note: NetworkError is not widely available; TypeError catches "Failed to fetch" errors
+    const isNetworkError = error instanceof TypeError;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Network error - could be Render spin-down or CORS issue
