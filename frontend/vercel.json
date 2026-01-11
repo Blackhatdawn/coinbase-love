@@ -5,22 +5,10 @@
   "devCommand": "yarn dev",
   "installCommand": "yarn install",
   "framework": "vite",
-  "env": {
-    "VITE_API_URL": "https://cryptovault-backend.onrender.com"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://cryptovault-backend.onrender.com/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
