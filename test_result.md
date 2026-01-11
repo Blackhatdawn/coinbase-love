@@ -351,15 +351,18 @@ frontend:
 
   - task: "Trading Chart Component"
     implemented: true
-    working: "NA"
+    working: false
     file: "src/components/TradingChart.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Ready for testing - Trading chart renders with historical data, time range buttons functional, price change indicators"
+        - working: false
+          agent: "testing"
+          comment: "❌ FAILED: Trading Chart not rendering due to Enhanced Trade page crash. Cannot test chart rendering, historical data display, time range buttons (1D, 7D, 30D, 90D, 1Y), or price change indicators."
 
   - task: "API Integration"
     implemented: true
