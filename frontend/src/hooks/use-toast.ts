@@ -174,6 +174,8 @@ function useToast() {
   const [state, setState] = React.useState<State>(memoryState);
 
   React.useEffect(() => {
+    // Register listener once on mount, remove on unmount
+    // Empty dependency array ensures this runs only on mount/unmount
     listeners.push(setState);
     return () => {
       const index = listeners.indexOf(setState);
@@ -181,12 +183,12 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []);  // Fixed: was [state], causing memory leak
 
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => dismissToastWithRemoval(toastId),
   };
 }
 
