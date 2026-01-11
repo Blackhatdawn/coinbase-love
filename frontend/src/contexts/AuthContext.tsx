@@ -36,8 +36,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           createdAt: response.user.createdAt,
         };
         setUser(userData);
-      } catch (error) {
-        // No valid session, user is not authenticated
+      } catch (error: any) {
+        // Expected: No valid session, user is not authenticated
+        // Log errors only if they seem unexpected
+        if (error?.status && error.status !== 401 && error.status !== 0) {
+          console.warn('⚠️ Session check failed:', error.message);
+        }
         setUser(null);
       } finally {
         setIsLoading(false);
