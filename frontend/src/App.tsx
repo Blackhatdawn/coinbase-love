@@ -57,7 +57,11 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/markets" element={<Markets />} />
-        <Route path="/trade" element={<EnhancedTrade />} />
+        <Route path="/trade" element={
+          <ErrorBoundary>
+            <EnhancedTrade />
+          </ErrorBoundary>
+        } />
         <Route path="/earn" element={<Earn />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/contact" element={<Contact />} />
