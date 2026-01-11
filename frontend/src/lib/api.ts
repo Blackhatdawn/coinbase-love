@@ -8,21 +8,26 @@
  * 1. VITE_API_URL env var (production Render URL)
  * 2. Falls back to '/api' for local development
  *
- * IMPORTANT: VITE_API_URL must be set in Vercel dashboard:
- * https://coinbase-love.onrender.com
+ * IMPORTANT: In Vercel dashboard, set environment variable:
+ * VITE_API_URL = https://coinbase-love.onrender.com
  */
 
-const API_BASE = import.meta.env.VITE_API_URL 
+const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
 
-// Log API configuration (development only)
+const IS_PRODUCTION = import.meta.env.PROD;
+
+// Log API configuration
 if (import.meta.env.DEV) {
   console.log('🔌 API Configuration:', {
     base: API_BASE,
     mode: import.meta.env.MODE,
-    viteApiUrl: import.meta.env.VITE_API_URL
+    viteApiUrl: import.meta.env.VITE_API_URL || '[proxy to localhost:8001]',
+    isProduction: IS_PRODUCTION
   });
+} else {
+  console.log(`✅ Connected to: ${API_BASE}`);
 }
 
 /**
