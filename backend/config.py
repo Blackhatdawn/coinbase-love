@@ -29,6 +29,8 @@ class Settings(BaseModel):
     refresh_token_expire_days: int = Field(default=7)
     
     # CORS Configuration
+    # For development: "*" is fine
+    # For production: Set to "https://your-vercel-app.vercel.app,https://yourdomain.com,http://localhost:3000"
     cors_origins: str = Field(default="*", env='CORS_ORIGINS')
     
     # Server Configuration
