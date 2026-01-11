@@ -165,8 +165,10 @@ export const api = {
   crypto: {
     getAll: () =>
       request('/crypto'),
-    getOne: (symbol: string) =>
-      request(`/crypto/${symbol}`),
+    getOne: (coinId: string) =>
+      request(`/crypto/${coinId}`),
+    getHistory: (coinId: string, days: number = 7) =>
+      request(`/crypto/${coinId}/history?days=${days}`),
   },
 
   // Portfolio
