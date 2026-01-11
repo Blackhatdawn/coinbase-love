@@ -154,7 +154,8 @@ const request = async (
   } catch (error) {
     if (error instanceof APIError) throw error;
 
-    const isNetworkError = error instanceof TypeError || error instanceof NetworkError;
+    // Note: NetworkError is not widely available; TypeError catches "Failed to fetch" errors
+    const isNetworkError = error instanceof TypeError;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Network error - could be Render spin-down or CORS issue
