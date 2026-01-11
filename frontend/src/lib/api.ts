@@ -6,7 +6,10 @@
  *
  * The API base URL is determined by:
  * 1. VITE_API_URL env var (production Render URL)
- * 2. Falls back to '/api' (uses Vite proxy in dev)
+ * 2. Falls back to '/api' for local development
+ *
+ * IMPORTANT: VITE_API_URL must be set in Vercel dashboard:
+ * https://coinbase-love.onrender.com
  */
 
 const API_BASE = import.meta.env.VITE_API_URL 
@@ -21,6 +24,17 @@ if (import.meta.env.DEV) {
     viteApiUrl: import.meta.env.VITE_API_URL
   });
 }
+
+/**
+ * Retry configuration for Render free tier spin-down
+ * - Render spins down after 15 min inactivity
+ * - First request can take 30-60 seconds
+ * - We retry with exponential backoff
+ */
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  delays: [2000, 5000, 10000], // 2s, 5s, 10s
+};
 
 export class APIError extends Error {
   constructor(
