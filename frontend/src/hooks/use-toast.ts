@@ -124,6 +124,21 @@ function dispatch(action: Action) {
   });
 }
 
+// Handle side effects of dismissal separately from reducer
+function dismissToastWithRemoval(toastId?: string) {
+  // Dispatch dismiss action to update UI immediately
+  dispatch({ type: "DISMISS_TOAST", toastId });
+
+  // Schedule removal after TOAST_REMOVE_DELAY
+  if (toastId) {
+    addToRemoveQueue(toastId);
+  } else {
+    memoryState.toasts.forEach((toast) => {
+      addToRemoveQueue(toast.id);
+    });
+  }
+}
+
 type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
