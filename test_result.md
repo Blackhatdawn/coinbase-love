@@ -336,15 +336,18 @@ frontend:
 
   - task: "Trading Panel"
     implemented: true
-    working: "NA"
+    working: false
     file: "src/pages/EnhancedTrade.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Ready for testing - Place Order card, current price display, Buy and Sell buttons, wallet connection status, buttons disabled when wallet not connected"
+        - working: false
+          agent: "testing"
+          comment: "❌ FAILED: Trading Panel not rendering due to Enhanced Trade page crash. Place Order card, Buy/Sell buttons, wallet connection status, and market stats (Market Cap, 24h Volume) all missing. Cannot test button disabled states."
 
   - task: "Trading Chart Component"
     implemented: true
