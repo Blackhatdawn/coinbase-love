@@ -8,8 +8,8 @@ services:
     env: python
     region: oregon
     plan: free  # Change to 'starter' or higher for production
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -31,5 +31,23 @@ services:
         value: 5000
       - key: RATE_LIMIT_PER_MINUTE
         value: 60
+      - key: EMAIL_SERVICE
+        value: mock
+      - key: EMAIL_FROM
+        value: noreply@cryptovault.com
+      - key: EMAIL_FROM_NAME
+        value: CryptoVault
+      - key: COINGECKO_API_KEY
+        value: CG-PA1sSLBd2ztNJpBjp2EGUtbw
+      - key: USE_MOCK_PRICES
+        value: false
+      - key: USE_REDIS
+        value: true
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false  # Set in Render dashboard
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false  # Set in Render dashboard
+      - key: APP_URL
+        sync: false  # Set to your frontend URL
     healthCheckPath: /health
     autoDeploy: true
