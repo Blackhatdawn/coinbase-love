@@ -752,12 +752,6 @@ async def reset_password(data: ResetPasswordRequest, request: Request):
 # 2FA ENDPOINTS
 # ============================================
 
-@api_router.post("/auth/verify-email")
-async def verify_email(data: dict):
-    """Verify email (placeholder)"""
-    return {"message": "Email verification not yet implemented"}
-
-
 @api_router.post("/auth/2fa/setup")
 async def setup_2fa(user_id: str = Depends(get_current_user_id)):
     """Setup 2FA for user"""
