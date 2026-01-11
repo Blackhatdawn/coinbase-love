@@ -133,23 +133,37 @@ const request = async (
     return await response.json();
   } catch (error) {
     if (error instanceof APIError) throw error;
-    
-    // Network error - could be Render spin-down
+
+    const isNetworkError = error instanceof TypeError || error instanceof NetworkError;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Network error - could be Render spin-down or CORS issue
     // Retry with exponential backoff
-    if (retryCount < RETRY_CONFIG.maxRetries) {
+    if (retryCount < RETRY_CONFIG.maxRetries && isNetworkError) {
       const delay = RETRY_CONFIG.delays[retryCount];
       console.log(`🔄 Retrying request (attempt ${retryCount + 1}/${RETRY_CONFIG.maxRetries}) after ${delay}ms...`);
-      
-      // Show user-friendly message for first retry (likely spin-down)
+
+      // Show user-friendly message for first retry (likely spin-down on Render)
       if (retryCount === 0) {
-        console.log('⏳ Backend is waking up... (Render free tier spin-down, may take 30-60s)');
+        const spindownMsg = '⏳ Backend is waking up from idle state... This may take 30-60 seconds on first request. Please wait...';
+        console.log(spindownMsg);
+
+        // Try to show toast notification if available
+        if (typeof window !== 'undefined' && window.__showToast) {
+          window.__showToast(spindownMsg, 'loading');
+        }
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, delay));
       return request(endpoint, options, retryCount + 1);
     }
-    
-    throw new APIError(0, error instanceof Error ? error.message : 'Network error');
+
+    // After retries exhausted or not a network error
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS')) {
+      throw new APIError(0, `Backend connection failed. Check: 1) Backend is running, 2) CORS is configured, 3) Network is stable. Original error: ${errorMessage}`);
+    }
+
+    throw new APIError(0, errorMessage);
   }
 };
 
