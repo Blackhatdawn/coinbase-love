@@ -453,13 +453,13 @@ async def login(credentials: UserLogin, request: Request):
         update_data = {"failed_login_attempts": failed_attempts}
         if failed_attempts >= 5:
             update_data["locked_until"] = datetime.utcnow() + timedelta(minutes=15)
-            await users_collection.update_one({"id": user.id}, {"": update_data})
+            await users_collection.update_one({"id": user.id}, {"$set": update_data})
             await log_audit(user.id, "ACCOUNT_LOCKED", ip_address=request.client.host)
             raise HTTPException(
                 status_code=429,
                 detail="Account locked for 15 minutes due to too many failed login attempts."
             )
-        await users_collection.update_one({"id": user.id}, {"": update_data})
+        await users_collection.update_one({"id": user.id}, {"$set": update_data})
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not user.email_verified:
@@ -470,7 +470,7 @@ async def login(credentials: UserLogin, request: Request):
 
     await users_collection.update_one(
         {"id": user.id},
-        {"": {
+        {"$set": {
             "failed_login_attempts": 0,
             "locked_until": None,
             "last_login": datetime.utcnow()
@@ -609,7 +609,7 @@ async def verify_email(data: VerifyEmailRequest, request: Request):
 
     await users_collection.update_one(
         {"id": user.id},
-        {"": {
+        {"$set": {
             "email_verified": True,
             "email_verification_code": None,
             "email_verification_token": None,
@@ -683,7 +683,7 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
 
     await users_collection.update_one(
         {"id": user.id},
-        {"": {
+        {"$set": {
             "email_verification_code": verification_code,
             "email_verification_token": verification_token,
             "email_verification_expires": verification_expires
@@ -724,7 +724,7 @@ async def forgot_password(data: ForgotPasswordRequest, request: Request):
 
     await users_collection.update_one(
         {"id": user.id},
-        {"": {
+        {"$set": {
             "password_reset_token": reset_token,
             "password_reset_expires": reset_expires
         }}
@@ -788,7 +788,7 @@ async def reset_password(data: ResetPasswordRequest, request: Request):
 
     await users_collection.update_one(
         {"id": user.id},
-        {"": {
+        {"$set": {
             "password_hash": new_password_hash,
             "password_reset_token": None,
             "password_reset_expires": None,
@@ -812,7 +812,7 @@ async def setup_2fa(user_id: str = Depends(get_current_user_id)):
 
     await users_collection.update_one(
         {"id": user_id},
-        {"": {"two_factor_secret": secret}}
+        {"$set": {"two_factor_secret": secret}}
     )
 
     return {
@@ -830,7 +830,7 @@ async def verify_2fa(data: TwoFactorVerify, user_id: str = Depends(get_current_u
     backup_codes = generate_backup_codes()
     await users_collection.update_one(
         {"id": user_id},
-        {"": {
+        {"$set": {
             "two_factor_enabled": True,
             "backup_codes": backup_codes
         }}
@@ -855,7 +855,7 @@ async def disable_2fa(data: dict, user_id: str = Depends(get_current_user_id)):
     users_collection = db_connection.get_collection("users")
     await users_collection.update_one(
         {"id": user_id},
-        {"": {
+        {"$set": {
             "two_factor_enabled": False,
             "two_factor_secret": None,
             "backup_codes": []
@@ -870,7 +870,7 @@ async def get_backup_codes(user_id: str = Depends(get_current_user_id)):
     backup_codes = generate_backup_codes()
     await users_collection.update_one(
         {"id": user_id},
-        {"": {"backup_codes": backup_codes}}
+        {"$set": {"backup_codes": backup_codes}}
     )
 
     return {"codes": backup_codes}
@@ -1116,7 +1116,7 @@ async def add_holding(holding_data: HoldingCreate, user_id: str = Depends(get_cu
 
     await portfolios_collection.update_one(
         {"user_id": user_id},
-        {"": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
     )
 
     return {"message": "Holding added successfully", "holding": new_holding}
@@ -1133,7 +1133,7 @@ async def delete_holding(symbol: str, user_id: str = Depends(get_current_user_id
 
     await portfolios_collection.update_one(
         {"user_id": user_id},
-        {"": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
     )
 
     return {"message": "Holding deleted successfully"}
@@ -1194,7 +1194,7 @@ async def cancel_order(order_id: str, user_id: str = Depends(get_current_user_id
     orders_collection = db_connection.get_collection("orders")
     result = await orders_collection.update_one(
         {"id": order_id, "user_id": user_id, "status": "pending"},
-        {"": {"status": "cancelled"}}
+        {"$set": {"status": "cancelled"}}
     )
 
     if result.modified_count == 0:
