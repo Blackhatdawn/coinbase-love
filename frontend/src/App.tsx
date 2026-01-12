@@ -21,6 +21,10 @@ import Contact from "./pages/Contact";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import Services from "./pages/Services";
+import Security from "./pages/Security";
+import FAQ from "./pages/FAQ";
 import { useState, useEffect } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 
