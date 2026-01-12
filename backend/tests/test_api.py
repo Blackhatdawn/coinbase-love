@@ -6,14 +6,14 @@ import pytest
 from httpx import AsyncClient
 from server import app
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_root():
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.get("/")
         assert response.status_code == 200
         assert "CryptoVault API is live" in response.json()["message"]
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_health():
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.get("/health")
@@ -21,7 +21,7 @@ async def test_health():
         assert response.json()["status"] == "healthy"
         assert response.json()["database"] == "connected"
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_signup_login_logout_flow():
     async with AsyncClient(app=app, base_url="http://test") as client:
         # Unique email to avoid duplicates
@@ -36,14 +36,14 @@ async def test_signup_login_logout_flow():
         assert signup_resp.status_code == 200
         assert "Account created" in signup_resp.json()["message"]
 
-        # Login (skip verification for test – if required in code, mock or adjust)
+        # Login (if verification required, skip or mock – adjust if needed)
         login_resp = await client.post("/api/auth/login", json={
             "email": unique_email,
             "password": "strongpass123"
         })
         assert login_resp.status_code == 200
 
-        # Portfolio (protected – cookies sent)
+        # Portfolio (protected)
         portfolio_resp = await client.get("/api/portfolio")
         assert portfolio_resp.status_code == 200
 
@@ -52,6 +52,6 @@ async def test_signup_login_logout_flow():
         assert logout_resp.status_code == 200
         assert "Logged out successfully" in logout_resp.json()["message"]
 
-        # Token revoked check
+        # Revoked token check
         revoked_resp = await client.get("/api/portfolio")
         assert revoked_resp.status_code == 401
