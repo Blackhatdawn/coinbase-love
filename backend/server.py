@@ -1315,7 +1315,7 @@ async def export_audit_logs(days: int = 90, user_id: str = Depends(get_current_u
 
     logs = await audit_logs_collection.find({
         "user_id": user_id,
-        "created_at": {"": since}
+        "created_at": {"$gte": since}
     }).sort("created_at", -1).to_list(10000)
 
     return {"logs": logs, "count": len(logs)}
