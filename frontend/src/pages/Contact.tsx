@@ -63,25 +63,26 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-medium mb-1">Email</h3>
-                    <p className="text-sm text-muted-foreground mb-3">sales@cryptovault.com</p>
-                    <Button variant="outline" size="sm">
-                      Send Email
+                    <p className="text-sm text-muted-foreground mb-3">support@cryptovault.financial</p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="mailto:support@cryptovault.financial">Send Email</a>
                     </Button>
                   </div>
                 </div>
               </Card>
 
-              {/* Phone */}
+              {/* Live Chat - Intercom ready */}
               <Card className="p-6 border-border/50 bg-secondary/20 backdrop-blur">
                 <div className="flex items-start gap-4">
                   <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-6 w-6 text-primary" />
+                    <MessageSquare className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-medium mb-1">Phone</h3>
-                    <p className="text-sm text-muted-foreground mb-3">+1 (555) 123-4567</p>
-                    <Button variant="outline" size="sm">
-                      Call Now
+                    <h3 className="font-medium mb-1">Live Chat</h3>
+                    <p className="text-sm text-muted-foreground mb-3">24/7 Support Available</p>
+                    {/* TODO: Integrate Intercom */}
+                    <Button variant="outline" size="sm" disabled>
+                      Coming Soon
                     </Button>
                   </div>
                 </div>
@@ -96,8 +97,9 @@ const Contact = () => {
                   <div>
                     <h3 className="font-medium mb-1">Office</h3>
                     <p className="text-sm text-muted-foreground">
-                      123 Crypto Lane<br />
-                      San Francisco, CA 94105
+                      CryptoVault Financial, Inc.<br />
+                      1201 Market Street, Suite 101<br />
+                      Wilmington, DE 19801
                     </p>
                   </div>
                 </div>
