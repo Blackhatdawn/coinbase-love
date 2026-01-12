@@ -1,6 +1,7 @@
 """
 Production-ready FastAPI server with updated MongoDB connection management (health checks, exponential backoff,
-timeouts, validation), real-time price integration in portfolio, and a proper root endpoint.
+timeouts, validation), real-time price integration in portfolio, proper root endpoint, and secure logout
+with token blacklisting.
 """
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends, WebSocket, WebSocketDisconnect
@@ -11,10 +12,9 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import logging
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime, timedelta
-import random
 import asyncio
 import json
-import os  # Moved to top for APP_URL usage
+import os
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -25,7 +25,7 @@ from slowapi.middleware import SlowAPIMiddleware
 # Import configuration
 from config import settings
 
-# Import models (unchanged)
+# Import models
 from models import (
     User, UserCreate, UserLogin, UserResponse,
     Cryptocurrency, Portfolio, Holding, HoldingCreate,
@@ -50,10 +50,11 @@ from auth import (
 )
 
 from dependencies import get_current_user_id, optional_current_user_id
-
 from coingecko_service import coingecko_service
-
 from security_middleware import SecurityMiddleware, CSRFMiddleware
+
+# Blacklist import for secure logout
+from blacklist import blacklist_token
 
 # Configure structured logging
 logging.basicConfig(
@@ -63,7 +64,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================
-# UPDATED DATABASE CONNECTION (Production-ready)
+# DATABASE CONNECTION (full class from your original)
 # ============================================
 
 class DatabaseConnection:
@@ -196,7 +197,7 @@ class DatabaseConnection:
             raise RuntimeError("Database not connected.")
         return self.db[collection_name]
 
-# Global database connection instance
+# Global database connection instance (top-level, no indent)
 db_connection: Optional[DatabaseConnection] = None
 
 # ============================================
@@ -219,7 +220,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 api_router = APIRouter(prefix="/api")
 
 # ============================================
-# ROOT ENDPOINT (Fixes 404 on /)
+# ROOT ENDPOINT
 # ============================================
 
 @app.get("/", tags=["Root"])
@@ -235,7 +236,7 @@ async def root():
     }
 
 # ============================================
-# STARTUP AND SHUTDOWN EVENTS
+# STARTUP AND SHUTDOWN EVENTS (with TTL index)
 # ============================================
 
 @app.on_event("startup")
@@ -251,6 +252,14 @@ async def startup_event():
             db_name=settings.db_name
         )
         await db_connection.connect()
+
+        # Create TTL index for MongoDB blacklist fallback auto-cleanup
+        try:
+            collection = db_connection.get_collection("blacklisted_tokens")
+            await collection.create_index("expires_at", expireAfterSeconds=0)
+            logger.info("✅ Ensured TTL index on blacklisted_tokens.expires_at")
+        except Exception as e:
+            logger.warning(f"⚠️ TTL index creation failed (non-critical): {str(e)}")
 
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
@@ -328,9 +337,40 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
     )
     await db_connection.get_collection("audit_logs").insert_one(audit_log.dict())
 
-# ... (rest of your endpoints below – I've updated key ones for real prices & db_connection)
+# ============================================
+# UPDATED LOGOUT ENDPOINT (secure with blacklisting)
+# ============================================
 
-# Example updated portfolio endpoint (uses real CoinGecko prices instead of mock)
+@api_router.post("/auth/logout")
+async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
+    """Secure logout: Blacklist tokens and delete cookies."""
+    refresh_token = request.cookies.get("refresh_token")
+    access_token = request.cookies.get("access_token")
+
+    if refresh_token:
+        payload = decode_token(refresh_token)
+        if payload and payload.get("type") == "refresh":
+            expires_in = int(payload["exp"] - datetime.utcnow().timestamp())
+            await blacklist_token(refresh_token, max(expires_in, 60))
+
+    if access_token:
+        payload = decode_token(access_token)
+        if payload and payload.get("type") == "access":
+            expires_in = int(payload["exp"] - datetime.utcnow().timestamp())
+            await blacklist_token(access_token, max(expires_in, 60))
+
+    await log_audit(user_id, "USER_LOGOUT", ip_address=request.client.host)
+
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
+
+# ============================================
+# YOUR OTHER ENDPOINTS (add them here)
+# ============================================
+
+# Example portfolio endpoint (from your code – add the rest similarly)
 @api_router.get("/portfolio")
 async def get_portfolio(user_id: str = Depends(get_current_user_id)):
     global db_connection
@@ -360,10 +400,9 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
                 "amount": holding["amount"],
                 "current_price": current_price,
                 "value": round(current_value, 2),
-                "allocation": 0  # temporary
+                "allocation": 0
             })
         else:
-            # Unknown/missing price
             updated_holdings.append({
                 **holding,
                 "current_price": 0,
@@ -371,7 +410,6 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
                 "allocation": 0
             })
 
-    # Calculate allocations
     for h in updated_holdings:
         h["allocation"] = round((h["value"] / total_balance * 100), 2) if total_balance > 0 else 0
 
@@ -382,9 +420,12 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
         }
     }
 
-# (Apply similar real-price updates to add_holding, get_holding if desired)
+# Add your other endpoints here (signup, login, crypto, orders, etc.)
+# Use db_connection.get_collection("name") for DB access
 
-# ... (All other endpoints remain the same, just replace db_manager.db.xxx with db_connection.get_collection("xxx"))
+# ============================================
+# INCLUDE ROUTER AND MIDDLEWARE
+# ============================================
 
 app.include_router(api_router)
 
