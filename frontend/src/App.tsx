@@ -8,6 +8,7 @@ import { Web3Provider } from "@/contexts/Web3Context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
+import ConnectionGuard from "@/components/ConnectionGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
