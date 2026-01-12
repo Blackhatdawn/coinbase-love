@@ -1267,7 +1267,7 @@ async def get_transaction_stats(user_id: str = Depends(get_current_user_id)):
 # P2P TRANSFER ENDPOINTS
 # ============================================
 
-class P2PTransferRequest(BaseModel):
+class P2PTransferRequest(PydanticBaseModel):
     """P2P Transfer request model"""
     recipient_email: str
     amount: float
