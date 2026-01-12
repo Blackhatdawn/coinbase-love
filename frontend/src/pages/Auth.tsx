@@ -368,12 +368,50 @@ const Auth = () => {
           
           <p className="mt-8 text-xs text-center text-muted-foreground">
             By continuing, you agree to our{" "}
-            <a href="#" className="underline hover:text-foreground">Terms of Service</a>
+            <a href="/terms" className="underline hover:text-foreground">Terms of Service</a>
             {" "}and{" "}
-            <a href="#" className="underline hover:text-foreground">Privacy Policy</a>
+            <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>
           </p>
         </div>
       </div>
+
+      {/* OTP Verification Modal */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        email={pendingEmail}
+        onVerify={async (code: string) => {
+          try {
+            await api.auth.verifyEmail(code, pendingEmail);
+            return true;
+          } catch (error) {
+            return false;
+          }
+        }}
+        onResend={async () => {
+          try {
+            await api.auth.resendVerification(pendingEmail);
+            toast({
+              title: "Code resent",
+              description: "A new verification code has been sent to your email.",
+            });
+            return true;
+          } catch (error) {
+            return false;
+          }
+        }}
+        onSuccess={() => {
+          setShowOTPModal(false);
+          setShowRecommendedSetup(true);
+        }}
+      />
+
+      {/* Recommended Setup Modal */}
+      <RecommendedSetup
+        isOpen={showRecommendedSetup}
+        onClose={() => setShowRecommendedSetup(false)}
+        userName={pendingUserName || name}
+      />
     </div>
   );
 };
