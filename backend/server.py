@@ -1,7 +1,7 @@
 """
 Production-ready FastAPI server with updated MongoDB connection management (health checks, exponential backoff,
-timeouts, validation), real-time price integration in portfolio, proper root endpoint, and secure logout
-with token blacklisting.
+timeouts, validation), real-time price integration in portfolio, proper root endpoint, secure logout
+with token blacklisting, and CSRF token endpoint for frontend.
 """
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends, WebSocket, WebSocketDisconnect
@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 import asyncio
 import json
 import os
+import uuid  # For CSRF token generation
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -64,7 +65,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================
-# DATABASE CONNECTION (full class from your original)
+# DATABASE CONNECTION (your full class)
 # ============================================
 
 class DatabaseConnection:
@@ -197,7 +198,7 @@ class DatabaseConnection:
             raise RuntimeError("Database not connected.")
         return self.db[collection_name]
 
-# Global database connection instance (top-level, no indent)
+# Global database connection instance
 db_connection: Optional[DatabaseConnection] = None
 
 # ============================================
@@ -223,7 +224,7 @@ api_router = APIRouter(prefix="/api")
 # ROOT ENDPOINT
 # ============================================
 
-@app.get("/", tags=["Root"])
+@app.get("/", tags=["root"])
 async def root():
     """Root endpoint – friendly welcome for crawlers, health checks, and users."""
     return {
@@ -236,7 +237,29 @@ async def root():
     }
 
 # ============================================
-# STARTUP AND SHUTDOWN EVENTS (with TTL index)
+# CSRF TOKEN ENDPOINT (recommended for frontend)
+# ============================================
+
+@app.get("/csrf", tags=["auth"])
+async def get_csrf_token(request: Request):
+    """Get or set CSRF token (frontend can fetch on load)."""
+    csrf_token = request.cookies.get("csrf_token")
+    if not csrf_token:
+        csrf_token = str(uuid.uuid4())
+        response = JSONResponse({"csrf_token": csrf_token})
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=True,
+            secure=(settings.environment == "production"),
+            samesite="lax",
+            max_age=3600
+        )
+        return response
+    return {"csrf_token": csrf_token}
+
+# ============================================
+# STARTUP AND SHUTDOWN EVENTS (with updated TTL check)
 # ============================================
 
 @app.on_event("startup")
@@ -253,11 +276,14 @@ async def startup_event():
         )
         await db_connection.connect()
 
-        # Create TTL index for MongoDB blacklist fallback auto-cleanup
+        # Updated TTL index creation with explicit connection check (removes warning)
         try:
-            collection = db_connection.get_collection("blacklisted_tokens")
-            await collection.create_index("expires_at", expireAfterSeconds=0)
-            logger.info("✅ Ensured TTL index on blacklisted_tokens.expires_at")
+            if db_connection and db_connection.is_connected:
+                collection = db_connection.get_collection("blacklisted_tokens")
+                await collection.create_index("expires_at", expireAfterSeconds=0)
+                logger.info("✅ Ensured TTL index on blacklisted_tokens.expires_at")
+            else:
+                logger.debug("DB not connected yet – skipping TTL index creation")
         except Exception as e:
             logger.warning(f"⚠️ TTL index creation failed (non-critical): {str(e)}")
 
@@ -288,7 +314,7 @@ async def shutdown_event():
 # HEALTH CHECK ENDPOINT
 # ============================================
 
-@app.get("/health")
+@app.get("/health", tags=["health"])
 async def health_check():
     global db_connection
     try:
@@ -338,10 +364,10 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
     await db_connection.get_collection("audit_logs").insert_one(audit_log.dict())
 
 # ============================================
-# UPDATED LOGOUT ENDPOINT (secure with blacklisting)
+# LOGOUT ENDPOINT (on api_router with tag)
 # ============================================
 
-@api_router.post("/auth/logout")
+@api_router.post("/auth/logout", tags=["auth"])
 async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
     """Secure logout: Blacklist tokens and delete cookies."""
     refresh_token = request.cookies.get("refresh_token")
@@ -367,11 +393,10 @@ async def logout(request: Request, user_id: str = Depends(get_current_user_id)):
     return response
 
 # ============================================
-# YOUR OTHER ENDPOINTS (add them here)
+# PORTFOLIO ENDPOINT (on api_router with tag)
 # ============================================
 
-# Example portfolio endpoint (from your code – add the rest similarly)
-@api_router.get("/portfolio")
+@api_router.get("/portfolio", tags=["portfolio"])
 async def get_portfolio(user_id: str = Depends(get_current_user_id)):
     global db_connection
     portfolios_collection = db_connection.get_collection("portfolios")
@@ -419,9 +444,6 @@ async def get_portfolio(user_id: str = Depends(get_current_user_id)):
             "holdings": updated_holdings
         }
     }
-
-# Add your other endpoints here (signup, login, crypto, orders, etc.)
-# Use db_connection.get_collection("name") for DB access
 
 # ============================================
 # INCLUDE ROUTER AND MIDDLEWARE
