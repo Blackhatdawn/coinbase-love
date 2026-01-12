@@ -1527,6 +1527,802 @@ async def get_audit_log(log_id: str, user_id: str = Depends(get_current_user_id)
     return {"log": log}
 
 # ============================================
+# SESSION MANAGEMENT ENDPOINTS
+# ============================================
+
+@api_router.get("/auth/sessions", tags=["auth"])
+async def get_active_sessions(user_id: str = Depends(get_current_user_id)):
+    """Get all active sessions for the current user."""
+    sessions_collection = db_connection.get_collection("sessions")
+    
+    sessions = await sessions_collection.find({
+        "user_id": user_id,
+        "expires_at": {"$gt": datetime.utcnow()}
+    }).to_list(50)
+    
+    return {
+        "sessions": [
+            {
+                "id": s["id"],
+                "device": s.get("device", "Unknown Device"),
+                "ip_address": s.get("ip_address", "Unknown"),
+                "location": s.get("location", "Unknown"),
+                "created_at": s["created_at"].isoformat() if s.get("created_at") else None,
+                "last_active": s.get("last_active", s.get("created_at")).isoformat() if s.get("last_active") or s.get("created_at") else None,
+                "is_current": s.get("is_current", False)
+            }
+            for s in sessions
+        ]
+    }
+
+@api_router.delete("/auth/sessions/{session_id}", tags=["auth"])
+async def revoke_session(session_id: str, user_id: str = Depends(get_current_user_id)):
+    """Revoke a specific session."""
+    sessions_collection = db_connection.get_collection("sessions")
+    
+    result = await sessions_collection.delete_one({
+        "id": session_id,
+        "user_id": user_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    await log_audit(user_id=user_id, action="session_revoked", details={"session_id": session_id})
+    
+    return {"message": "Session revoked successfully"}
+
+@api_router.post("/auth/sessions/revoke-all", tags=["auth"])
+async def revoke_all_sessions(user_id: str = Depends(get_current_user_id)):
+    """Revoke all sessions except current."""
+    sessions_collection = db_connection.get_collection("sessions")
+    
+    result = await sessions_collection.delete_many({
+        "user_id": user_id,
+        "is_current": {"$ne": True}
+    })
+    
+    await log_audit(user_id=user_id, action="all_sessions_revoked", details={"count": result.deleted_count})
+    
+    return {"message": f"Revoked {result.deleted_count} sessions"}
+
+# ============================================
+# WALLET ENDPOINTS
+# ============================================
+
+@api_router.get("/wallet/balances", tags=["wallet"])
+async def get_wallet_balances(user_id: str = Depends(get_current_user_id)):
+    """Get user's wallet balances for all assets."""
+    wallets_collection = db_connection.get_collection("wallets")
+    
+    wallet = await wallets_collection.find_one({"user_id": user_id})
+    
+    if not wallet:
+        # Create default wallet
+        default_wallet = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "balances": {
+                "USD": {"available": 0, "locked": 0},
+                "BTC": {"available": 0, "locked": 0},
+                "ETH": {"available": 0, "locked": 0},
+            },
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        await wallets_collection.insert_one(default_wallet)
+        wallet = default_wallet
+    
+    return {"balances": wallet.get("balances", {})}
+
+@api_router.get("/wallet/deposit-address/{asset}", tags=["wallet"])
+async def get_deposit_address(asset: str, user_id: str = Depends(get_current_user_id)):
+    """Generate or retrieve deposit address for an asset."""
+    deposit_addresses_collection = db_connection.get_collection("deposit_addresses")
+    
+    # Check for existing address
+    existing = await deposit_addresses_collection.find_one({
+        "user_id": user_id,
+        "asset": asset.upper()
+    })
+    
+    if existing:
+        return {"address": existing["address"], "asset": asset.upper()}
+    
+    # Generate new address (in production, integrate with blockchain node/custodian)
+    new_address = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "asset": asset.upper(),
+        "address": f"cv_{asset.lower()}_{uuid.uuid4().hex[:16]}",  # Simulated address
+        "created_at": datetime.utcnow()
+    }
+    
+    await deposit_addresses_collection.insert_one(new_address)
+    
+    return {"address": new_address["address"], "asset": asset.upper()}
+
+class DepositRequest(PydanticBaseModel):
+    asset: str
+    amount: float
+    tx_hash: Optional[str] = None
+
+@api_router.post("/wallet/deposit", tags=["wallet"])
+async def create_deposit(deposit: DepositRequest, user_id: str = Depends(get_current_user_id)):
+    """Create a deposit request (pending admin approval or blockchain confirmation)."""
+    deposits_collection = db_connection.get_collection("deposits")
+    
+    deposit_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "asset": deposit.asset.upper(),
+        "amount": deposit.amount,
+        "tx_hash": deposit.tx_hash,
+        "status": "pending",  # pending -> confirmed | rejected
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    await deposits_collection.insert_one(deposit_record)
+    await log_audit(user_id=user_id, action="deposit_created", details={
+        "deposit_id": deposit_record["id"],
+        "asset": deposit.asset,
+        "amount": deposit.amount
+    })
+    
+    return {
+        "message": "Deposit request created",
+        "deposit": {
+            "id": deposit_record["id"],
+            "asset": deposit_record["asset"],
+            "amount": deposit_record["amount"],
+            "status": deposit_record["status"]
+        }
+    }
+
+@api_router.post("/wallet/deposit/{deposit_id}/confirm", tags=["wallet"])
+async def confirm_deposit(deposit_id: str, user_id: str = Depends(get_current_user_id)):
+    """User confirms they have sent funds (triggers admin review)."""
+    deposits_collection = db_connection.get_collection("deposits")
+    
+    deposit = await deposits_collection.find_one({
+        "id": deposit_id,
+        "user_id": user_id,
+        "status": "pending"
+    })
+    
+    if not deposit:
+        raise HTTPException(status_code=404, detail="Deposit not found or already processed")
+    
+    await deposits_collection.update_one(
+        {"id": deposit_id},
+        {"$set": {"status": "awaiting_confirmation", "user_confirmed_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "Deposit marked for confirmation. Our team will verify the transaction."}
+
+class WithdrawalRequest(PydanticBaseModel):
+    asset: str
+    amount: float
+    address: str
+
+@api_router.post("/wallet/withdraw", tags=["wallet"])
+async def create_withdrawal(withdrawal: WithdrawalRequest, user_id: str = Depends(get_current_user_id)):
+    """Create a withdrawal request with KYC gates."""
+    users_collection = db_connection.get_collection("users")
+    wallets_collection = db_connection.get_collection("wallets")
+    withdrawals_collection = db_connection.get_collection("withdrawals")
+    
+    user = await users_collection.find_one({"id": user_id})
+    wallet = await wallets_collection.find_one({"user_id": user_id})
+    
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Wallet not found")
+    
+    # Check balance
+    balance = wallet.get("balances", {}).get(withdrawal.asset.upper(), {}).get("available", 0)
+    if balance < withdrawal.amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    
+    # KYC gates
+    kyc_level = user.get("kyc_level", 0)
+    daily_limit = 500 if kyc_level == 0 else 5000 if kyc_level == 1 else 50000
+    
+    if withdrawal.amount > daily_limit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Withdrawal exceeds your daily limit (${daily_limit}). Upgrade KYC to increase limits."
+        )
+    
+    withdrawal_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "asset": withdrawal.asset.upper(),
+        "amount": withdrawal.amount,
+        "address": withdrawal.address,
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+    
+    await withdrawals_collection.insert_one(withdrawal_record)
+    
+    # Lock funds
+    await wallets_collection.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {
+                f"balances.{withdrawal.asset.upper()}.available": -withdrawal.amount,
+                f"balances.{withdrawal.asset.upper()}.locked": withdrawal.amount
+            }
+        }
+    )
+    
+    await log_audit(user_id=user_id, action="withdrawal_created", details={
+        "withdrawal_id": withdrawal_record["id"],
+        "asset": withdrawal.asset,
+        "amount": withdrawal.amount
+    })
+    
+    return {"message": "Withdrawal request submitted", "withdrawal": withdrawal_record}
+
+@api_router.get("/wallet/withdrawal-limits", tags=["wallet"])
+async def get_withdrawal_limits(user_id: str = Depends(get_current_user_id)):
+    """Get user's withdrawal limits based on KYC level."""
+    users_collection = db_connection.get_collection("users")
+    user = await users_collection.find_one({"id": user_id})
+    
+    kyc_level = user.get("kyc_level", 0) if user else 0
+    
+    limits = {
+        0: {"daily": 500, "monthly": 2000, "label": "Unverified"},
+        1: {"daily": 5000, "monthly": 25000, "label": "Level 1 (Basic)"},
+        2: {"daily": 50000, "monthly": 500000, "label": "Level 2 (Full)"}
+    }
+    
+    return {
+        "kyc_level": kyc_level,
+        "limits": limits.get(kyc_level, limits[0])
+    }
+
+# ============================================
+# STAKING/VAULT ENDPOINTS
+# ============================================
+
+@api_router.get("/staking/products", tags=["staking"])
+async def get_staking_products():
+    """Get available staking products with APY rates."""
+    products = [
+        {
+            "id": "btc-flex",
+            "asset": "BTC",
+            "name": "Bitcoin Flexible Savings",
+            "apy": 3.5,
+            "min_amount": 0.001,
+            "lock_days": 0,
+            "type": "flexible"
+        },
+        {
+            "id": "btc-30",
+            "asset": "BTC",
+            "name": "Bitcoin 30-Day Lock",
+            "apy": 5.0,
+            "min_amount": 0.01,
+            "lock_days": 30,
+            "type": "locked"
+        },
+        {
+            "id": "eth-flex",
+            "asset": "ETH",
+            "name": "Ethereum Flexible Savings",
+            "apy": 4.0,
+            "min_amount": 0.01,
+            "lock_days": 0,
+            "type": "flexible"
+        },
+        {
+            "id": "eth-90",
+            "asset": "ETH",
+            "name": "Ethereum 90-Day Lock",
+            "apy": 7.5,
+            "min_amount": 0.1,
+            "lock_days": 90,
+            "type": "locked"
+        },
+        {
+            "id": "usdt-flex",
+            "asset": "USDT",
+            "name": "USDT Flexible Savings",
+            "apy": 8.0,
+            "min_amount": 10,
+            "lock_days": 0,
+            "type": "flexible"
+        }
+    ]
+    return {"products": products}
+
+class StakeRequest(PydanticBaseModel):
+    product_id: str
+    amount: float
+
+@api_router.post("/staking/stake", tags=["staking"])
+async def create_stake(stake: StakeRequest, user_id: str = Depends(get_current_user_id)):
+    """Stake assets in a staking product."""
+    stakes_collection = db_connection.get_collection("stakes")
+    wallets_collection = db_connection.get_collection("wallets")
+    
+    # Get product details (simplified)
+    products = {
+        "btc-flex": {"asset": "BTC", "apy": 3.5, "lock_days": 0},
+        "btc-30": {"asset": "BTC", "apy": 5.0, "lock_days": 30},
+        "eth-flex": {"asset": "ETH", "apy": 4.0, "lock_days": 0},
+        "eth-90": {"asset": "ETH", "apy": 7.5, "lock_days": 90},
+        "usdt-flex": {"asset": "USDT", "apy": 8.0, "lock_days": 0}
+    }
+    
+    product = products.get(stake.product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Staking product not found")
+    
+    # Check balance
+    wallet = await wallets_collection.find_one({"user_id": user_id})
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Wallet not found")
+    
+    balance = wallet.get("balances", {}).get(product["asset"], {}).get("available", 0)
+    if balance < stake.amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    
+    # Create stake
+    stake_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "product_id": stake.product_id,
+        "asset": product["asset"],
+        "amount": stake.amount,
+        "apy": product["apy"],
+        "lock_days": product["lock_days"],
+        "status": "active",
+        "rewards_earned": 0,
+        "started_at": datetime.utcnow(),
+        "unlocks_at": datetime.utcnow() + timedelta(days=product["lock_days"]) if product["lock_days"] > 0 else None
+    }
+    
+    await stakes_collection.insert_one(stake_record)
+    
+    # Lock funds
+    await wallets_collection.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {
+                f"balances.{product['asset']}.available": -stake.amount,
+                f"balances.{product['asset']}.locked": stake.amount
+            }
+        }
+    )
+    
+    await log_audit(user_id=user_id, action="stake_created", details={
+        "stake_id": stake_record["id"],
+        "product_id": stake.product_id,
+        "amount": stake.amount
+    })
+    
+    return {"message": "Stake created successfully", "stake": stake_record}
+
+@api_router.get("/staking/my-stakes", tags=["staking"])
+async def get_my_stakes(user_id: str = Depends(get_current_user_id)):
+    """Get user's active stakes."""
+    stakes_collection = db_connection.get_collection("stakes")
+    
+    stakes = await stakes_collection.find({
+        "user_id": user_id,
+        "status": "active"
+    }).to_list(100)
+    
+    return {"stakes": stakes}
+
+@api_router.post("/staking/{stake_id}/unstake", tags=["staking"])
+async def unstake(stake_id: str, user_id: str = Depends(get_current_user_id)):
+    """Unstake assets (if lock period has passed)."""
+    stakes_collection = db_connection.get_collection("stakes")
+    wallets_collection = db_connection.get_collection("wallets")
+    
+    stake = await stakes_collection.find_one({
+        "id": stake_id,
+        "user_id": user_id,
+        "status": "active"
+    })
+    
+    if not stake:
+        raise HTTPException(status_code=404, detail="Stake not found")
+    
+    # Check lock period
+    if stake.get("unlocks_at") and stake["unlocks_at"] > datetime.utcnow():
+        remaining = (stake["unlocks_at"] - datetime.utcnow()).days
+        raise HTTPException(status_code=400, detail=f"Stake is locked. {remaining} days remaining.")
+    
+    # Calculate rewards
+    days_staked = (datetime.utcnow() - stake["started_at"]).days
+    daily_rate = stake["apy"] / 365 / 100
+    rewards = stake["amount"] * daily_rate * days_staked
+    
+    # Return funds + rewards
+    await wallets_collection.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {
+                f"balances.{stake['asset']}.available": stake["amount"] + rewards,
+                f"balances.{stake['asset']}.locked": -stake["amount"]
+            }
+        }
+    )
+    
+    # Mark stake as completed
+    await stakes_collection.update_one(
+        {"id": stake_id},
+        {"$set": {"status": "completed", "rewards_earned": rewards, "completed_at": datetime.utcnow()}}
+    )
+    
+    return {
+        "message": "Unstake successful",
+        "amount_returned": stake["amount"],
+        "rewards_earned": rewards,
+        "total": stake["amount"] + rewards
+    }
+
+@api_router.get("/staking/rewards", tags=["staking"])
+async def get_staking_rewards(user_id: str = Depends(get_current_user_id)):
+    """Get total staking rewards earned."""
+    stakes_collection = db_connection.get_collection("stakes")
+    
+    stakes = await stakes_collection.find({"user_id": user_id}).to_list(1000)
+    
+    total_rewards = sum(s.get("rewards_earned", 0) for s in stakes)
+    pending_rewards = 0
+    
+    for stake in stakes:
+        if stake["status"] == "active":
+            days_staked = (datetime.utcnow() - stake["started_at"]).days
+            daily_rate = stake["apy"] / 365 / 100
+            pending_rewards += stake["amount"] * daily_rate * days_staked
+    
+    return {
+        "total_earned": total_rewards,
+        "pending": pending_rewards,
+        "active_stakes": len([s for s in stakes if s["status"] == "active"])
+    }
+
+# ============================================
+# REFERRAL ENDPOINTS
+# ============================================
+
+@api_router.get("/referrals/code", tags=["referrals"])
+async def get_referral_code(user_id: str = Depends(get_current_user_id)):
+    """Get or generate user's referral code."""
+    users_collection = db_connection.get_collection("users")
+    
+    user = await users_collection.find_one({"id": user_id})
+    
+    if not user.get("referral_code"):
+        # Generate unique code
+        code = f"CV{uuid.uuid4().hex[:8].upper()}"
+        await users_collection.update_one(
+            {"id": user_id},
+            {"$set": {"referral_code": code}}
+        )
+        return {"code": code}
+    
+    return {"code": user["referral_code"]}
+
+@api_router.get("/referrals/stats", tags=["referrals"])
+async def get_referral_stats(user_id: str = Depends(get_current_user_id)):
+    """Get referral statistics."""
+    users_collection = db_connection.get_collection("users")
+    referrals_collection = db_connection.get_collection("referrals")
+    
+    user = await users_collection.find_one({"id": user_id})
+    
+    referrals = await referrals_collection.find({
+        "referrer_id": user_id
+    }).to_list(1000)
+    
+    return {
+        "total_referrals": len(referrals),
+        "successful_referrals": len([r for r in referrals if r.get("deposited", False)]),
+        "total_earned": sum(r.get("reward", 0) for r in referrals),
+        "pending_rewards": sum(r.get("pending_reward", 0) for r in referrals if not r.get("deposited"))
+    }
+
+class ApplyReferralRequest(PydanticBaseModel):
+    code: str
+
+@api_router.post("/referrals/apply", tags=["referrals"])
+async def apply_referral_code(data: ApplyReferralRequest, user_id: str = Depends(get_current_user_id)):
+    """Apply a referral code (only for new users)."""
+    users_collection = db_connection.get_collection("users")
+    referrals_collection = db_connection.get_collection("referrals")
+    
+    user = await users_collection.find_one({"id": user_id})
+    
+    if user.get("referred_by"):
+        raise HTTPException(status_code=400, detail="You have already used a referral code")
+    
+    # Find referrer
+    referrer = await users_collection.find_one({"referral_code": data.code.upper()})
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Invalid referral code")
+    
+    if referrer["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot use your own referral code")
+    
+    # Apply referral
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"referred_by": referrer["id"]}}
+    )
+    
+    # Track referral
+    await referrals_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "referrer_id": referrer["id"],
+        "referred_id": user_id,
+        "code_used": data.code.upper(),
+        "deposited": False,
+        "reward": 0,
+        "created_at": datetime.utcnow()
+    })
+    
+    return {"message": "Referral code applied successfully"}
+
+# ============================================
+# KYC ENDPOINTS
+# ============================================
+
+@api_router.get("/kyc/status", tags=["kyc"])
+async def get_kyc_status(user_id: str = Depends(get_current_user_id)):
+    """Get user's KYC verification status."""
+    users_collection = db_connection.get_collection("users")
+    kyc_collection = db_connection.get_collection("kyc_submissions")
+    
+    user = await users_collection.find_one({"id": user_id})
+    submissions = await kyc_collection.find({"user_id": user_id}).to_list(10)
+    
+    return {
+        "kyc_level": user.get("kyc_level", 0),
+        "submissions": [
+            {
+                "level": s["level"],
+                "status": s["status"],
+                "submitted_at": s["created_at"].isoformat() if s.get("created_at") else None,
+                "reviewed_at": s.get("reviewed_at").isoformat() if s.get("reviewed_at") else None
+            }
+            for s in submissions
+        ]
+    }
+
+class KYCLevel1Request(PydanticBaseModel):
+    full_name: str
+    date_of_birth: str
+    country: str
+
+@api_router.post("/kyc/level1", tags=["kyc"])
+async def submit_kyc_level1(data: KYCLevel1Request, user_id: str = Depends(get_current_user_id)):
+    """Submit KYC Level 1 (basic info)."""
+    kyc_collection = db_connection.get_collection("kyc_submissions")
+    users_collection = db_connection.get_collection("users")
+    
+    # Check if already submitted
+    existing = await kyc_collection.find_one({
+        "user_id": user_id,
+        "level": 1,
+        "status": {"$in": ["pending", "approved"]}
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="KYC Level 1 already submitted")
+    
+    submission = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "level": 1,
+        "full_name": data.full_name,
+        "date_of_birth": data.date_of_birth,
+        "country": data.country,
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+    
+    await kyc_collection.insert_one(submission)
+    
+    # Auto-approve Level 1 for MVP (in production, manual review)
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"kyc_level": 1, "kyc_name": data.full_name}}
+    )
+    
+    await kyc_collection.update_one(
+        {"id": submission["id"]},
+        {"$set": {"status": "approved", "reviewed_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "KYC Level 1 approved", "kyc_level": 1}
+
+# ============================================
+# ADMIN ENDPOINTS (Super Admin Only)
+# ============================================
+
+async def get_admin_user(user_id: str = Depends(get_current_user_id)):
+    """Verify user is admin."""
+    users_collection = db_connection.get_collection("users")
+    user = await users_collection.find_one({"id": user_id})
+    
+    if not user or not user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return user_id
+
+@api_router.get("/admin/users", tags=["admin"])
+async def admin_get_users(
+    limit: int = 50,
+    offset: int = 0,
+    admin_id: str = Depends(get_admin_user)
+):
+    """Get all users (admin only)."""
+    users_collection = db_connection.get_collection("users")
+    
+    users = await users_collection.find({}).skip(offset).limit(limit).to_list(limit)
+    total = await users_collection.count_documents({})
+    
+    return {
+        "users": [
+            {
+                "id": u["id"],
+                "email": u["email"],
+                "name": u.get("name"),
+                "kyc_level": u.get("kyc_level", 0),
+                "is_frozen": u.get("is_frozen", False),
+                "created_at": u.get("created_at").isoformat() if u.get("created_at") else None
+            }
+            for u in users
+        ],
+        "total": total
+    }
+
+@api_router.get("/admin/users/{user_id}", tags=["admin"])
+async def admin_get_user(user_id: str, admin_id: str = Depends(get_admin_user)):
+    """Get specific user details (admin only)."""
+    users_collection = db_connection.get_collection("users")
+    
+    user = await users_collection.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"user": {k: v for k, v in user.items() if k != "password_hash"}}
+
+class AdminUserUpdate(PydanticBaseModel):
+    status: Optional[str] = None
+    kyc_level: Optional[int] = None
+    is_frozen: Optional[bool] = None
+
+@api_router.patch("/admin/users/{user_id}", tags=["admin"])
+async def admin_update_user(
+    user_id: str,
+    data: AdminUserUpdate,
+    admin_id: str = Depends(get_admin_user)
+):
+    """Update user (admin only)."""
+    users_collection = db_connection.get_collection("users")
+    
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow()
+    
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": update_data}
+    )
+    
+    await log_audit(user_id=admin_id, action="admin_user_update", details={
+        "target_user": user_id,
+        "changes": update_data
+    })
+    
+    return {"message": "User updated"}
+
+@api_router.get("/admin/deposits/pending", tags=["admin"])
+async def admin_get_pending_deposits(admin_id: str = Depends(get_admin_user)):
+    """Get pending deposits (admin only)."""
+    deposits_collection = db_connection.get_collection("deposits")
+    
+    deposits = await deposits_collection.find({
+        "status": {"$in": ["pending", "awaiting_confirmation"]}
+    }).to_list(100)
+    
+    return {"deposits": deposits}
+
+@api_router.post("/admin/deposits/{deposit_id}/approve", tags=["admin"])
+async def admin_approve_deposit(deposit_id: str, admin_id: str = Depends(get_admin_user)):
+    """Approve a pending deposit (admin only)."""
+    deposits_collection = db_connection.get_collection("deposits")
+    wallets_collection = db_connection.get_collection("wallets")
+    
+    deposit = await deposits_collection.find_one({"id": deposit_id})
+    if not deposit:
+        raise HTTPException(status_code=404, detail="Deposit not found")
+    
+    # Credit user's wallet
+    await wallets_collection.update_one(
+        {"user_id": deposit["user_id"]},
+        {"$inc": {f"balances.{deposit['asset']}.available": deposit["amount"]}},
+        upsert=True
+    )
+    
+    # Update deposit status
+    await deposits_collection.update_one(
+        {"id": deposit_id},
+        {"$set": {"status": "confirmed", "approved_by": admin_id, "approved_at": datetime.utcnow()}}
+    )
+    
+    await log_audit(user_id=admin_id, action="admin_deposit_approved", details={
+        "deposit_id": deposit_id,
+        "user_id": deposit["user_id"],
+        "amount": deposit["amount"]
+    })
+    
+    return {"message": "Deposit approved and credited"}
+
+class RejectDepositRequest(PydanticBaseModel):
+    reason: str
+
+@api_router.post("/admin/deposits/{deposit_id}/reject", tags=["admin"])
+async def admin_reject_deposit(
+    deposit_id: str,
+    data: RejectDepositRequest,
+    admin_id: str = Depends(get_admin_user)
+):
+    """Reject a pending deposit (admin only)."""
+    deposits_collection = db_connection.get_collection("deposits")
+    
+    await deposits_collection.update_one(
+        {"id": deposit_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": admin_id,
+            "rejection_reason": data.reason,
+            "rejected_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"message": "Deposit rejected"}
+
+class FreezeAccountRequest(PydanticBaseModel):
+    reason: str
+
+@api_router.post("/admin/users/{user_id}/freeze", tags=["admin"])
+async def admin_freeze_account(
+    user_id: str,
+    data: FreezeAccountRequest,
+    admin_id: str = Depends(get_admin_user)
+):
+    """Freeze a user account (admin only)."""
+    users_collection = db_connection.get_collection("users")
+    
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_frozen": True,
+            "frozen_by": admin_id,
+            "freeze_reason": data.reason,
+            "frozen_at": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit(user_id=admin_id, action="admin_account_frozen", details={
+        "target_user": user_id,
+        "reason": data.reason
+    })
+    
+    return {"message": "Account frozen"}
+
+# ============================================
 # LEGACY ENDPOINTS (optional – keep or remove)
 # ============================================
 
