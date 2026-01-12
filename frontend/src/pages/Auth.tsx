@@ -151,12 +151,13 @@ const Auth = () => {
         } else {
           toast({
             title: "Account created!",
-            description: "Please verify your email address. Check your inbox for a verification link.",
+            description: "Please check your email for a verification code.",
           });
 
-          // Move to email verification step
+          // Store user info and show OTP modal
           setPendingEmail(email);
-          setEmailVerificationStep(true);
+          setPendingUserName(name);
+          setShowOTPModal(true);
         }
       }
     } finally {
