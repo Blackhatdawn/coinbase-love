@@ -36,6 +36,7 @@ from models import (
     VerifyEmailRequest, ResendVerificationRequest,
     ForgotPasswordRequest, ResetPasswordRequest
 )
+from pydantic import BaseModel as PydanticBaseModel
 
 from email_service import (
     email_service,
