@@ -221,9 +221,11 @@ const Auth = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-                <Wallet className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img 
+                src="/cryptovault-logo.png" 
+                alt="CryptoVault" 
+                className="h-9 w-9 object-contain"
+              />
               <span className="font-display text-xl font-bold">CryptoVault</span>
             </div>
           </div>
