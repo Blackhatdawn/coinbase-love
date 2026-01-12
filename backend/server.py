@@ -1292,7 +1292,7 @@ async def get_audit_summary(days: int = 30, user_id: str = Depends(get_current_u
 
     logs = await audit_logs_collection.find({
         "user_id": user_id,
-        "created_at": {"": since}
+        "created_at": {"$gte": since}
     }).to_list(1000)
 
     action_counts = {}
