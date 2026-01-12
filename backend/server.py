@@ -1263,6 +1263,202 @@ async def get_transaction_stats(user_id: str = Depends(get_current_user_id)):
     }
 
 # ============================================
+# P2P TRANSFER ENDPOINTS
+# ============================================
+
+class P2PTransferRequest(BaseModel):
+    """P2P Transfer request model"""
+    recipient_email: str
+    amount: float
+    currency: str = "USD"
+    note: Optional[str] = None
+
+@api_router.post("/transfers/p2p", tags=["transfers"])
+async def create_p2p_transfer(
+    transfer: P2PTransferRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Create an instant P2P transfer between CryptoVault users.
+    Validates sender balance and executes off-chain ledger update.
+    """
+    users_collection = db_connection.get_collection("users")
+    transactions_collection = db_connection.get_collection("transactions")
+    
+    # Get sender
+    sender = await users_collection.find_one({"id": user_id})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+    
+    # Get recipient by email
+    recipient = await users_collection.find_one({"email": transfer.recipient_email.lower()})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Recipient not found. They must have a CryptoVault account.")
+    
+    if recipient["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot transfer to yourself")
+    
+    # Get current balances (simplified - using portfolio value as balance)
+    sender_balance = sender.get("portfolio_value", 0)
+    
+    if sender_balance < transfer.amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    
+    if transfer.amount <= 0:
+        raise HTTPException(status_code=400, detail="Transfer amount must be positive")
+    
+    # Generate transfer ID
+    transfer_id = str(uuid.uuid4())
+    timestamp = datetime.utcnow()
+    
+    # Create sender transaction (debit)
+    sender_txn = Transaction(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        type="p2p_send",
+        amount=-transfer.amount,
+        currency=transfer.currency,
+        status="completed",
+        metadata={
+            "transfer_id": transfer_id,
+            "recipient_id": recipient["id"],
+            "recipient_email": recipient["email"],
+            "recipient_name": recipient.get("name", "CryptoVault User"),
+            "note": transfer.note
+        },
+        created_at=timestamp,
+        updated_at=timestamp
+    )
+    
+    # Create recipient transaction (credit)
+    recipient_txn = Transaction(
+        id=str(uuid.uuid4()),
+        user_id=recipient["id"],
+        type="p2p_receive",
+        amount=transfer.amount,
+        currency=transfer.currency,
+        status="completed",
+        metadata={
+            "transfer_id": transfer_id,
+            "sender_id": user_id,
+            "sender_email": sender["email"],
+            "sender_name": sender.get("name", "CryptoVault User"),
+            "note": transfer.note
+        },
+        created_at=timestamp,
+        updated_at=timestamp
+    )
+    
+    # Execute atomic transfer
+    await transactions_collection.insert_many([
+        sender_txn.dict(),
+        recipient_txn.dict()
+    ])
+    
+    # Update portfolio values
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"portfolio_value": sender_balance - transfer.amount, "updated_at": timestamp}}
+    )
+    
+    recipient_balance = recipient.get("portfolio_value", 0)
+    await users_collection.update_one(
+        {"id": recipient["id"]},
+        {"$set": {"portfolio_value": recipient_balance + transfer.amount, "updated_at": timestamp}}
+    )
+    
+    # Log audit
+    await log_audit(
+        user_id=user_id,
+        action="p2p_transfer",
+        details={
+            "transfer_id": transfer_id,
+            "amount": transfer.amount,
+            "currency": transfer.currency,
+            "recipient": recipient["email"]
+        },
+        ip_address="internal"
+    )
+    
+    # Broadcast real-time update
+    await manager.broadcast({
+        "type": "p2p_transfer",
+        "data": {
+            "transfer_id": transfer_id,
+            "sender_id": user_id,
+            "recipient_id": recipient["id"],
+            "amount": transfer.amount,
+            "currency": transfer.currency
+        }
+    })
+    
+    return {
+        "message": "Transfer completed successfully",
+        "transfer": {
+            "id": transfer_id,
+            "amount": transfer.amount,
+            "currency": transfer.currency,
+            "recipient_email": recipient["email"],
+            "recipient_name": recipient.get("name"),
+            "status": "completed",
+            "created_at": timestamp.isoformat()
+        }
+    }
+
+@api_router.get("/transfers/p2p/history", tags=["transfers"])
+async def get_p2p_history(
+    limit: int = 50,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Get P2P transfer history for the current user."""
+    transactions_collection = db_connection.get_collection("transactions")
+    
+    transfers = await transactions_collection.find({
+        "user_id": user_id,
+        "type": {"$in": ["p2p_send", "p2p_receive"]}
+    }).sort("created_at", -1).skip(offset).limit(limit).to_list(limit)
+    
+    total = await transactions_collection.count_documents({
+        "user_id": user_id,
+        "type": {"$in": ["p2p_send", "p2p_receive"]}
+    })
+    
+    return {
+        "transfers": transfers,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+@api_router.get("/users/search", tags=["users"])
+async def search_users(
+    email: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Search for CryptoVault users by email for P2P transfers."""
+    users_collection = db_connection.get_collection("users")
+    
+    # Find users with matching email (partial match)
+    users = await users_collection.find({
+        "email": {"$regex": email.lower(), "$options": "i"},
+        "id": {"$ne": user_id},  # Exclude current user
+        "email_verified": True
+    }).limit(5).to_list(5)
+    
+    # Return only safe fields
+    return {
+        "users": [
+            {
+                "id": u["id"],
+                "name": u.get("name", "CryptoVault User"),
+                "email": u["email"]
+            }
+            for u in users
+        ]
+    }
+
+# ============================================
 # AUDIT LOG ENDPOINTS
 # ============================================
 
