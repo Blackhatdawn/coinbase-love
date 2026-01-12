@@ -9,10 +9,10 @@ services:
     region: oregon
     plan: starter  # Use 'starter' ($7/mo) for production - prevents cold starts
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: gunicorn server:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5
+    startCommand: gunicorn server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.0"
       - key: ENVIRONMENT
         value: production
       - key: MONGO_URL
@@ -24,13 +24,13 @@ services:
       - key: CORS_ORIGINS
         sync: false  # Set to your Vercel domain(s)
       - key: MONGO_MAX_POOL_SIZE
-        value: 50
+        value: "50"
       - key: MONGO_MIN_POOL_SIZE
-        value: 10
+        value: "10"
       - key: MONGO_TIMEOUT_MS
-        value: 5000
+        value: "5000"
       - key: RATE_LIMIT_PER_MINUTE
-        value: 60
+        value: "60"
       - key: EMAIL_SERVICE
         value: mock
       - key: EMAIL_FROM
@@ -38,11 +38,11 @@ services:
       - key: EMAIL_FROM_NAME
         value: CryptoVault
       - key: COINGECKO_API_KEY
-        value: CG-PA1sSLBd2ztNJpBjp2EGUtbw
+        sync: false  # Set in dashboard
       - key: USE_MOCK_PRICES
-        value: false
+        value: "false"
       - key: USE_REDIS
-        value: true
+        value: "true"
       - key: UPSTASH_REDIS_REST_URL
         sync: false  # Set in Render dashboard
       - key: UPSTASH_REDIS_REST_TOKEN
