@@ -213,6 +213,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token, email }),
       }),
+    resendVerification: (email: string) =>
+      request('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
 
     // Two-Factor Authentication
     setup2FA: () =>
