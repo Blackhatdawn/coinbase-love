@@ -1,178 +1,95 @@
 """
 Configuration module with environment variable validation and structured settings.
-Follows production best practices with type safety and validation.
+Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
 """
-import os
-import secrets
-from typing import Optional
-from pydantic import BaseModel, Field, validator
-from dotenv import load_dotenv
-from pathlib import Path
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional, List
+import logging
 
-# Load environment variables
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+logger = logging.getLogger(__name__)
 
-
-class Settings(BaseModel):
+class Settings(BaseSettings):
     """Application settings with validation and defaults."""
-    
+
     # MongoDB Configuration
-    mongo_url: str = Field(..., env='MONGO_URL')
-    db_name: str = Field(..., env='DB_NAME')
-    
+    mongo_url: str
+    db_name: str
+
     # Security Configuration
-    jwt_secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32), env='JWT_SECRET')
-    jwt_algorithm: str = Field(default="HS256")
-    access_token_expire_minutes: int = Field(default=30)
-    refresh_token_expire_days: int = Field(default=7)
-    
+    jwt_secret: str
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+
     # CORS Configuration
-    # For development: "*" is fine
-    # For production: Set to "https://your-vercel-app.vercel.app,https://yourdomain.com,http://localhost:3000"
-    cors_origins: str = Field(default="*", env='CORS_ORIGINS')
-    
+    cors_origins: str = "*"
+
     # Server Configuration
-    host: str = Field(default="0.0.0.0")
-    port: int = Field(default=8001)
-    environment: str = Field(default="development", env='ENVIRONMENT')
-    
+    host: str = "0.0.0.0"
+    port: int = 8001
+    environment: str = "development"
+
     # MongoDB Connection Pool Settings
-    mongo_max_pool_size: int = Field(default=50, env='MONGO_MAX_POOL_SIZE')
-    mongo_min_pool_size: int = Field(default=10, env='MONGO_MIN_POOL_SIZE')
-    mongo_server_selection_timeout_ms: int = Field(default=5000, env='MONGO_TIMEOUT_MS')
-    
+    mongo_max_pool_size: int = 50
+    mongo_min_pool_size: int = 10
+    mongo_server_selection_timeout_ms: int = 5000
+
     # Rate Limiting
-    rate_limit_per_minute: int = Field(default=60, env='RATE_LIMIT_PER_MINUTE')
-    
+    rate_limit_per_minute: int = 60
+
     # Email Configuration
-    email_service: str = Field(default="mock", env='EMAIL_SERVICE')
-    email_from: str = Field(default="noreply@cryptovault.com", env='EMAIL_FROM')
-    email_from_name: str = Field(default="CryptoVault", env='EMAIL_FROM_NAME')
-    # Production: Must set APP_URL env var to https://your-vercel-app.vercel.app
-    # Dev: Defaults to localhost:3000
-    app_url: str = Field(default="http://localhost:3000", env='APP_URL')
-    
+    email_service: str = "mock"
+    email_from: str = "noreply@cryptovault.com"
+    email_from_name: str = "CryptoVault"
+    app_url: str = "http://localhost:3000"
+
     # CoinGecko API Configuration
-    coingecko_api_key: Optional[str] = Field(default=None, env='COINGECKO_API_KEY')
-    use_mock_prices: bool = Field(default=False, env='USE_MOCK_PRICES')
-    
+    coingecko_api_key: Optional[str] = None
+    use_mock_prices: bool = False
+
     # Redis Configuration (Upstash)
-    use_redis: bool = Field(default=True, env='USE_REDIS')
-    upstash_redis_rest_url: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_URL')
-    upstash_redis_rest_token: Optional[str] = Field(default=None, env='UPSTASH_REDIS_REST_TOKEN')
-    
+    use_redis: bool = True
+    upstash_redis_rest_url: Optional[str] = None
+    upstash_redis_rest_token: Optional[str] = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",  # Ignore unknown env vars
+    )
+
     def is_redis_available(self) -> bool:
         """Check if Redis is properly configured and should be used."""
         return self.use_redis and bool(self.upstash_redis_rest_url) and bool(self.upstash_redis_rest_token)
-    
-    @validator('mongo_url')
-    def validate_mongo_url(cls, v):
-        if not v or not v.startswith('mongodb'):
-            raise ValueError('MONGO_URL must be a valid MongoDB connection string')
-        return v
-    
-    @validator('db_name')
-    def validate_db_name(cls, v):
-        if not v or len(v) < 3:
-            raise ValueError('DB_NAME must be at least 3 characters')
-        return v
-    
-    @validator('jwt_secret')
-    def validate_jwt_secret(cls, v):
-        if len(v) < 32:
-            raise ValueError('JWT_SECRET must be at least 32 characters for security')
-        return v
-    
-    @validator('environment')
-    def validate_environment(cls, v):
-        allowed = ['development', 'staging', 'production']
-        if v not in allowed:
-            raise ValueError(f'ENVIRONMENT must be one of: {allowed}')
-        return v
-    
-    @validator('email_service')
-    def validate_email_service(cls, v):
-        allowed = ['mock', 'sendgrid', 'resend', 'ses', 'smtp']
-        if v not in allowed:
-            raise ValueError(f'EMAIL_SERVICE must be one of: {allowed}')
-        return v
-    
-    def get_cors_origins_list(self) -> list:
+
+    def get_cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list."""
         if self.cors_origins == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(',')]
-    
-    class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
-def load_and_validate_settings() -> Settings:
-    """
-    Load and validate all environment variables.
-    Raises detailed errors if validation fails.
-    """
-    try:
-        # Load from environment
-        settings_dict = {
-            'mongo_url': os.environ.get('MONGO_URL'),
-            'db_name': os.environ.get('DB_NAME'),
-            'jwt_secret': os.environ.get('JWT_SECRET'),
-            'cors_origins': os.environ.get('CORS_ORIGINS', '*'),
-            'environment': os.environ.get('ENVIRONMENT', 'development'),
-            'mongo_max_pool_size': int(os.environ.get('MONGO_MAX_POOL_SIZE', '50')),
-            'mongo_min_pool_size': int(os.environ.get('MONGO_MIN_POOL_SIZE', '10')),
-            'mongo_server_selection_timeout_ms': int(os.environ.get('MONGO_TIMEOUT_MS', '5000')),
-            'rate_limit_per_minute': int(os.environ.get('RATE_LIMIT_PER_MINUTE', '60')),
-            # Email settings
-            'email_service': os.environ.get('EMAIL_SERVICE', 'mock'),
-            'email_from': os.environ.get('EMAIL_FROM', 'noreply@cryptovault.com'),
-            'email_from_name': os.environ.get('EMAIL_FROM_NAME', 'CryptoVault'),
-            'app_url': os.environ.get('APP_URL', 'http://localhost:3000'),
-            # CoinGecko settings
-            'coingecko_api_key': os.environ.get('COINGECKO_API_KEY'),
-            'use_mock_prices': os.environ.get('USE_MOCK_PRICES', 'false').lower() == 'true',
-            # Redis settings
-            'use_redis': os.environ.get('USE_REDIS', 'true').lower() == 'true',
-            'upstash_redis_rest_url': os.environ.get('UPSTASH_REDIS_REST_URL'),
-            'upstash_redis_rest_token': os.environ.get('UPSTASH_REDIS_REST_TOKEN'),
-        }
-        
-        # Remove None values to use defaults
-        settings_dict = {k: v for k, v in settings_dict.items() if v is not None}
-        
-        settings = Settings(**settings_dict)
-        
-        # Log successful load (with redaction)
-        print("✅ Environment variables loaded successfully:")
-        print(f"   MONGO_URL: {settings.mongo_url[:20]}...***")
-        print(f"   DB_NAME: {settings.db_name}")
-        print(f"   ENVIRONMENT: {settings.environment}")
-        print(f"   CORS_ORIGINS: {settings.cors_origins}")
-        print(f"   JWT_SECRET: ***[{len(settings.jwt_secret)} chars]***")
-        print(f"   MongoDB Pool: {settings.mongo_min_pool_size}-{settings.mongo_max_pool_size}")
-        print(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
-        print(f"   Email Service: {settings.email_service}")
-        print(f"   App URL: {settings.app_url}")
-        print(f"   CoinGecko API: {'configured' if settings.coingecko_api_key else 'not configured'}")
-        print(f"   Use Mock Prices: {settings.use_mock_prices}")
-        redis_status = "enabled" if settings.is_redis_available() else "disabled"
-        print(f"   Redis: {redis_status}")
-        if settings.is_redis_available():
-            print(f"   Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
-        
-        return settings
-        
-    except ValueError as e:
-        print(f"❌ Configuration Error: {str(e)}")
-        raise SystemExit(1)
-    except Exception as e:
-        print(f"❌ Failed to load environment variables: {str(e)}")
-        raise SystemExit(1)
-
-
-# Global settings instance
-settings = load_and_validate_settings()
+# Global settings instance (auto-loads and validates .env)
+try:
+    settings = Settings()
+    logger.info("✅ Environment variables loaded and validated successfully")
+    logger.debug(f"MONGO_URL: {settings.mongo_url[:20]}...***")
+    logger.debug(f"DB_NAME: {settings.db_name}")
+    logger.debug(f"ENVIRONMENT: {settings.environment}")
+    logger.debug(f"CORS_ORIGINS: {settings.cors_origins}")
+    logger.debug(f"JWT_SECRET: ***[{len(settings.jwt_secret)} chars]***")
+    logger.debug(f"MongoDB Pool: {settings.mongo_min_pool_size}-{settings.mongo_max_pool_size}")
+    logger.debug(f"Rate Limit: {settings.rate_limit_per_minute} req/min")
+    logger.debug(f"Email Service: {settings.email_service}")
+    logger.debug(f"App URL: {settings.app_url}")
+    logger.debug(f"CoinGecko API: {'configured' if settings.coingecko_api_key else 'not configured'}")
+    logger.debug(f"Use Mock Prices: {settings.use_mock_prices}")
+    redis_status = "enabled" if settings.is_redis_available() else "disabled"
+    logger.debug(f"Redis: {redis_status}")
+    if settings.is_redis_available():
+        logger.debug(f"Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
+except Exception as e:
+    logger.critical(f"❌ Failed to load/validate settings: {str(e)}")
+    raise

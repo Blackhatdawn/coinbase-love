@@ -12,6 +12,7 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import logging
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime, timedelta
+from config import settings
 import asyncio
 import json
 import os
