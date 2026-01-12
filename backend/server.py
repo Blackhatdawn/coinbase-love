@@ -195,7 +195,7 @@ class DatabaseConnection:
 
     def get_collection(self, collection_name: str):
         """Get a collection from the database."""
-        if not self.db or not self.is_connected:
+        if self.db is None or not self.is_connected:
             raise RuntimeError("Database not connected.")
         return self.db[collection_name]
 
