@@ -175,9 +175,11 @@ const Auth = () => {
         
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-              <Wallet className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img 
+              src="/cryptovault-logo.png" 
+              alt="CryptoVault" 
+              className="h-12 w-12 object-contain"
+            />
             <span className="font-display text-3xl font-bold">CryptoVault</span>
           </div>
           
