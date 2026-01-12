@@ -36,9 +36,11 @@ const Footer = () => {
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4 w-fit hover:opacity-80 transition-opacity">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-                <Wallet className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img 
+                src="/cryptovault-logo.png" 
+                alt="CryptoVault" 
+                className="h-9 w-9 object-contain"
+              />
               <span className="font-display text-xl font-bold">CryptoVault</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs mb-6">
