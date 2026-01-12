@@ -587,7 +587,7 @@ async def verify_email(data: VerifyEmailRequest, request: Request):
     users_collection = db_connection.get_collection("users")
 
     user_doc = await users_collection.find_one({
-        "": [
+        "$or": [
             {"email_verification_code": data.token},
             {"email_verification_token": data.token}
         ]
