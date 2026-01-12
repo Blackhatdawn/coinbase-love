@@ -302,4 +302,21 @@ export const api = {
     getLog: (id: string) =>
       request(`/audit-logs/${id}`),
   },
+
+  // P2P Transfers
+  transfers: {
+    p2p: (data: { recipient_email: string; amount: number; currency?: string; note?: string }) =>
+      request('/transfers/p2p', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getHistory: (limit = 50, offset = 0) =>
+      request(`/transfers/p2p/history?limit=${limit}&offset=${offset}`),
+  },
+
+  // User Search
+  users: {
+    search: (email: string) =>
+      request(`/users/search?email=${encodeURIComponent(email)}`),
+  },
 };
