@@ -27,6 +27,9 @@ const Auth = () => {
   const [emailVerificationStep, setEmailVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingUserName, setPendingUserName] = useState("");
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [showRecommendedSetup, setShowRecommendedSetup] = useState(false);
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
