@@ -8,28 +8,60 @@ import { Web3Provider } from "@/contexts/Web3Context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
-import ConnectionGuard from "@/components/ConnectionGuard";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import TransactionHistory from "./pages/TransactionHistory";
-import Markets from "./pages/Markets";
-import Trade from "./pages/Trade";
-import EnhancedTrade from "./pages/EnhancedTrade";
-import Earn from "./pages/Earn";
-import Learn from "./pages/Learn";
-import Contact from "./pages/Contact";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import NotFound from "./pages/NotFound";
-import About from "./pages/About";
-import Services from "./pages/Services";
-import Security from "./pages/Security";
-import FAQ from "./pages/FAQ";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 
-const queryClient = new QueryClient();
+// Eager loaded pages (critical path)
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+
+// Lazy loaded pages for performance
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const TransactionHistory = lazy(() => import("./pages/TransactionHistory"));
+const Markets = lazy(() => import("./pages/Markets"));
+const Trade = lazy(() => import("./pages/Trade"));
+const EnhancedTrade = lazy(() => import("./pages/EnhancedTrade"));
+const Earn = lazy(() => import("./pages/Earn"));
+const Learn = lazy(() => import("./pages/Learn"));
+const Contact = lazy(() => import("./pages/Contact"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const About = lazy(() => import("./pages/About"));
+const Services = lazy(() => import("./pages/Services"));
+const Security = lazy(() => import("./pages/Security"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const Fees = lazy(() => import("./pages/Fees"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Careers = lazy(() => import("./pages/Careers"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const AMLPolicy = lazy(() => import("./pages/AMLPolicy"));
+const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Suspense fallback component
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative">
+        <div className="w-16 h-16 rounded-full border-2 border-gold-500/20" />
+        <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-gold-500 animate-spin" />
+        <img src="/favicon.svg" alt="" className="absolute inset-0 m-auto w-8 h-8" />
+      </div>
+      <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +71,6 @@ const AppContent = () => {
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
     const handleNavigationEnd = () => {
-      // Hide spinner after a short delay to allow page to render
       setTimeout(() => setIsLoading(false), 300);
     };
 
@@ -58,29 +89,48 @@ const AppContent = () => {
         isVisible={isLoading}
         onLoadComplete={() => setIsLoading(false)}
       />
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/markets" element={<Markets />} />
-        <Route path="/trade" element={
-          <ErrorBoundary>
-            <EnhancedTrade />
-          </ErrorBoundary>
-        } />
-        <Route path="/earn" element={<Earn />} />
-        <Route path="/learn" element={<Learn />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/terms" element={<TermsOfService />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/security" element={<Security />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/markets" element={<Markets />} />
+          <Route path="/trade" element={
+            <ErrorBoundary>
+              <EnhancedTrade />
+            </ErrorBoundary>
+          } />
+          <Route path="/earn" element={<Earn />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/contact" element={<Contact />} />
+          
+          {/* Company Pages */}
+          <Route path="/about" element={<About />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/fees" element={<Fees />} />
+          
+          {/* Resources */}
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/help" element={<HelpCenter />} />
+          
+          {/* Legal Pages */}
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/cookies" element={<CookiePolicy />} />
+          <Route path="/aml" element={<AMLPolicy />} />
+          <Route path="/risk-disclosure" element={<RiskDisclosure />} />
+          
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
+          
+          {/* 404 Catch-all - MUST BE LAST */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </>
   );
 };

@@ -1,4 +1,4 @@
-import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield } from "lucide-react";
+import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
@@ -7,25 +7,29 @@ const Footer = () => {
       { label: "About Us", href: "/about" },
       { label: "Services", href: "/services" },
       { label: "Security", href: "/security" },
-      { label: "Careers", href: "#" },
+      { label: "Careers", href: "/careers" },
+      { label: "Blog", href: "/blog" },
     ],
     products: [
       { label: "Markets", href: "/markets" },
       { label: "Trade", href: "/trade" },
-      { label: "Earn", href: "/earn" },
+      { label: "Earn (Staking)", href: "/earn" },
       { label: "Portfolio", href: "/dashboard" },
+      { label: "Fees", href: "/fees" },
     ],
     resources: [
       { label: "Learn", href: "/learn" },
       { label: "FAQ", href: "/faq" },
+      { label: "Help Center", href: "/help" },
       { label: "API Docs", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "Contact", href: "/contact" },
     ],
     legal: [
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
-      { label: "Cookie Policy", href: "#" },
-      { label: "Risk Disclosure", href: "/security" },
+      { label: "Cookie Policy", href: "/cookies" },
+      { label: "AML Policy", href: "/aml" },
+      { label: "Risk Disclosure", href: "/risk-disclosure" },
     ],
   };
 
@@ -40,12 +44,12 @@ const Footer = () => {
                 <img 
                   src="/favicon.svg" 
                   alt="CryptoVault" 
-                  className="h-10 w-10 object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/20 blur-lg transition-all duration-500 -z-10" />
               </div>
               <div className="flex flex-col">
-                <span className="font-display text-xl font-bold tracking-tight">
+                <span className="font-display text-2xl font-bold tracking-tight">
                   Crypto<span className="text-gold-400">Vault</span>
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-muted-foreground tracking-wider uppercase">
@@ -56,7 +60,7 @@ const Footer = () => {
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs mb-6">
               Institutional-grade digital asset custody and management. 
-              Secure, compliant, and trusted by individuals and enterprises.
+              Secure, compliant, and trusted by individuals and enterprises worldwide.
             </p>
             
             {/* Contact Info */}
@@ -81,8 +85,8 @@ const Footer = () => {
                 href="https://twitter.com/CryptoVaultFin" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-gold-400 transition-colors"
-                title="X (Twitter) @CryptoVaultFin"
+                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                title="X (Twitter)"
                 data-testid="social-twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -91,7 +95,7 @@ const Footer = () => {
                 href="https://linkedin.com/company/cryptovault-financial" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-gold-400 transition-colors"
+                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
                 title="LinkedIn"
                 data-testid="social-linkedin"
               >
@@ -101,7 +105,7 @@ const Footer = () => {
                 href="https://discord.gg/cryptovault" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-gold-400 transition-colors"
+                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
                 title="Discord"
                 data-testid="social-discord"
               >
@@ -111,7 +115,7 @@ const Footer = () => {
                 href="https://t.me/cryptovaultfinancial" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-gold-400 transition-colors"
+                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
                 title="Telegram"
                 data-testid="social-telegram"
               >
@@ -127,11 +131,12 @@ const Footer = () => {
               {links.company.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <a href={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors flex items-center gap-1">
                       {link.label}
+                      {link.href.startsWith("http") && <ExternalLink className="h-3 w-3" />}
                     </a>
                   ) : (
-                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -147,11 +152,11 @@ const Footer = () => {
               {links.products.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <a href={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </a>
                   ) : (
-                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -167,11 +172,11 @@ const Footer = () => {
               {links.resources.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <a href={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </a>
                   ) : (
-                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -187,11 +192,11 @@ const Footer = () => {
               {links.legal.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <a href={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </a>
                   ) : (
-                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <Link to={link.href} className="text-sm text-muted-foreground hover:text-gold-400 transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -213,9 +218,9 @@ const Footer = () => {
                 Delaware C-Corp
               </span>
               <span className="hidden md:inline text-gold-500/30">•</span>
-              <span>FinCEN Registered</span>
+              <span>FinCEN MSB Registered</span>
               <span className="hidden md:inline text-gold-500/30">•</span>
-              <span className="text-gold-500/80">SOC 2 Type II (In Progress)</span>
+              <span className="text-gold-500/80">SOC 2 Type II</span>
             </div>
           </div>
           
@@ -223,7 +228,7 @@ const Footer = () => {
           <p className="text-xs text-muted-foreground/70 mt-6 text-center max-w-4xl mx-auto">
             Digital asset investments involve substantial risk. Prices can be volatile and you may lose 
             your entire investment. Past performance does not guarantee future results. CryptoVault Financial 
-            does not provide investment advice. Please review our risk disclosures before trading.
+            does not provide investment advice. Please review our <Link to="/risk-disclosure" className="underline hover:text-gold-400">risk disclosures</Link> before trading.
           </p>
         </div>
       </div>
