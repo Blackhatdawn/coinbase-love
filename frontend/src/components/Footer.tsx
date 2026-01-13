@@ -1,4 +1,4 @@
-import { Wallet, Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Phone } from "lucide-react";
+import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
@@ -30,18 +30,29 @@ const Footer = () => {
   };
 
   return (
-    <footer className="border-t border-border/50 bg-secondary/20" data-testid="footer">
+    <footer className="border-t border-gold-500/10 bg-background/95" data-testid="footer">
       <div className="container mx-auto px-4 py-14">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
           {/* Brand */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4 w-fit hover:opacity-80 transition-opacity">
-              <img 
-                src="/cryptovault-logo.png" 
-                alt="CryptoVault" 
-                className="h-9 w-9 object-contain"
-              />
-              <span className="font-display text-xl font-bold">CryptoVault</span>
+            <Link to="/" className="flex items-center gap-3 mb-4 w-fit group">
+              <div className="relative">
+                <img 
+                  src="/favicon.svg" 
+                  alt="CryptoVault" 
+                  className="h-10 w-10 object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/20 blur-lg transition-all duration-500 -z-10" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-display text-xl font-bold tracking-tight">
+                  Crypto<span className="text-gold-400">Vault</span>
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground tracking-wider uppercase">
+                  <Shield className="h-2.5 w-2.5 text-gold-500" />
+                  Secure Global Trading
+                </span>
+              </div>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs mb-6">
               Institutional-grade digital asset custody and management. 
@@ -52,26 +63,25 @@ const Footer = () => {
             <div className="space-y-2 mb-6">
               <a 
                 href="mailto:support@cryptovault.financial" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-400 transition-colors"
                 data-testid="footer-email"
               >
                 <Mail className="h-4 w-4" />
                 support@cryptovault.financial
               </a>
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 mt-0.5" />
+                <MapPin className="h-4 w-4 mt-0.5 text-gold-500/60" />
                 <span>1201 Market Street, Suite 101<br />Wilmington, DE 19801</span>
               </div>
             </div>
 
             {/* Social Links */}
             <div className="flex gap-4">
-              {/* TODO: Replace with actual CryptoVault social links */}
               <a 
                 href="https://twitter.com/CryptoVaultFin" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-gold-400 transition-colors"
                 title="X (Twitter) @CryptoVaultFin"
                 data-testid="social-twitter"
               >
@@ -81,7 +91,7 @@ const Footer = () => {
                 href="https://linkedin.com/company/cryptovault-financial" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-gold-400 transition-colors"
                 title="LinkedIn"
                 data-testid="social-linkedin"
               >
@@ -91,7 +101,7 @@ const Footer = () => {
                 href="https://discord.gg/cryptovault" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-gold-400 transition-colors"
                 title="Discord"
                 data-testid="social-discord"
               >
@@ -101,7 +111,7 @@ const Footer = () => {
                 href="https://t.me/cryptovaultfinancial" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-gold-400 transition-colors"
                 title="Telegram"
                 data-testid="social-telegram"
               >
@@ -112,7 +122,7 @@ const Footer = () => {
 
           {/* Company Links */}
           <div>
-            <h4 className="font-semibold mb-4">Company</h4>
+            <h4 className="font-semibold mb-4 text-gold-400">Company</h4>
             <ul className="space-y-3">
               {links.company.map((link) => (
                 <li key={link.label}>
@@ -132,7 +142,7 @@ const Footer = () => {
 
           {/* Products Links */}
           <div>
-            <h4 className="font-semibold mb-4">Products</h4>
+            <h4 className="font-semibold mb-4 text-gold-400">Products</h4>
             <ul className="space-y-3">
               {links.products.map((link) => (
                 <li key={link.label}>
@@ -152,7 +162,7 @@ const Footer = () => {
 
           {/* Resources Links */}
           <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
+            <h4 className="font-semibold mb-4 text-gold-400">Resources</h4>
             <ul className="space-y-3">
               {links.resources.map((link) => (
                 <li key={link.label}>
@@ -172,7 +182,7 @@ const Footer = () => {
 
           {/* Legal Links */}
           <div>
-            <h4 className="font-semibold mb-4">Legal</h4>
+            <h4 className="font-semibold mb-4 text-gold-400">Legal</h4>
             <ul className="space-y-3">
               {links.legal.map((link) => (
                 <li key={link.label}>
@@ -192,17 +202,20 @@ const Footer = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-border/50 mt-12 pt-8">
+        <div className="border-t border-gold-500/10 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 CryptoVault Financial, Inc. All rights reserved.
+              © 2025 CryptoVault Financial, Inc. All rights reserved.
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>Delaware C-Corp</span>
-              <span className="hidden md:inline">•</span>
+              <span className="flex items-center gap-1">
+                <Shield className="h-3 w-3 text-gold-500" />
+                Delaware C-Corp
+              </span>
+              <span className="hidden md:inline text-gold-500/30">•</span>
               <span>FinCEN Registered</span>
-              <span className="hidden md:inline">•</span>
-              <span>SOC 2 Type II (In Progress)</span>
+              <span className="hidden md:inline text-gold-500/30">•</span>
+              <span className="text-gold-500/80">SOC 2 Type II (In Progress)</span>
             </div>
           </div>
           
