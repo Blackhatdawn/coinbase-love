@@ -35,11 +35,11 @@ const features = [
 
 const FeaturesSection = () => {
   return (
-    <section className="py-20 bg-secondary/20">
+    <section className="py-20 bg-background/50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-14">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
-            Why Choose <span className="text-gradient">CryptoVault</span>?
+            Why Choose <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">CryptoVault</span>?
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Industry-leading platform trusted by millions. Built for beginners and pros alike.
@@ -50,13 +50,13 @@ const FeaturesSection = () => {
           {features.map((feature, index) => (
             <div 
               key={feature.title}
-              className="group glass-card p-6 hover:border-primary/50 transition-all duration-300 animate-slide-up"
+              className="group glass-card p-6 border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 animate-slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <feature.icon className="h-6 w-6 text-primary" />
+              <div className="w-12 h-12 rounded-xl bg-gold-500/10 flex items-center justify-center mb-4 group-hover:bg-gold-500/20 group-hover:scale-110 transition-all">
+                <feature.icon className="h-6 w-6 text-gold-400" />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
+              <h3 className="font-display text-xl font-semibold mb-2 group-hover:text-gold-400 transition-colors">
                 {feature.title}
               </h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
