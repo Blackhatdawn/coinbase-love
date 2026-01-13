@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { RefreshCw, AlertCircle, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
@@ -26,7 +25,7 @@ const MarketSection = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
           <div>
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
-              Live <span className="text-gradient">Market</span> Prices
+              Live <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Market</span> Prices
             </h2>
             <p className="text-muted-foreground max-w-xl">
               Track real-time prices across 200+ cryptocurrencies. Trade with
@@ -35,8 +34,8 @@ const MarketSection = () => {
             {lastUpdated && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-500"></span>
                 </span>
                 Live data • Updated {lastUpdated.toLocaleTimeString()}
               </p>
@@ -48,14 +47,18 @@ const MarketSection = () => {
               size="sm"
               onClick={refetch}
               disabled={isRefreshing}
-              className="text-muted-foreground"
+              className="text-muted-foreground hover:text-gold-400"
             >
               <RefreshCw
                 className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")}
               />
               Refresh
             </Button>
-            <Button variant="outline" asChild>
+            <Button 
+              variant="outline" 
+              className="border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400"
+              asChild
+            >
               <Link to="/markets">View All Markets</Link>
             </Button>
           </div>
@@ -67,17 +70,17 @@ const MarketSection = () => {
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="glass-card p-6 animate-pulse"
+                className="glass-card p-6 animate-pulse border border-gold-500/10"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-muted" />
+                  <div className="w-10 h-10 rounded-full bg-gold-500/10" />
                   <div>
-                    <div className="h-4 w-16 bg-muted rounded mb-1" />
-                    <div className="h-3 w-20 bg-muted rounded" />
+                    <div className="h-4 w-16 bg-gold-500/10 rounded mb-1" />
+                    <div className="h-3 w-20 bg-gold-500/10 rounded" />
                   </div>
                 </div>
-                <div className="h-6 w-24 bg-muted rounded mb-2" />
-                <div className="h-4 w-16 bg-muted rounded" />
+                <div className="h-6 w-24 bg-gold-500/10 rounded mb-2" />
+                <div className="h-4 w-16 bg-gold-500/10 rounded" />
               </div>
             ))}
           </div>
@@ -85,13 +88,17 @@ const MarketSection = () => {
 
         {/* Error State */}
         {error && data.length === 0 && (
-          <div className="glass-card p-12 text-center">
+          <div className="glass-card p-12 text-center border border-gold-500/10">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Failed to Load Market Data</h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               We couldn't fetch the latest prices. This might be due to a network issue or our data provider being temporarily unavailable.
             </p>
-            <Button onClick={refetch} disabled={isRefreshing}>
+            <Button 
+              onClick={refetch} 
+              disabled={isRefreshing}
+              className="bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black"
+            >
               <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
               Try Again
             </Button>
@@ -101,11 +108,11 @@ const MarketSection = () => {
         {/* Data Grid */}
         {displayCoins.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {displayCoins.map((crypto, index) => (
+            {displayCoins.map((crypto) => (
               <Link
                 key={crypto.id}
                 to={`/trade?coin=${crypto.id}`}
-                className="glass-card p-6 hover:border-primary/50 transition-all duration-300 group"
+                className="glass-card p-6 border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group"
                 data-testid={`crypto-card-${crypto.symbol}`}
               >
                 {/* Header */}
@@ -121,18 +128,18 @@ const MarketSection = () => {
                         }}
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center font-bold text-primary">
+                      <div className="w-10 h-10 rounded-full bg-gold-500/10 flex items-center justify-center font-bold text-gold-400">
                         {crypto.symbol.charAt(0)}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-semibold group-hover:text-primary transition-colors">
+                      <h3 className="font-semibold group-hover:text-gold-400 transition-colors">
                         {crypto.symbol}
                       </h3>
                       <p className="text-xs text-muted-foreground">{crypto.name}</p>
                     </div>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink className="h-4 w-4 text-gold-400/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Price */}

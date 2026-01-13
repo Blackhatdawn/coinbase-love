@@ -16,16 +16,16 @@ const PriceTicker = () => {
   // Show skeleton loader while loading
   if (isLoading && data.length === 0) {
     return (
-      <div className="bg-secondary/50 border-y border-border/50 overflow-hidden">
+      <div className="bg-background/80 border-y border-gold-500/10 overflow-hidden backdrop-blur-sm">
         <div className="flex animate-ticker-scroll">
           {Array.from({ length: 16 }).map((_, index) => (
             <div
               key={index}
               className="flex items-center gap-3 px-6 py-3 whitespace-nowrap"
             >
-              <div className="h-4 w-10 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-20 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-14 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-10 bg-gold-500/10 animate-pulse rounded" />
+              <div className="h-4 w-20 bg-gold-500/10 animate-pulse rounded" />
+              <div className="h-4 w-14 bg-gold-500/10 animate-pulse rounded" />
             </div>
           ))}
         </div>
@@ -42,7 +42,7 @@ const PriceTicker = () => {
           <span className="text-destructive">Failed to load market data</span>
           <button
             onClick={() => window.location.reload()}
-            className="text-primary hover:underline flex items-center gap-1"
+            className="text-gold-400 hover:text-gold-300 hover:underline flex items-center gap-1"
           >
             <RefreshCw className="h-3 w-3" />
             Retry
@@ -56,11 +56,11 @@ const PriceTicker = () => {
   const tickerContent = [...data, ...data];
 
   return (
-    <div className="bg-secondary/50 border-y border-border/50 overflow-hidden relative">
+    <div className="bg-background/80 border-y border-gold-500/10 overflow-hidden relative backdrop-blur-sm">
       {/* Refreshing indicator */}
       {isRefreshing && (
         <div className="absolute top-1 right-2 z-10">
-          <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+          <RefreshCw className="h-3 w-3 animate-spin text-gold-400" />
         </div>
       )}
 
@@ -71,7 +71,7 @@ const PriceTicker = () => {
             className="flex items-center gap-3 px-6 py-3 whitespace-nowrap"
             data-testid={`ticker-${crypto.symbol}`}
           >
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-gold-400">
               {crypto.symbol}
             </span>
             <span className="text-muted-foreground text-sm">
