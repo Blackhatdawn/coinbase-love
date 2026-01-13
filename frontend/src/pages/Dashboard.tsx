@@ -16,7 +16,7 @@ import {
   History
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api } from "@/lib/apiClient";
 
 interface Holding {
   symbol: string;

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/lib/api";
+import { api } from "@/lib/apiClient";
 import { Wallet, TrendingUp, BarChart3, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 

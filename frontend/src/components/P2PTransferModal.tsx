@@ -9,7 +9,7 @@ import {
   User, DollarSign, MessageSquare, ArrowRight 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { api } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface P2PTransferModalProps {

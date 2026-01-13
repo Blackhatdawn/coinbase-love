@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api } from "@/lib/apiClient";
 import { Download, Filter, MoreVertical } from "lucide-react";
 
 interface AuditLog {

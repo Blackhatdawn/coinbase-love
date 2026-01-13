@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api } from "@/lib/apiClient";
 import { signUpSchema, signInSchema, validateFormData } from "@/lib/validation";
 import OTPVerificationModal from "@/components/OTPVerificationModal";
 import RecommendedSetup from "@/components/RecommendedSetup";

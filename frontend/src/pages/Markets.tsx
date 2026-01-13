@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CryptoCard from "@/components/CryptoCard";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/apiClient";
 
 interface CryptoData {
   symbol: string;
