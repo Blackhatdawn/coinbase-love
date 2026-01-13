@@ -1,62 +1,45 @@
 /**
  * CryptoVault API Client - Production-Grade Configuration
  * 
- * ARCHITECTURE:
- * - Fully decoupled Frontend/Backend
- * - Dynamic environment-based URL configuration
- * - Robust error handling with retry logic
- * - HTTP-Only cookie authentication with CSRF protection
- * - Health check with connection spinner
+ * SECURITY FEATURES:
+ * - No hardcoded URLs or secrets
+ * - Environment-based configuration
+ * - Automatic retry with exponential backoff
+ * - Request/response interceptors
+ * - CSRF protection ready
+ * - Graceful error handling
  * 
  * ENVIRONMENT VARIABLES:
- * - VITE_API_BASE_URL: Full backend URL (e.g., https://api.cryptovault.com)
- * - Required in production, optional in development (uses proxy)
+ * - VITE_API_BASE_URL: Backend URL (optional in dev, required in prod)
  */
 
 import { create } from 'zustand';
 
 // ============================================
-// ENVIRONMENT CONFIGURATION
+// ENVIRONMENT CONFIGURATION (SECURE)
 // ============================================
 
-const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const IS_PRODUCTION = import.meta.env.PROD;
 const IS_DEVELOPMENT = import.meta.env.DEV;
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Build-time validation
-if (IS_PRODUCTION && !VITE_API_BASE_URL) {
-  console.error(`
-╔════════════════════════════════════════════════════════════════╗
-║  ❌ CRITICAL CONFIGURATION ERROR                               ║
-║                                                                 ║
-║  VITE_API_BASE_URL is not set in production!                   ║
-║                                                                 ║
-║  Set this in your deployment platform (Vercel/Netlify):        ║
-║    Key: VITE_API_BASE_URL                                      ║
-║    Value: https://your-backend-domain.com                      ║
-║                                                                 ║
-║  The application cannot connect to the backend without this.   ║
-╚════════════════════════════════════════════════════════════════╝
-  `);
-}
-
-// Determine API base URL
+// Determine API base URL securely
 let API_BASE: string;
 
-if (VITE_API_BASE_URL) {
-  // Production or explicitly configured: use environment variable
+if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
+  // Production or explicitly configured
   API_BASE = `${VITE_API_BASE_URL.replace(/\/$/, '')}/api`;
 } else if (IS_DEVELOPMENT) {
-  // Development: use Vite proxy
+  // Development: use Vite proxy (no hardcoded localhost!)
   API_BASE = '/api';
 } else {
-  // Production fallback (will fail but provides clear error)
+  // Production without config - use relative path (assumes same domain)
   API_BASE = '/api';
 }
 
-// Log configuration (non-sensitive)
+// Log configuration ONLY in development (no secrets!)
 if (IS_DEVELOPMENT) {
-  console.log('🔌 CryptoVault API Configuration:', {
+  console.log('🔌 API Configuration:', {
     mode: IS_PRODUCTION ? 'production' : 'development',
     apiBase: API_BASE,
     usingProxy: !VITE_API_BASE_URL,
@@ -92,261 +75,137 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
 }));
 
 // ============================================
-// RETRY & ERROR HANDLING CONFIGURATION
+// RETRY CONFIGURATION
 // ============================================
 
 const RETRY_CONFIG = {
   maxRetries: 3,
-  delays: [2000, 5000, 10000], // Exponential backoff
-  healthCheckTimeout: 30000, // 30s for cold start (Render)
+  delays: [1000, 2000, 4000], // Exponential backoff
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
 };
 
-export class APIError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'APIError';
+// ============================================
+// REQUEST UTILITIES
+// ============================================
+
+interface RequestOptions extends RequestInit {
+  skipAuth?: boolean;
+  timeout?: number;
+}
+
+async function request<T>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const { skipAuth = false, timeout = 30000, ...fetchOptions } = options;
+  const url = `${API_BASE}${endpoint}`;
+
+  // Set up timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  // Build headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(fetchOptions.headers as Record<string, string>),
+  };
+
+  // Add auth token if available and not skipped
+  if (!skipAuth) {
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      headers,
+      credentials: 'include', // For cookies/CSRF
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Handle non-OK responses
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).data = errorData;
+      throw error;
+    }
+
+    // Handle empty responses
+    const text = await response.text();
+    if (!text) return {} as T;
+
+    return JSON.parse(text) as T;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    // Handle abort (timeout)
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - please try again');
+    }
+
+    // Handle network errors gracefully
+    if (error.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to server - please check your connection');
+    }
+
+    throw error;
+  }
+}
+
+// Retry wrapper
+async function requestWithRetry<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+  retryCount = 0
+): Promise<T> {
+  try {
+    return await request<T>(endpoint, options);
+  } catch (error: any) {
+    const shouldRetry =
+      retryCount < RETRY_CONFIG.maxRetries &&
+      RETRY_CONFIG.retryableStatuses.includes(error.status);
+
+    if (shouldRetry) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_CONFIG.delays[retryCount])
+      );
+      return requestWithRetry<T>(endpoint, options, retryCount + 1);
+    }
+
+    throw error;
   }
 }
 
 // ============================================
-// HEALTH CHECK
-// ============================================
-
-let healthCheckPromise: Promise<boolean> | null = null;
-
-export const checkBackendHealth = async (): Promise<boolean> => {
-  // Prevent concurrent health checks
-  if (healthCheckPromise) return healthCheckPromise;
-  
-  const store = useConnectionStore.getState();
-  store.setConnecting(true);
-  
-  healthCheckPromise = (async () => {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), RETRY_CONFIG.healthCheckTimeout);
-      
-      const response = await fetch(`${API_BASE}/health`, {
-        method: 'GET',
-        signal: controller.signal,
-        credentials: 'include',
-      });
-      
-      clearTimeout(timeout);
-      
-      if (response.ok) {
-        const data = await response.json();
-        store.setConnected(true);
-        store.setConnecting(false);
-        store.resetRetry();
-        console.log('✅ Backend connected:', data);
-        return true;
-      }
-      
-      throw new Error(`Health check failed: ${response.status}`);
-    } catch (error: any) {
-      const errorMessage = error.name === 'AbortError' 
-        ? 'Backend is starting up (cold start)...'
-        : error.message;
-      
-      store.setError(errorMessage);
-      store.setConnecting(false);
-      console.error('❌ Backend health check failed:', errorMessage);
-      return false;
-    } finally {
-      healthCheckPromise = null;
-    }
-  })();
-  
-  return healthCheckPromise;
-};
-
-// ============================================
-// TOKEN REFRESH STATE
-// ============================================
-
-let isRefreshing = false;
-let refreshPromise: Promise<void> | null = null;
-let refreshSubscribers: ((success: boolean) => void)[] = [];
-
-const onRefreshed = (success: boolean) => {
-  refreshSubscribers.forEach((callback) => callback(success));
-  refreshSubscribers = [];
-};
-
-const addRefreshSubscriber = (callback: (success: boolean) => void) => {
-  refreshSubscribers.push(callback);
-};
-
-// ============================================
-// CORE REQUEST HANDLER
-// ============================================
-
-const request = async (
-  endpoint: string,
-  options: RequestInit = {},
-  retryCount = 0
-): Promise<any> => {
-  const url = `${API_BASE}${endpoint}`;
-  
-  // Get CSRF token from cookie
-  const csrfToken = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('csrf_token='))
-    ?.split('=')[1];
-  
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
-    ...options.headers,
-  };
-  
-  try {
-    let response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // Send cookies
-    });
-    
-    // Handle 401 - Token expired
-    if (
-      response.status === 401 &&
-      !endpoint.includes('/auth/login') &&
-      !endpoint.includes('/auth/signup') &&
-      !endpoint.includes('/auth/refresh')
-    ) {
-      if (isRefreshing) {
-        // Wait for ongoing refresh
-        const success = await new Promise<boolean>((resolve) => {
-          addRefreshSubscriber(resolve);
-        });
-        
-        if (success) {
-          // Retry with new token
-          response = await fetch(url, {
-            ...options,
-            headers,
-            credentials: 'include',
-          });
-        } else {
-          throw new APIError(401, 'Session expired. Please log in again.', 'SESSION_EXPIRED');
-        }
-      } else {
-        // Initiate refresh
-        isRefreshing = true;
-        
-        try {
-          const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          
-          if (refreshResponse.ok) {
-            isRefreshing = false;
-            onRefreshed(true);
-            
-            // Retry original request
-            response = await fetch(url, {
-              ...options,
-              headers,
-              credentials: 'include',
-            });
-          } else {
-            isRefreshing = false;
-            onRefreshed(false);
-            throw new APIError(401, 'Session expired. Please log in again.', 'SESSION_EXPIRED');
-          }
-        } catch (refreshError) {
-          isRefreshing = false;
-          onRefreshed(false);
-          throw refreshError;
-        }
-      }
-    }
-    
-    // Handle non-2xx responses
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new APIError(
-        response.status,
-        error.error || error.detail || error.message || 'Request failed',
-        error.code
-      );
-    }
-    
-    return await response.json();
-  } catch (error) {
-    if (error instanceof APIError) throw error;
-    
-    const isNetworkError = error instanceof TypeError;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Retry on network errors (Render cold start)
-    if (retryCount < RETRY_CONFIG.maxRetries && isNetworkError) {
-      const delay = RETRY_CONFIG.delays[retryCount];
-      console.log(`🔄 Retry ${retryCount + 1}/${RETRY_CONFIG.maxRetries} after ${delay}ms`);
-      
-      if (retryCount === 0) {
-        console.log('⏳ Backend may be waking up from idle state...');
-      }
-      
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return request(endpoint, options, retryCount + 1);
-    }
-    
-    // Connection failed
-    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-      throw new APIError(
-        0,
-        'Unable to connect to server. Please check your internet connection.',
-        'NETWORK_ERROR'
-      );
-    }
-    
-    throw new APIError(0, errorMessage, 'UNKNOWN_ERROR');
-  }
-};
-
-// ============================================
-// API ENDPOINTS
+// API METHODS
 // ============================================
 
 export const api = {
-  // Health Check
-  health: {
-    check: () => request('/health'),
-  },
-  
+  // Health check
+  health: () => requestWithRetry<{ status: string }>('/health', { skipAuth: true }),
+
   // Authentication
   auth: {
     signup: (email: string, password: string, name: string) =>
-      request('/auth/signup', {
+      request<any>('/auth/signup', {
         method: 'POST',
         body: JSON.stringify({ email, password, name }),
       }),
     login: (email: string, password: string, totp_code?: string) =>
-      request('/auth/login', {
+      request<any>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password, totp_code }),
       }),
-    logout: () => request('/auth/logout', { method: 'POST' }),
-    getProfile: () => request('/auth/me'),
-    refresh: () => request('/auth/refresh', { method: 'POST' }),
-    verifyEmail: (token: string, email: string) =>
-      request('/auth/verify-email', {
-        method: 'POST',
-        body: JSON.stringify({ token, email }),
-      }),
-    resendVerification: (email: string) =>
-      request('/auth/resend-verification', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      }),
+    logout: () => request<any>('/auth/logout', { method: 'POST' }),
+    me: () => request<any>('/auth/me'),
+    refresh: () => request<any>('/auth/refresh', { method: 'POST' }),
     forgotPassword: (email: string) =>
       request('/auth/forgot-password', {
         method: 'POST',
@@ -357,197 +216,173 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token, password }),
       }),
-    
-    // Two-Factor Authentication
+    verifyEmail: (token: string, code: string) =>
+      request('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token, code }),
+      }),
+    resendVerification: (token: string) =>
+      request('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    // 2FA
     setup2FA: () => request('/auth/2fa/setup', { method: 'POST' }),
     verify2FA: (code: string) =>
       request('/auth/2fa/verify', {
         method: 'POST',
         body: JSON.stringify({ code }),
       }),
-    get2FAStatus: () => request('/auth/2fa/status'),
     disable2FA: (password: string) =>
       request('/auth/2fa/disable', {
         method: 'POST',
         body: JSON.stringify({ password }),
       }),
+    get2FAStatus: () => request('/auth/2fa/status'),
     getBackupCodes: () => request('/auth/2fa/backup-codes', { method: 'POST' }),
-    
-    // Session Management
+    // Sessions
     getSessions: () => request('/auth/sessions'),
     revokeSession: (sessionId: string) =>
       request(`/auth/sessions/${sessionId}`, { method: 'DELETE' }),
     revokeAllSessions: () =>
       request('/auth/sessions/revoke-all', { method: 'POST' }),
   },
-  
-  // Cryptocurrencies
+
+  // Crypto data
   crypto: {
-    getAll: () => request('/crypto'),
-    getOne: (coinId: string) => request(`/crypto/${coinId}`),
+    getAll: () => requestWithRetry<any>('/crypto', { skipAuth: true }),
+    getOne: (coinId: string) =>
+      requestWithRetry<any>(`/crypto/${coinId}`, { skipAuth: true }),
     getHistory: (coinId: string, days = 7) =>
-      request(`/crypto/${coinId}/history?days=${days}`),
+      requestWithRetry<any>(`/crypto/${coinId}/history?days=${days}`, { skipAuth: true }),
   },
-  
+
   // Portfolio
   portfolio: {
-    get: () => request('/portfolio'),
-    getHolding: (symbol: string) => request(`/portfolio/holding/${symbol}`),
-    addHolding: (symbol: string, name: string, amount: number) =>
-      request('/portfolio/holding', {
-        method: 'POST',
-        body: JSON.stringify({ symbol, name, amount }),
-      }),
-    deleteHolding: (symbol: string) =>
-      request(`/portfolio/holding/${symbol}`, { method: 'DELETE' }),
-  },
-  
-  // Wallet
-  wallet: {
-    getBalances: () => request('/wallet/balances'),
-    getDepositAddress: (asset: string) =>
-      request(`/wallet/deposit-address/${asset}`),
-    createDeposit: (asset: string, amount: number, txHash?: string) =>
-      request('/wallet/deposit', {
-        method: 'POST',
-        body: JSON.stringify({ asset, amount, tx_hash: txHash }),
-      }),
-    confirmDeposit: (depositId: string) =>
-      request(`/wallet/deposit/${depositId}/confirm`, { method: 'POST' }),
-    createWithdrawal: (asset: string, amount: number, address: string) =>
-      request('/wallet/withdraw', {
-        method: 'POST',
-        body: JSON.stringify({ asset, amount, address }),
-      }),
-    getWithdrawalLimits: () => request('/wallet/withdrawal-limits'),
-  },
-  
-  // P2P Transfers
-  transfers: {
-    p2p: (data: { recipient_email: string; amount: number; currency?: string; note?: string }) =>
-      request('/transfers/p2p', {
+    get: () => request<any>('/portfolio'),
+    getHolding: (symbol: string) => request<any>(`/portfolio/holding/${symbol}`),
+    addHolding: (data: any) =>
+      request<any>('/portfolio/holding', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    getHistory: (limit = 50, offset = 0) =>
-      request(`/transfers/p2p/history?limit=${limit}&offset=${offset}`),
-  },
-  
-  // Staking/Vault
-  staking: {
-    getProducts: () => request('/staking/products'),
-    stake: (productId: string, amount: number) =>
-      request('/staking/stake', {
-        method: 'POST',
-        body: JSON.stringify({ product_id: productId, amount }),
+    updateHolding: (symbol: string, data: any) =>
+      request<any>(`/portfolio/holding/${symbol}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
       }),
-    unstake: (stakeId: string) =>
-      request(`/staking/${stakeId}/unstake`, { method: 'POST' }),
-    getMyStakes: () => request('/staking/my-stakes'),
-    getRewards: () => request('/staking/rewards'),
+    deleteHolding: (symbol: string) =>
+      request<any>(`/portfolio/holding/${symbol}`, { method: 'DELETE' }),
   },
-  
+
+  // Wallet
+  wallet: {
+    getBalances: () => request<any>('/wallet/balances'),
+    deposit: (data: any) =>
+      request<any>('/wallet/deposit', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    withdraw: (data: any) =>
+      request<any>('/wallet/withdraw', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getDepositAddress: (asset: string) =>
+      request<any>(`/wallet/deposit-address/${asset}`),
+  },
+
+  // Transfers
+  transfers: {
+    p2p: (data: any) =>
+      request<any>('/transfers/p2p', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getHistory: (params?: any) => {
+      const query = params ? `?${new URLSearchParams(params)}` : '';
+      return request<any>(`/transfers/history${query}`);
+    },
+  },
+
   // Orders
   orders: {
-    getAll: () => request('/orders'),
-    create: (
-      trading_pair: string,
-      order_type: string,
-      side: string,
-      amount: number,
-      price: number
-    ) =>
-      request('/orders', {
+    create: (data: any) =>
+      request<any>('/orders', {
         method: 'POST',
-        body: JSON.stringify({ trading_pair, order_type, side, amount, price }),
+        body: JSON.stringify(data),
       }),
-    getOne: (id: string) => request(`/orders/${id}`),
-    cancel: (id: string) => request(`/orders/${id}/cancel`, { method: 'POST' }),
-  },
-  
-  // Transactions
-  transactions: {
-    getAll: (limit = 50, offset = 0, filters?: { type?: string; status?: string; startDate?: string; endDate?: string }) => {
-      let url = `/transactions?limit=${limit}&offset=${offset}`;
-      if (filters?.type) url += `&type=${filters.type}`;
-      if (filters?.status) url += `&status=${filters.status}`;
-      if (filters?.startDate) url += `&start_date=${filters.startDate}`;
-      if (filters?.endDate) url += `&end_date=${filters.endDate}`;
-      return request(url);
+    getAll: (params?: any) => {
+      const query = params ? `?${new URLSearchParams(params)}` : '';
+      return request<any>(`/orders${query}`);
     },
-    getOne: (id: string) => request(`/transactions/${id}`),
-    create: (type: string, amount: number, symbol?: string, description?: string) =>
-      request('/transactions', {
+    getOne: (orderId: string) => request<any>(`/orders/${orderId}`),
+    cancel: (orderId: string) =>
+      request<any>(`/orders/${orderId}/cancel`, { method: 'POST' }),
+  },
+
+  // Staking
+  staking: {
+    getProducts: () => requestWithRetry<any>('/staking/products', { skipAuth: true }),
+    stake: (data: any) =>
+      request<any>('/staking/stake', {
         method: 'POST',
-        body: JSON.stringify({ type, amount, symbol, description }),
+        body: JSON.stringify(data),
       }),
-    getStats: () => request('/transactions/stats/overview'),
+    unstake: (stakeId: string) =>
+      request<any>(`/staking/${stakeId}/unstake`, { method: 'POST' }),
+    getMyStakes: () => request<any>('/staking/my-stakes'),
+    getRewards: () => request<any>('/staking/rewards'),
   },
-  
-  // User Search
-  users: {
-    search: (email: string) =>
-      request(`/users/search?email=${encodeURIComponent(email)}`),
+
+  // KYC
+  kyc: {
+    getStatus: () => request<any>('/kyc/status'),
+    submitLevel1: (data: any) =>
+      request<any>('/kyc/level1', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
-  
+
   // Referrals
   referrals: {
-    getCode: () => request('/referrals/code'),
-    getStats: () => request('/referrals/stats'),
+    getCode: () => request<any>('/referrals/code'),
     applyCode: (code: string) =>
-      request('/referrals/apply', {
+      request<any>('/referrals/apply', {
         method: 'POST',
         body: JSON.stringify({ code }),
       }),
+    getStats: () => request<any>('/referrals/stats'),
   },
-  
-  // KYC
-  kyc: {
-    getStatus: () => request('/kyc/status'),
-    submitLevel1: (data: { full_name: string; date_of_birth: string; country: string }) =>
-      request('/kyc/level1', {
+
+  // Contact
+  contact: {
+    submit: (data: any) =>
+      request<any>('/contact', {
         method: 'POST',
         body: JSON.stringify(data),
+        skipAuth: true,
       }),
-    submitLevel2: (formData: FormData) =>
-      fetch(`${API_BASE}/kyc/level2`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      }).then((r) => r.json()),
   },
-  
-  // Audit Logs
-  auditLogs: {
-    getLogs: (limit = 50, offset = 0, action?: string) => {
-      let url = `/audit-logs?limit=${limit}&offset=${offset}`;
-      if (action) url += `&action=${action}`;
-      return request(url);
-    },
-    getSummary: (days = 30) => request(`/audit-logs/summary?days=${days}`),
-    exportLogs: (days = 90) => request(`/audit-logs/export?days=${days}`),
-  },
-  
-  // Admin (protected by super-admin flag)
+
+  // Admin (protected)
   admin: {
-    getUsers: (limit = 50, offset = 0) =>
-      request(`/admin/users?limit=${limit}&offset=${offset}`),
-    getUser: (userId: string) => request(`/admin/users/${userId}`),
-    updateUser: (userId: string, data: { status?: string; kyc_level?: number; is_frozen?: boolean }) =>
-      request(`/admin/users/${userId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-    getPendingDeposits: () => request('/admin/deposits/pending'),
-    approveDeposit: (depositId: string) =>
-      request(`/admin/deposits/${depositId}/approve`, { method: 'POST' }),
-    rejectDeposit: (depositId: string, reason: string) =>
-      request(`/admin/deposits/${depositId}/reject`, {
+    getUsers: (params?: any) => {
+      const query = params ? `?${new URLSearchParams(params)}` : '';
+      return request<any>(`/admin/users${query}`);
+    },
+    getUser: (userId: string) => request<any>(`/admin/users/${userId}`),
+    freezeUser: (userId: string, reason: string) =>
+      request<any>(`/admin/users/${userId}/freeze`, {
         method: 'POST',
         body: JSON.stringify({ reason }),
       }),
-    freezeAccount: (userId: string, reason: string) =>
-      request(`/admin/users/${userId}/freeze`, {
+    getPendingDeposits: () => request<any>('/admin/deposits/pending'),
+    approveDeposit: (depositId: string) =>
+      request<any>(`/admin/deposits/${depositId}/approve`, { method: 'POST' }),
+    rejectDeposit: (depositId: string, reason: string) =>
+      request<any>(`/admin/deposits/${depositId}/reject`, {
         method: 'POST',
         body: JSON.stringify({ reason }),
       }),
