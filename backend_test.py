@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 class CryptoVaultAPITester:
-    def __init__(self, base_url="https://370edb2d-2a6c-44cb-83a5-4dd76f36e993.preview.emergentagent.com"):
+    def __init__(self, base_url="https://cryptovault-header.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
