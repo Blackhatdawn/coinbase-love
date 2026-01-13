@@ -27,10 +27,22 @@ const Markets = () => {
       try {
         setIsLoading(true);
         const response = await api.crypto.getAll();
-        // Backend returns { cryptocurrencies: [...] }
-        const cryptos = response.cryptocurrencies || [];
         
-        console.log('Fetched cryptos:', cryptos); // Debug log
+        // Handle nested response structure from backend cache
+        let cryptos: any[] = [];
+        
+        if (response?.cryptocurrencies?.value) {
+          // Backend returns JSON string in cache format
+          try {
+            cryptos = JSON.parse(response.cryptocurrencies.value);
+          } catch {
+            cryptos = response.cryptocurrencies.value;
+          }
+        } else if (Array.isArray(response?.cryptocurrencies)) {
+          cryptos = response.cryptocurrencies;
+        } else if (Array.isArray(response)) {
+          cryptos = response;
+        }
         
         // Transform backend data to match frontend interface
         const transformedData = cryptos.map((crypto: any) => ({
@@ -42,12 +54,9 @@ const Markets = () => {
           volume24h: `$${((crypto.volume_24h || 0) / 1e9).toFixed(2)}B`
         }));
         
-        console.log('Transformed data:', transformedData); // Debug log
-        
         setMarketData(transformedData);
       } catch (error) {
         console.error("Failed to fetch market data:", error);
-        // Fallback to empty array if API fails
         setMarketData([]);
       } finally {
         setIsLoading(false);
