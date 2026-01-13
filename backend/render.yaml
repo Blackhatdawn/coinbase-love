@@ -1,53 +1,41 @@
-# Render Backend Deployment Configuration
-# https://render.com/docs/yaml-spec
+# Render.yaml - CryptoVault Backend Configuration
+# Deploy to Render.com
 
 services:
-  # FastAPI Backend Service
   - type: web
-    name: cryptovault-backend
+    name: cryptovault-api
     runtime: python
     region: oregon
-    plan: starter  # Use 'starter' ($7/mo) for production - prevents cold starts
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: gunicorn server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5 --access-logfile - --error-logfile -
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11"
       - key: ENVIRONMENT
         value: production
+      - key: PORT
+        generateValue: true
       - key: MONGO_URL
-        sync: false  # Set manually in Render dashboard (MongoDB Atlas connection string)
+        sync: false  # Set manually in dashboard
       - key: DB_NAME
-        value: cryptovault_production
+        value: cryptovault_db
       - key: JWT_SECRET
-        generateValue: true  # Render auto-generates secure secret
+        generateValue: true
       - key: CORS_ORIGINS
-        sync: false  # Set to your Vercel domain(s)
-      - key: MONGO_MAX_POOL_SIZE
-        value: "50"
-      - key: MONGO_MIN_POOL_SIZE
-        value: "10"
-      - key: MONGO_TIMEOUT_MS
-        value: "5000"
-      - key: RATE_LIMIT_PER_MINUTE
-        value: "60"
+        value: https://cryptovault.financial,https://www.cryptovault.financial,https://cryptovault-header.preview.emergentagent.com
       - key: EMAIL_SERVICE
-        value: mock
-      - key: EMAIL_FROM
-        value: noreply@cryptovault.com
-      - key: EMAIL_FROM_NAME
-        value: CryptoVault
+        value: sendgrid
+      - key: SENDGRID_API_KEY
+        sync: false  # Set manually in dashboard
       - key: COINGECKO_API_KEY
-        sync: false  # Set in dashboard
+        sync: false  # Set manually in dashboard
       - key: USE_MOCK_PRICES
         value: "false"
       - key: USE_REDIS
         value: "true"
       - key: UPSTASH_REDIS_REST_URL
-        sync: false  # Set in Render dashboard
+        sync: false  # Set manually in dashboard
       - key: UPSTASH_REDIS_REST_TOKEN
-        sync: false  # Set in Render dashboard
-      - key: APP_URL
-        sync: false  # Set to your frontend URL
-    healthCheckPath: /health
-    autoDeploy: true
+        sync: false  # Set manually in dashboard
