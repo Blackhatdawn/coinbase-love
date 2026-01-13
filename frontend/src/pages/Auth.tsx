@@ -169,23 +169,25 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-accent/20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--primary)/0.3),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--accent)/0.3),transparent_50%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-background to-gold-600/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(217,119,6,0.1),transparent_50%)]" />
         
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="flex items-center gap-3 mb-8">
             <img 
-              src="/cryptovault-logo.png" 
+              src="/favicon.svg" 
               alt="CryptoVault" 
               className="h-12 w-12 object-contain"
             />
-            <span className="font-display text-3xl font-bold">CryptoVault</span>
+            <span className="font-display text-3xl font-bold">
+              Crypto<span className="text-gold-400">Vault</span>
+            </span>
           </div>
           
           <h1 className="text-4xl xl:text-5xl font-display font-bold mb-6 leading-tight">
             Your Gateway to<br />
-            <span className="text-gradient">Digital Assets</span>
+            <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Digital Assets</span>
           </h1>
           
           <p className="text-lg text-muted-foreground max-w-md mb-12">
@@ -193,16 +195,16 @@ const Auth = () => {
           </p>
           
           <div className="grid grid-cols-3 gap-6">
-            <div className="glass-card p-4 rounded-xl">
-              <div className="text-2xl font-bold text-primary">$2.8T+</div>
+            <div className="glass-card p-4 rounded-xl border border-gold-500/10">
+              <div className="text-2xl font-bold text-gold-400">$2.8T+</div>
               <div className="text-sm text-muted-foreground">Trading Volume</div>
             </div>
-            <div className="glass-card p-4 rounded-xl">
-              <div className="text-2xl font-bold text-primary">100M+</div>
+            <div className="glass-card p-4 rounded-xl border border-gold-500/10">
+              <div className="text-2xl font-bold text-gold-400">100M+</div>
               <div className="text-sm text-muted-foreground">Users</div>
             </div>
-            <div className="glass-card p-4 rounded-xl">
-              <div className="text-2xl font-bold text-primary">150+</div>
+            <div className="glass-card p-4 rounded-xl border border-gold-500/10">
+              <div className="text-2xl font-bold text-gold-400">150+</div>
               <div className="text-sm text-muted-foreground">Countries</div>
             </div>
           </div>
