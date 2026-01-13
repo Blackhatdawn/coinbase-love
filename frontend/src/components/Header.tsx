@@ -390,20 +390,20 @@ const Header = () => {
             {/* ===== LEFT: Logo + Tagline ===== */}
             <Link 
               to="/" 
-              className="flex items-center gap-3 group"
+              className="flex items-center gap-3 lg:gap-4 group"
               data-testid="logo-link"
               aria-label="CryptoVault - Go to homepage"
             >
-              {/* Logo with glow effect */}
+              {/* Logo with glow effect - LARGER SIZE */}
               <div className="relative">
                 <img 
                   src="/favicon.svg" 
                   alt="" 
-                  className="h-9 w-9 lg:h-11 lg:w-11 object-contain transition-transform duration-300 group-hover:scale-110"
+                  className="h-10 w-10 lg:h-14 lg:w-14 object-contain transition-transform duration-300 group-hover:scale-110"
                   aria-hidden="true"
                 />
                 {/* Gold glow on hover */}
-                <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/30 blur-lg transition-all duration-500 -z-10" />
+                <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/30 blur-xl transition-all duration-500 -z-10" />
               </div>
               
               {/* Brand text */}
