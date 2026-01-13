@@ -84,6 +84,10 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      height: {
+        "18": "4.5rem",
+        "22": "5.5rem",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
