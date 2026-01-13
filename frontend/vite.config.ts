@@ -49,13 +49,13 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     host: '0.0.0.0',
     allowedHosts: true,
-    proxy: mode === 'development' ? {
+    proxy: {
       "/api": {
-        target: process.env.VITE_API_URL || "http://localhost:8001",
+        target: "http://localhost:8000",
         changeOrigin: true,
         secure: false,
       },
-    } : undefined,
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
