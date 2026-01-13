@@ -218,17 +218,19 @@ const Auth = () => {
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <button 
               onClick={() => navigate("/")}
-              className="p-2 hover:bg-muted rounded-lg transition-colors"
+              className="p-2 hover:bg-gold-500/10 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
               <img 
-                src="/cryptovault-logo.png" 
+                src="/favicon.svg" 
                 alt="CryptoVault" 
                 className="h-9 w-9 object-contain"
               />
-              <span className="font-display text-xl font-bold">CryptoVault</span>
+              <span className="font-display text-xl font-bold">
+                Crypto<span className="text-gold-400">Vault</span>
+              </span>
             </div>
           </div>
           
