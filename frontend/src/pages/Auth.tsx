@@ -343,7 +343,7 @@ const Auth = () => {
             
             {isLogin && (
               <div className="flex justify-end">
-                <button type="button" className="text-sm text-primary hover:underline">
+                <button type="button" className="text-sm text-gold-400 hover:text-gold-300 hover:underline">
                   Forgot password?
                 </button>
               </div>
@@ -351,12 +351,16 @@ const Auth = () => {
             
             <Button 
               type="submit" 
-              variant="gradient" 
               size="lg" 
-              className="w-full h-12"
+              className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
               disabled={isLoading}
             >
-              {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Please wait...
+                </>
+              ) : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
           
@@ -367,7 +371,7 @@ const Auth = () => {
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-primary hover:underline font-medium"
+                className="text-gold-400 hover:text-gold-300 hover:underline font-medium"
               >
                 {isLogin ? "Sign up" : "Sign in"}
               </button>
@@ -376,9 +380,9 @@ const Auth = () => {
           
           <p className="mt-8 text-xs text-center text-muted-foreground">
             By continuing, you agree to our{" "}
-            <a href="/terms" className="underline hover:text-foreground">Terms of Service</a>
+            <a href="/terms" className="underline hover:text-gold-400">Terms of Service</a>
             {" "}and{" "}
-            <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>
+            <a href="/privacy" className="underline hover:text-gold-400">Privacy Policy</a>
           </p>
         </div>
       </div>
