@@ -10,6 +10,7 @@ import secrets
 import bcrypt
 import logging
 import pyotp  # Added for TOTP verification
+from fastapi import Request
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -37,11 +38,17 @@ except ImportError as e:
     raise RuntimeError("pyotp required for TOTP 2FA") from e
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against bcrypt hash."""
-    return bcrypt.checkpw(
-        plain_password.encode('utf-8'),
-        hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
-    )
+    """Verify password against bcrypt hash with timing attack protection."""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
+        )
+    except Exception:
+        # Always return False on error to prevent timing attacks
+        # Use constant-time comparison even in error cases
+        bcrypt.checkpw(b"dummy", bcrypt.gensalt())
+        return False
 
 def get_password_hash(password: str) -> str:
     """Hash password with bcrypt (rounds=12)."""
@@ -86,3 +93,17 @@ def verify_2fa_code(secret: str, code: str, window: int = 1) -> bool:
     """
     totp = pyotp.TOTP(secret)
     return totp.verify(code, valid_window=window)
+
+def generate_device_fingerprint(request: Request) -> str:
+    """Generate a device fingerprint for suspicious login detection."""
+    import hashlib
+    
+    # Collect various request attributes
+    ip = request.client.host if request.client else "0.0.0.0"
+    user_agent = request.headers.get("user-agent", "")
+    accept_language = request.headers.get("accept-language", "")
+    accept_encoding = request.headers.get("accept-encoding", "")
+    
+    # Create a fingerprint hash
+    fingerprint_data = f"{ip}:{user_agent}:{accept_language}:{accept_encoding}"
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()

@@ -36,7 +36,12 @@ class Settings(BaseSettings):
     mongo_server_selection_timeout_ms: int = 5000
 
     # Rate Limiting
-    rate_limit_per_minute: int = 60
+    rate_limit_per_minute: int = 60  # Default rate limit for general endpoints
+    rate_limit_auth_per_minute: int = 5  # Stricter limit for authentication endpoints
+    rate_limit_signup_per_minute: int = 3  # Very strict limit for signup to prevent abuse
+    rate_limit_password_reset_per_minute: int = 2  # Strict limit for password reset
+    request_timeout_seconds: int = 30  # Request timeout in seconds
+    max_request_size_mb: int = 10  # Maximum request size in MB
 
     # Email Configuration
     email_service: str = "mock"
@@ -58,6 +63,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",  # Ignore unknown env vars
+        env_prefix="CRYPTOVAULT_",  # Add prefix for environment variables
     )
 
     def is_redis_available(self) -> bool:

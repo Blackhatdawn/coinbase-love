@@ -17,6 +17,7 @@ import asyncio
 import json
 import os
 import uuid  # For CSRF token
+import bcrypt
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -49,7 +50,8 @@ from email_service import (
 from auth import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token,
-    decode_token, generate_backup_codes, generate_2fa_secret
+    decode_token, generate_backup_codes, generate_2fa_secret,
+    generate_device_fingerprint
 )
 
 from dependencies import get_current_user_id, optional_current_user_id
@@ -213,10 +215,107 @@ class DatabaseConnection:
 db_connection: Optional[DatabaseConnection] = None
 
 # ============================================
+# SECURITY HEADERS MIDDLEWARE
+# ============================================
+
+class SecurityHeadersMiddleware:
+    """Middleware to add security headers to all responses."""
+    
+    def __init__(self, app):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        
+        async def send_with_security_headers(message):
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                
+                # Security headers
+                security_headers = {
+                    b"strict-transport-security": b"max-age=31536000; includeSubDomains",
+                    b"x-frame-options": b"DENY",
+                    b"x-content-type-options": b"nosniff",
+                    b"x-xss-protection": b"1; mode=block",
+                    b"referrer-policy": b"strict-origin-when-cross-origin",
+                    b"permissions-policy": b"geolocation=(), microphone=(), camera=()",
+                    b"content-security-policy": (
+                        b"default-src 'self'; "
+                        b"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                        b"style-src 'self' 'unsafe-inline'; "
+                        b"img-src 'self' data: https:; "
+                        b"font-src 'self' data:; "
+                        b"connect-src 'self' https: wss:; "
+                        b"frame-ancestors 'none'; "
+                        b"base-uri 'self'; "
+                        b"form-action 'self'"
+                    )
+                }
+                
+                # Add security headers
+                for key, value in security_headers.items():
+                    headers[key] = value
+                
+                message["headers"] = [(k, v) for k, v in headers.items()]
+            
+            await send(message)
+        
+        await self.app(scope, receive, send_with_security_headers)
+
+# ============================================
+# REQUEST TIMEOUT MIDDLEWARE
+# ============================================
+
+class TimeoutMiddleware:
+    """Middleware to add timeout protection to requests."""
+    
+    def __init__(self, app, timeout_seconds: int = 30):
+        self.app = app
+        self.timeout_seconds = timeout_seconds
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        
+        try:
+            await asyncio.wait_for(
+                self.app(scope, receive, send),
+                timeout=self.timeout_seconds
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"Request timeout after {self.timeout_seconds} seconds")
+            response = JSONResponse(
+                status_code=504,
+                content={"detail": "Request timeout"}
+            )
+            await response(scope, receive, send)
+
+# ============================================
 # CREATE FASTAPI APP
 # ============================================
 
-limiter = Limiter(key_func=get_remote_address)
+def get_rate_limit_key(request: Request) -> str:
+    """Get rate limit key based on IP and user agent for better tracking."""
+    client_ip = get_remote_address(request)
+    user_agent = request.headers.get("user-agent", "")
+    
+    # For authenticated requests, use user ID for more granular limits
+    try:
+        # Try to get user ID from the request if available
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            payload = decode_token(token)
+            if payload and payload.get("sub"):
+                return f"{payload.get('sub')}:{client_ip}"
+    except Exception:
+        pass
+    
+    # Fall back to IP + user agent for anonymous requests
+    return f"{client_ip}:{hash(user_agent) % 1000}"
+
+limiter = Limiter(key_func=get_rate_limit_key)
 
 app = FastAPI(
     title="CryptoVault API",
@@ -224,10 +323,16 @@ app = FastAPI(
     description="Production-ready cryptocurrency trading platform",
     docs_url="/docs",
     redoc_url="/redoc",
+    # Add request size limit (10MB)
+    max_request_size=settings.max_request_size_mb * 1024 * 1024,
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
 
 api_router = APIRouter(prefix="/api")
 
@@ -286,6 +391,17 @@ async def startup_event():
             db_name=settings.db_name
         )
         await db_connection.connect()
+        
+        # Create TTL index for login attempts (auto-delete after 30 days)
+        try:
+            if db_connection and db_connection.is_connected:
+                collection = db_connection.get_collection("login_attempts")
+                await collection.create_index("timestamp", expireAfterSeconds=30*24*60*60)
+                logger.info("✅ Ensured TTL index on login_attempts.timestamp (30 days)")
+            else:
+                logger.debug("DB not connected yet – skipping TTL index creation")
+        except Exception as e:
+            logger.warning(f"⚠️ TTL index creation failed (non-critical): {str(e)}")
 
         # Ensure TTL index for blacklisted_tokens (Mongo fallback)
         try:
@@ -394,7 +510,7 @@ async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
 # ============================================
 
 @api_router.post("/auth/signup", tags=["auth"])
-@limiter.limit("5/minute")
+@limiter.limit("3/minute")  # Stricter limit for signup
 async def signup(user_data: UserCreate, request: Request):
     """Register a new user with email verification"""
     users_collection = db_connection.get_collection("users")
@@ -456,16 +572,20 @@ async def signup(user_data: UserCreate, request: Request):
     }
 
 @api_router.post("/auth/login", tags=["auth"])
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")  # Stricter limit for login to prevent brute force
 async def login(credentials: UserLogin, request: Request):
-    """Login user with account lockout protection"""
+    """Login user with enhanced account lockout protection"""
     users_collection = db_connection.get_collection("users")
 
     user_doc = await users_collection.find_one({"email": credentials.email})
     if not user_doc:
+        # Simulate password verification to prevent timing attacks
+        verify_password("dummy_password", bcrypt.gensalt().decode())
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
     user = User(**user_doc)
 
+    # Check if account is locked
     if user.locked_until and user.locked_until > datetime.utcnow():
         minutes_left = int((user.locked_until - datetime.utcnow()).total_seconds() / 60)
         raise HTTPException(
@@ -473,18 +593,50 @@ async def login(credentials: UserLogin, request: Request):
             detail=f"Account locked due to too many failed attempts. Try again in {minutes_left} minutes."
         )
 
+    # Generate device fingerprint for suspicious login detection
+    device_fingerprint = generate_device_fingerprint(request)
+    
+    # Track login attempt
+    login_attempt = {
+        "id": str(uuid.uuid4()),
+        "user_id": user.id,
+        "email": credentials.email,
+        "ip_address": request.client.host,
+        "device_fingerprint": device_fingerprint,
+        "timestamp": datetime.utcnow(),
+        "success": False
+    }
+    
     if not verify_password(credentials.password, user.password_hash):
+        # Increment failed attempts
         failed_attempts = user.failed_login_attempts + 1
-        update_data = {"failed_login_attempts": failed_attempts}
+        update_data = {
+            "failed_login_attempts": failed_attempts,
+            "last_failed_attempt": datetime.utcnow()
+        }
+        
+        # Lock account after 5 failed attempts
         if failed_attempts >= 5:
             update_data["locked_until"] = datetime.utcnow() + timedelta(minutes=15)
             await users_collection.update_one({"id": user.id}, {"$set": update_data})
-            await log_audit(user.id, "ACCOUNT_LOCKED", ip_address=request.client.host)
+            
+            # Log the failed attempt
+            login_attempt["success"] = False
+            await db_connection.get_collection("login_attempts").insert_one(login_attempt)
+            
+            await log_audit(user.id, "ACCOUNT_LOCKED", ip_address=request.client.host, 
+                          details={"device_fingerprint": device_fingerprint})
             raise HTTPException(
                 status_code=429,
                 detail="Account locked for 15 minutes due to too many failed login attempts."
             )
+        
         await users_collection.update_one({"id": user.id}, {"$set": update_data})
+        
+        # Log the failed attempt
+        login_attempt["success"] = False
+        await db_connection.get_collection("login_attempts").insert_one(login_attempt)
+        
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not user.email_verified:
@@ -606,7 +758,7 @@ async def refresh_token(request: Request):
     return response
 
 @api_router.post("/auth/verify-email", tags=["auth"])
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")  # Stricter limit for verification
 async def verify_email(data: VerifyEmailRequest, request: Request):
     """Verify email with code or token"""
     users_collection = db_connection.get_collection("users")
@@ -688,7 +840,7 @@ async def verify_email(data: VerifyEmailRequest, request: Request):
     return response
 
 @api_router.post("/auth/resend-verification", tags=["auth"])
-@limiter.limit("3/minute")
+@limiter.limit("2/minute")  # Very strict limit to prevent email flooding
 async def resend_verification(data: ResendVerificationRequest, request: Request):
     """Resend verification email"""
     users_collection = db_connection.get_collection("users")
@@ -732,7 +884,7 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
     return {"message": "Verification email sent! Please check your inbox."}
 
 @api_router.post("/auth/forgot-password", tags=["auth"])
-@limiter.limit("3/minute")
+@limiter.limit("2/minute")  # Strict limit to prevent password reset abuse
 async def forgot_password(data: ForgotPasswordRequest, request: Request):
     """Request password reset email"""
     users_collection = db_connection.get_collection("users")
