@@ -134,6 +134,19 @@ const WalletDeposit = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Mock Mode Warning */}
+                {depositInfo.mock && (
+                  <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm">
+                    <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-500">Demo Mode</p>
+                      <p className="text-muted-foreground mt-1">
+                        This is a simulated deposit. In production, you would complete payment via the payment gateway.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Amount Info */}
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <div className="text-3xl font-bold font-mono">
@@ -145,12 +158,12 @@ const WalletDeposit = () => {
                 </div>
 
                 {/* Payment Address */}
-                {depositInfo.address && (
+                {(depositInfo.address || depositInfo.payAddress) && (
                   <div className="space-y-2">
                     <Label>Payment Address</Label>
                     <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
                       <code className="flex-1 text-xs font-mono break-all">
-                        {depositInfo.address}
+                        {depositInfo.address || depositInfo.payAddress}
                       </code>
                       <button
                         onClick={copyAddress}
