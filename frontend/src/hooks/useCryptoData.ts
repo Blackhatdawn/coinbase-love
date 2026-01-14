@@ -66,21 +66,32 @@ export function useCryptoData(options: UseCryptoDataOptions = {}): UseCryptoData
       
       if (!mounted.current) return;
 
-      // Handle the nested response structure from backend
+      // Handle various response structures from backend
       let cryptoList: CryptoData[] = [];
       
       if (response?.cryptocurrencies?.value) {
-        // Backend returns JSON string in value
+        // Backend returns JSON string in cache value format
         try {
-          cryptoList = JSON.parse(response.cryptocurrencies.value);
+          const parsed = typeof response.cryptocurrencies.value === 'string' 
+            ? JSON.parse(response.cryptocurrencies.value)
+            : response.cryptocurrencies.value;
+          cryptoList = Array.isArray(parsed) ? parsed : [];
         } catch {
-          cryptoList = response.cryptocurrencies.value;
+          cryptoList = [];
         }
       } else if (Array.isArray(response?.cryptocurrencies)) {
         cryptoList = response.cryptocurrencies;
       } else if (Array.isArray(response)) {
         cryptoList = response;
       }
+      
+      // Normalize data format
+      cryptoList = cryptoList.map(crypto => ({
+        ...crypto,
+        change_24h: crypto.change_24h ?? crypto.priceChangePercentage24h ?? 0,
+        market_cap: crypto.market_cap ?? crypto.marketCap ?? 0,
+        volume_24h: crypto.volume_24h ?? crypto.totalVolume ?? 0,
+      }));
 
       setData(cryptoList);
       setError(null);
