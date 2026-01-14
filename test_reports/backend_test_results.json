@@ -1,71 +1,99 @@
 {
-  "total_tests": 9,
-  "passed_tests": 7,
+  "total_tests": 13,
+  "passed_tests": 11,
   "failed_tests": 2,
-  "success_rate": 77.77777777777779,
+  "success_rate": 84.61538461538461,
   "test_results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:10.909142"
+      "timestamp": "2026-01-14T05:32:35.222916"
     },
     {
       "test": "Health Check",
       "success": true,
       "details": "API is healthy",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:10.978898"
+      "timestamp": "2026-01-14T05:32:35.295413"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 9 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:11.436278"
+      "timestamp": "2026-01-14T05:32:35.661568"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:11.579402"
+      "timestamp": "2026-01-14T05:32:35.808534"
+    },
+    {
+      "test": "Password Reset Request",
+      "success": true,
+      "details": "Password reset endpoint working",
+      "response_data": null,
+      "timestamp": "2026-01-14T05:32:35.882546"
+    },
+    {
+      "test": "Alerts Endpoint (Auth Required)",
+      "success": true,
+      "details": "Alerts endpoint correctly requires authentication",
+      "response_data": null,
+      "timestamp": "2026-01-14T05:32:35.922845"
+    },
+    {
+      "test": "Admin Stats Endpoint (Auth Required)",
+      "success": true,
+      "details": "Admin stats endpoint correctly requires authentication",
+      "response_data": null,
+      "timestamp": "2026-01-14T05:32:35.959066"
+    },
+    {
+      "test": "Wallet Deposit Endpoint (Auth Required)",
+      "success": true,
+      "details": "Wallet deposit endpoint correctly requires authentication",
+      "response_data": null,
+      "timestamp": "2026-01-14T05:32:36.037313"
     },
     {
       "test": "User Signup",
       "success": true,
-      "details": "User created with ID: 997ac238-7a03-46e0-b4e8-c1f569b5c973",
+      "details": "User created with ID: fd51fa87-7fa1-46de-bf07-735403ee65fa",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:11.996720"
+      "timestamp": "2026-01-14T05:32:36.419655"
     },
     {
       "test": "User Login",
       "success": false,
       "details": "Email verification required (expected for new accounts)",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:12.332684"
+      "timestamp": "2026-01-14T05:32:36.710170"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:12.365735"
+      "timestamp": "2026-01-14T05:32:36.754725"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:12.402422"
+      "timestamp": "2026-01-14T05:32:36.787652"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-14T05:32:12.437746"
+      "timestamp": "2026-01-14T05:32:36.819431"
     }
   ]
 }
