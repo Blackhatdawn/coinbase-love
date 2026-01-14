@@ -366,11 +366,72 @@ export const api = {
       }),
   },
 
+  // Password Reset
+  auth: {
+    ...{} as any, // Keep existing auth methods
+    requestPasswordReset: (email: string) =>
+      request<any>('/auth/password-reset/request', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        skipAuth: true,
+      }),
+    confirmPasswordReset: (token: string, password: string) =>
+      request<any>('/auth/password-reset/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+        skipAuth: true,
+      }),
+  },
+
+  // Price Alerts
+  alerts: {
+    getAll: () => request<any>('/alerts'),
+    create: (data: { symbol: string; targetPrice: number; condition: 'above' | 'below'; notifyPush?: boolean; notifyEmail?: boolean }) =>
+      request<any>('/alerts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (alertId: string, data: { isActive?: boolean }) =>
+      request<any>(`/alerts/${alertId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (alertId: string) =>
+      request<any>(`/alerts/${alertId}`, { method: 'DELETE' }),
+  },
+
+  // Wallet with deposit
+  wallet: {
+    getBalances: () => request<any>('/wallet/balances'),
+    createDeposit: (data: { amount: number; currency: string }) =>
+      request<any>('/wallet/deposit/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    deposit: (data: any) =>
+      request<any>('/wallet/deposit', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    withdraw: (data: any) =>
+      request<any>('/wallet/withdraw', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getDepositAddress: (asset: string) =>
+      request<any>(`/wallet/deposit-address/${asset}`),
+  },
+
   // Admin (protected)
   admin: {
+    getStats: () => request<any>('/admin/stats'),
     getUsers: (params?: any) => {
       const query = params ? `?${new URLSearchParams(params)}` : '';
       return request<any>(`/admin/users${query}`);
+    },
+    getTrades: (params?: any) => {
+      const query = params ? `?${new URLSearchParams(params)}` : '';
+      return request<any>(`/admin/trades${query}`);
     },
     getUser: (userId: string) => request<any>(`/admin/users/${userId}`),
     freezeUser: (userId: string, reason: string) =>
