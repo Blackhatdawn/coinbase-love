@@ -92,9 +92,16 @@ class RedisCache:
                     if result is None:
                         return None
                     
-                    # Try to parse JSON
+                    # Try to parse JSON - may need double parse if value was string-serialized
                     try:
-                        return json.loads(result)
+                        parsed = json.loads(result)
+                        # If it's still a string, try parsing again (double-encoded)
+                        if isinstance(parsed, str):
+                            try:
+                                return json.loads(parsed)
+                            except (json.JSONDecodeError, TypeError):
+                                return parsed
+                        return parsed
                     except (json.JSONDecodeError, TypeError):
                         return result
                 
