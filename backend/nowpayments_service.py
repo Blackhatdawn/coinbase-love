@@ -235,6 +235,25 @@ class NOWPaymentsService:
         Create a hosted invoice (redirect to NOWPayments checkout page)
         User can choose which crypto to pay with
         """
+        # MOCK MODE: Return simulated invoice data
+        if self.mock_mode:
+            mock_invoice_id = f"inv-{str(uuid.uuid4())[:8]}"
+            mock_address = self._generate_mock_address("btc")
+            
+            logger.info(f"📦 [MOCK] Invoice created: {mock_invoice_id} for ${price_amount}")
+            
+            return {
+                "success": True,
+                "mock": True,
+                "invoice_id": mock_invoice_id,
+                "invoice_url": None,  # No redirect in mock mode
+                "order_id": order_id,
+                "price_amount": price_amount,
+                "price_currency": price_currency.upper(),
+                "pay_address": mock_address,
+                "expiration": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            }
+        
         try:
             payload = {
                 "price_amount": price_amount,
