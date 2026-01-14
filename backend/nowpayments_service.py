@@ -1,24 +1,29 @@
 """
 NOWPayments Integration Service
 Handles crypto payment processing for deposits
+Supports MOCK mode when no API key is provided
 """
 import os
 import hmac
 import hashlib
 import httpx
+import uuid
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
 
 class NOWPaymentsService:
-    """NOWPayments API integration for crypto deposits"""
+    """NOWPayments API integration for crypto deposits (with mock fallback)"""
     
     def __init__(self):
         self.api_key = os.environ.get("NOWPAYMENTS_API_KEY", "")
         self.ipn_secret = os.environ.get("NOWPAYMENTS_IPN_SECRET", "")
         self.sandbox = os.environ.get("NOWPAYMENTS_SANDBOX", "true").lower() == "true"
+        
+        # Enable mock mode if no API key
+        self.mock_mode = not self.api_key or self.api_key.strip() == ""
         
         # Use sandbox or production URL
         self.base_url = (
@@ -27,7 +32,10 @@ class NOWPaymentsService:
             else "https://api.nowpayments.io/v1"
         )
         
-        logger.info(f"📦 NOWPayments initialized (sandbox={self.sandbox})")
+        if self.mock_mode:
+            logger.info("📦 NOWPayments initialized in MOCK mode (no API key)")
+        else:
+            logger.info(f"📦 NOWPayments initialized (sandbox={self.sandbox})")
     
     @property
     def headers(self) -> Dict[str, str]:
