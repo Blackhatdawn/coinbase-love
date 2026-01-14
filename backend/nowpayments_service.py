@@ -334,7 +334,7 @@ class NOWPaymentsService:
             is_valid = hmac.compare_digest(expected_sig, signature)
             
             if not is_valid:
-                logger.warning(f"IPN signature mismatch")
+                logger.warning("IPN signature mismatch")
             
             return is_valid
             
