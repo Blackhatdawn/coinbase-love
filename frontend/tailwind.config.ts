@@ -6,7 +6,7 @@ export default {
   prefix: "",
   theme: {
     container: {
-      center: true,
+      center: false,
       padding: "2rem",
       screens: {
         "2xl": "1400px",
@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Outfit', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['Unbounded', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -23,18 +24,32 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        // Gold color palette for CryptoVault branding
-        gold: {
-          50: "#FFFBEB",
-          100: "#FEF3C7",
-          200: "#FDE68A",
-          300: "#FCD34D",
-          400: "#FBBF24",
-          500: "#F59E0B",
-          600: "#D97706",
-          700: "#B45309",
-          800: "#92400E",
-          900: "#78350F",
+        // Electric Void Theme Colors
+        cyan: {
+          DEFAULT: "#00F0FF",
+          50: "#E6FEFF",
+          100: "#CCFDFF",
+          200: "#99FAFF",
+          300: "#66F8FF",
+          400: "#33F5FF",
+          500: "#00F0FF",
+          600: "#00C4D4",
+          700: "#0098A9",
+          800: "#006D7D",
+          900: "#004152",
+        },
+        purple: {
+          DEFAULT: "#7000FF",
+          50: "#F3E6FF",
+          100: "#E6CCFF",
+          200: "#CC99FF",
+          300: "#B366FF",
+          400: "#9933FF",
+          500: "#7000FF",
+          600: "#5C00D4",
+          700: "#4800A9",
+          800: "#34007D",
+          900: "#200052",
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -51,6 +66,10 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -101,11 +120,22 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(0, 240, 255, 0.3)" },
+          "50%": { boxShadow: "0 0 40px rgba(0, 240, 255, 0.6)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "ticker-scroll": "ticker-scroll 30s linear infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+      },
+      boxShadow: {
+        'glow-cyan': '0 0 20px rgba(0, 240, 255, 0.4)',
+        'glow-purple': '0 0 20px rgba(112, 0, 255, 0.4)',
+        'glow-green': '0 0 20px rgba(0, 255, 148, 0.4)',
+        'glow-red': '0 0 20px rgba(255, 46, 46, 0.4)',
       },
     },
   },
