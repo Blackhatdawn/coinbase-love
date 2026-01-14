@@ -115,7 +115,7 @@ class CryptoVaultAPITester:
 
     def test_auth_signup(self):
         """Test user signup"""
-        test_email = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}@cryptovault.test"
+        test_email = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}@example.com"  # Use valid domain
         signup_data = {
             "email": test_email,
             "name": "Test User",
