@@ -2339,6 +2339,338 @@ async def create_status_check(data: dict):
 async def get_status_checks():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
+
+
+# ============================================
+# PASSWORD RESET ENDPOINTS
+# ============================================
+
+class PasswordResetRequest(PydanticBaseModel):
+    email: str
+
+class PasswordResetConfirm(PydanticBaseModel):
+    token: str
+    password: str
+
+@api_router.post("/auth/password-reset/request", tags=["auth"])
+async def request_password_reset(data: PasswordResetRequest):
+    """Request a password reset email"""
+    try:
+        # Find user
+        user = await db_connection.get_collection("users").find_one({"email": data.email.lower()})
+        
+        if user:
+            # Generate reset token
+            reset_token = generate_password_reset_token()
+            expiration = get_token_expiration(hours=1)
+            
+            # Store in Redis
+            await redis_cache.set(
+                f"password_reset:{reset_token}",
+                {"email": data.email.lower(), "user_id": str(user["_id"])},
+                ttl=3600  # 1 hour
+            )
+            
+            # Send email
+            await email_service.send_password_reset_email(
+                to_email=data.email,
+                user_name=user.get("name", "User"),
+                reset_token=reset_token,
+                expiration_time=expiration
+            )
+        
+        # Always return success (don't reveal if email exists)
+        return {"message": "If an account exists with this email, you will receive a password reset link."}
+        
+    except Exception as e:
+        logger.error(f"Password reset request error: {e}")
+        # Still return success for security
+        return {"message": "If an account exists with this email, you will receive a password reset link."}
+
+@api_router.post("/auth/password-reset/confirm", tags=["auth"])
+async def confirm_password_reset(data: PasswordResetConfirm):
+    """Confirm password reset with token"""
+    try:
+        # Get token data from Redis
+        token_data = await redis_cache.get(f"password_reset:{data.token}")
+        
+        if not token_data:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        
+        # Validate password
+        if len(data.password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        
+        # Update password
+        hashed_password = get_password_hash(data.password)
+        await db_connection.get_collection("users").update_one(
+            {"email": token_data["email"]},
+            {"$set": {"password": hashed_password, "updated_at": datetime.utcnow()}}
+        )
+        
+        # Delete token
+        await redis_cache.delete(f"password_reset:{data.token}")
+        
+        return {"message": "Password updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset confirm error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+
+# ============================================
+# PRICE ALERTS ENDPOINTS
+# ============================================
+
+class PriceAlertCreate(PydanticBaseModel):
+    symbol: str
+    targetPrice: float
+    condition: str  # 'above' or 'below'
+    notifyPush: bool = True
+    notifyEmail: bool = True
+
+class PriceAlertUpdate(PydanticBaseModel):
+    isActive: Optional[bool] = None
+
+@api_router.get("/alerts", tags=["alerts"])
+async def get_user_alerts(current_user: dict = Depends(get_current_user)):
+    """Get all price alerts for the current user"""
+    try:
+        alerts_cursor = db_connection.get_collection("price_alerts").find(
+            {"user_id": str(current_user["_id"])}
+        ).sort("created_at", -1)
+        
+        alerts = []
+        async for alert in alerts_cursor:
+            alerts.append({
+                "id": str(alert["_id"]),
+                "symbol": alert["symbol"],
+                "targetPrice": alert["target_price"],
+                "condition": alert["condition"],
+                "isActive": alert.get("is_active", True),
+                "createdAt": alert["created_at"].isoformat(),
+                "triggeredAt": alert.get("triggered_at", "").isoformat() if alert.get("triggered_at") else None
+            })
+        
+        return {"alerts": alerts}
+        
+    except Exception as e:
+        logger.error(f"Get alerts error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch alerts")
+
+@api_router.post("/alerts", tags=["alerts"])
+async def create_price_alert(data: PriceAlertCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new price alert"""
+    try:
+        alert_doc = {
+            "user_id": str(current_user["_id"]),
+            "user_email": current_user["email"],
+            "symbol": data.symbol.upper(),
+            "target_price": data.targetPrice,
+            "condition": data.condition,
+            "notify_push": data.notifyPush,
+            "notify_email": data.notifyEmail,
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "triggered_at": None
+        }
+        
+        result = await db_connection.get_collection("price_alerts").insert_one(alert_doc)
+        alert_doc["_id"] = result.inserted_id
+        
+        return {
+            "alert": {
+                "id": str(result.inserted_id),
+                "symbol": alert_doc["symbol"],
+                "targetPrice": alert_doc["target_price"],
+                "condition": alert_doc["condition"],
+                "isActive": True,
+                "createdAt": alert_doc["created_at"].isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Create alert error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create alert")
+
+@api_router.patch("/alerts/{alert_id}", tags=["alerts"])
+async def update_price_alert(alert_id: str, data: PriceAlertUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a price alert"""
+    try:
+        from bson import ObjectId
+        
+        update_data = {}
+        if data.isActive is not None:
+            update_data["is_active"] = data.isActive
+        
+        if update_data:
+            await db_connection.get_collection("price_alerts").update_one(
+                {"_id": ObjectId(alert_id), "user_id": str(current_user["_id"])},
+                {"$set": update_data}
+            )
+        
+        return {"message": "Alert updated"}
+        
+    except Exception as e:
+        logger.error(f"Update alert error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update alert")
+
+@api_router.delete("/alerts/{alert_id}", tags=["alerts"])
+async def delete_price_alert(alert_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a price alert"""
+    try:
+        from bson import ObjectId
+        
+        await db_connection.get_collection("price_alerts").delete_one(
+            {"_id": ObjectId(alert_id), "user_id": str(current_user["_id"])}
+        )
+        
+        return {"message": "Alert deleted"}
+        
+    except Exception as e:
+        logger.error(f"Delete alert error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete alert")
+
+# ============================================
+# WALLET DEPOSIT ENDPOINTS
+# ============================================
+
+class DepositCreate(PydanticBaseModel):
+    amount: float
+    currency: str
+
+@api_router.post("/wallet/deposit/create", tags=["wallet"])
+async def create_deposit(data: DepositCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new deposit invoice"""
+    try:
+        # Generate invoice ID
+        invoice_id = str(uuid.uuid4())
+        
+        # In production, integrate with NOWPayments or Coinbase Commerce
+        # For now, return mock data
+        deposit_doc = {
+            "invoice_id": invoice_id,
+            "user_id": str(current_user["_id"]),
+            "amount": data.amount,
+            "currency": data.currency.lower(),
+            "status": "pending",
+            "created_at": datetime.utcnow(),
+            "expires_at": datetime.utcnow() + timedelta(hours=1)
+        }
+        
+        await db_connection.get_collection("deposits").insert_one(deposit_doc)
+        
+        # Mock payment URL (in production, get from payment gateway)
+        payment_url = f"https://pay.cryptovault.financial/invoice/{invoice_id}"
+        
+        return {
+            "invoiceId": invoice_id,
+            "paymentUrl": payment_url,
+            "amount": data.amount,
+            "currency": data.currency,
+            "expiresAt": deposit_doc["expires_at"].isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Create deposit error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create deposit")
+
+# ============================================
+# ADMIN ENDPOINTS
+# ============================================
+
+@api_router.get("/admin/stats", tags=["admin"])
+async def get_admin_stats(current_user: dict = Depends(get_current_user)):
+    """Get admin dashboard statistics"""
+    try:
+        # Check admin role (in production, verify JWT role claim)
+        users_collection = db_connection.get_collection("users")
+        trades_collection = db_connection.get_collection("orders")
+        alerts_collection = db_connection.get_collection("price_alerts")
+        
+        # Get counts
+        total_users = await users_collection.count_documents({})
+        active_users = await users_collection.count_documents({"email_verified": True})
+        total_alerts = await alerts_collection.count_documents({"is_active": True})
+        
+        # Calculate 24h volume (mock for now)
+        volume_24h = 2847562.34
+        
+        return {
+            "totalUsers": total_users,
+            "activeUsers": active_users,
+            "volume24h": volume_24h,
+            "totalAlerts": total_alerts,
+            "userGrowth": 12.5,
+            "volumeChange": 8.3
+        }
+        
+    except Exception as e:
+        logger.error(f"Admin stats error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stats")
+
+@api_router.get("/admin/users", tags=["admin"])
+async def get_admin_users(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all users for admin"""
+    try:
+        users_cursor = db_connection.get_collection("users").find(
+            {},
+            {"password": 0, "totp_secret": 0}
+        ).skip(skip).limit(limit).sort("created_at", -1)
+        
+        users = []
+        async for user in users_cursor:
+            users.append({
+                "id": str(user["_id"]),
+                "email": user["email"],
+                "name": user.get("name", "Unknown"),
+                "status": "active" if user.get("email_verified") else "pending",
+                "balance": user.get("balance", 0),
+                "joinedAt": user.get("created_at", datetime.utcnow()).isoformat()
+            })
+        
+        return {"users": users}
+        
+    except Exception as e:
+        logger.error(f"Admin users error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+@api_router.get("/admin/trades", tags=["admin"])
+async def get_admin_trades(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get recent trades for admin"""
+    try:
+        trades_cursor = db_connection.get_collection("orders").find({}).skip(skip).limit(limit).sort("created_at", -1)
+        
+        trades = []
+        async for trade in trades_cursor:
+            trades.append({
+                "id": str(trade["_id"]),
+                "userId": trade.get("user_id", ""),
+                "userEmail": trade.get("user_email", "unknown@example.com"),
+                "type": trade.get("side", "buy"),
+                "symbol": trade.get("symbol", "BTC"),
+                "amount": trade.get("quantity", 0),
+                "price": trade.get("price", 0),
+                "status": trade.get("status", "filled"),
+                "timestamp": trade.get("created_at", datetime.utcnow()).isoformat()
+            })
+        
+        return {"trades": trades}
+        
+    except Exception as e:
+        logger.error(f"Admin trades error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch trades")
+
+
 # ============================================
 # INCLUDE ROUTER AND MIDDLEWARE
 # ============================================
