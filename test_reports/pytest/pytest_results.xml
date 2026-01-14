@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="15" time="1.217" timestamp="2026-01-14T06:22:51.838651+00:00" hostname="agent-env-25e416d8-6468-45bc-95e5-bdf940bbba6f"><testcase classname="tests.test_cryptovault_api.TestHealthEndpoints" name="test_health_endpoint" time="0.114" /><testcase classname="tests.test_cryptovault_api.TestHealthEndpoints" name="test_root_endpoint" time="0.038"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:976: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+tests/test_cryptovault_api.py:45: in test_root_endpoint
+    data = response.json()
+           ^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:980: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="tests.test_cryptovault_api.TestCryptoEndpoints" name="test_get_all_crypto" time="0.403" /><testcase classname="tests.test_cryptovault_api.TestAuthFlow" name="test_signup_new_user" time="0.084"><failure message="AssertionError: Signup failed: {&quot;detail&quot;:[{&quot;type&quot;:&quot;value_error&quot;,&quot;loc&quot;:[&quot;body&quot;,&quot;email&quot;],&quot;msg&quot;:&quot;value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.&quot;,&quot;input&quot;:&quot;test_user_909b3818@cryptovault.test&quot;,&quot;ctx&quot;:{&quot;reason&quot;:&quot;The part after the @-sign is a special-use or reserved name that cannot be used with email.&quot;}}]}&#10;assert 422 in [200, 201, 400]&#10; +  where 422 = &lt;Response [422]&gt;.status_code">tests/test_cryptovault_api.py:93: in test_signup_new_user
+    assert response.status_code in [200, 201, 400], f"Signup failed: {response.text}"
+E   AssertionError: Signup failed: {"detail":[{"type":"value_error","loc":["body","email"],"msg":"value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.","input":"test_user_909b3818@cryptovault.test","ctx":{"reason":"The part after the @-sign is a special-use or reserved name that cannot be used with email."}}]}
+E   assert 422 in [200, 201, 400]
+E    +  where 422 = &lt;Response [422]&gt;.status_code</failure></testcase><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_alerts_requires_auth" time="0.052" /><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_wallet_deposit_requires_auth" time="0.036" /><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_admin_stats_requires_auth" time="0.034" /><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_admin_users_requires_auth" time="0.037" /><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_referrals_code_requires_auth" time="0.073" /><testcase classname="tests.test_cryptovault_api.TestProtectedEndpoints" name="test_portfolio_requires_auth" time="0.031" /><testcase classname="tests.test_cryptovault_api.TestStakingEndpoints" name="test_get_staking_products" time="0.034" /><testcase classname="tests.test_cryptovault_api.TestWebSocketEndpoint" name="test_websocket_endpoint_exists" time="0.000"><failure message="ModuleNotFoundError: No module named 'websocket'">tests/test_cryptovault_api.py:177: in test_websocket_endpoint_exists
+    import websocket
+E   ModuleNotFoundError: No module named 'websocket'</failure></testcase><testcase classname="tests.test_cryptovault_api.TestContactEndpoint" name="test_contact_submit" time="0.030"><failure message="AssertionError: Contact failed: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 in [200, 201, 422]&#10; +  where 404 = &lt;Response [404]&gt;.status_code">tests/test_cryptovault_api.py:215: in test_contact_submit
+    assert response.status_code in [200, 201, 422], f"Contact failed: {response.text}"
+E   AssertionError: Contact failed: {"detail":"Not Found"}
+E   assert 404 in [200, 201, 422]
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="tests.test_cryptovault_api.TestPasswordResetEndpoint" name="test_password_reset_request" time="0.066" /><testcase classname="tests.test_cryptovault_api.TestForgotPasswordEndpoint" name="test_forgot_password" time="0.075" /></testsuite></testsuites>
