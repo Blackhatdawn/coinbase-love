@@ -298,6 +298,13 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ TTL index creation failed (non-critical): {str(e)}")
 
+        # Start WebSocket price feed
+        try:
+            asyncio.create_task(price_feed.start())
+            logger.info("✅ WebSocket price feed started")
+        except Exception as e:
+            logger.warning(f"⚠️ WebSocket price feed failed to start (non-critical): {str(e)}")
+
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
         logger.info(f" Environment: {settings.environment}")
@@ -317,6 +324,13 @@ async def shutdown_event():
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)
 
+    # Stop WebSocket price feed
+    try:
+        await price_feed.stop()
+        logger.info("✅ WebSocket price feed stopped")
+    except Exception as e:
+        logger.warning(f"⚠️ Price feed stop error (non-critical): {str(e)}")
+    
     if db_connection:
         await db_connection.disconnect()
     logger.info("✅ Graceful shutdown complete")
