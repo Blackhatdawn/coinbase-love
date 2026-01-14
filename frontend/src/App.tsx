@@ -8,8 +8,11 @@ import { Web3Provider } from "@/contexts/Web3Context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
+import OnboardingLoader from "@/components/OnboardingLoader";
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
+import { HelmetProvider } from 'react-helmet-async';
+import { Toaster as HotToaster } from 'react-hot-toast';
 
 // Eager loaded pages (critical path)
 import Index from "./pages/Index";
@@ -39,10 +42,16 @@ const AMLPolicy = lazy(() => import("./pages/AMLPolicy"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
 
+// New pages
+const { ResetRequest, ResetConfirm } = await import("./pages/PasswordReset");
+const WalletDeposit = lazy(() => import("./pages/WalletDeposit"));
+const PriceAlerts = lazy(() => import("./pages/PriceAlerts"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // 1 minute
+      staleTime: 30 * 1000, // 30 seconds
       retry: 2,
       refetchOnWindowFocus: false,
     },
@@ -56,7 +65,7 @@ const PageLoader = () => (
       <div className="relative">
         <div className="w-16 h-16 rounded-full border-2 border-gold-500/20" />
         <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-gold-500 animate-spin" />
-        <img src="/favicon.svg" alt="" className="absolute inset-0 m-auto w-8 h-8" />
+        <img src="/logo.svg" alt="" className="absolute inset-0 m-auto w-8 h-8" />
       </div>
       <p className="text-sm text-muted-foreground">Loading...</p>
     </div>
@@ -65,8 +74,28 @@ const PageLoader = () => (
 
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useRedirectSpinner((visible) => setIsLoading(visible));
+
+  // Initial app warm-up
+  useEffect(() => {
+    const warmUp = async () => {
+      try {
+        // Preload critical data
+        await Promise.all([
+          // Auth check happens automatically via AuthProvider
+          // Optionally preload crypto prices
+          fetch('/api/crypto').catch(() => {}),
+        ]);
+      } finally {
+        // Minimum 2 second display for brand experience
+        setTimeout(() => setIsInitializing(false), 2000);
+      }
+    };
+    
+    warmUp();
+  }, []);
 
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
@@ -85,10 +114,15 @@ const AppContent = () => {
 
   return (
     <>
+      {/* Onboarding Loader */}
+      <OnboardingLoader isLoading={isInitializing} minDisplayTime={2000} />
+      
+      {/* Navigation Spinner */}
       <RedirectLoadingSpinner
         isVisible={isLoading}
         onLoadComplete={() => setIsLoading(false)}
       />
+      
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
@@ -103,6 +137,10 @@ const AppContent = () => {
           <Route path="/earn" element={<Earn />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/contact" element={<Contact />} />
+          
+          {/* Password Reset */}
+          <Route path="/reset-password" element={<ResetRequest />} />
+          <Route path="/reset" element={<ResetConfirm />} />
           
           {/* Company Pages */}
           <Route path="/about" element={<About />} />
@@ -126,6 +164,11 @@ const AppContent = () => {
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
+          <Route path="/wallet/deposit" element={<ProtectedRoute><WalletDeposit /></ProtectedRoute>} />
+          <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           
           {/* 404 Catch-all - MUST BE LAST */}
           <Route path="*" element={<NotFound />} />
@@ -136,19 +179,31 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <Web3Provider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
-      </Web3Provider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Web3Provider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <HotToaster 
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#1a1a2e',
+                  color: '#fff',
+                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                },
+              }}
+            />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </Web3Provider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
