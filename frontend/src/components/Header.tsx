@@ -5,10 +5,14 @@ import {
   LogOut, 
   ChevronDown, 
   Globe, 
-  Moon,
   Shield,
   Zap,
-  Menu
+  Menu,
+  LayoutDashboard,
+  LineChart,
+  Briefcase,
+  BookOpen,
+  HelpCircle
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -37,7 +41,7 @@ const LanguageSelector = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger 
-        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 focus:outline-none"
+        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 focus:outline-none min-h-[44px]"
         aria-label="Select language"
       >
         <Globe className="h-4 w-4" />
@@ -52,7 +56,7 @@ const LanguageSelector = () => {
           <DropdownMenuItem 
             key={lang.code}
             onClick={() => setCurrentLang(lang.code)}
-            className={`cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors ${
+            className={`cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors min-h-[44px] ${
               currentLang === lang.code ? "text-primary bg-primary/10" : ""
             }`}
           >
@@ -85,15 +89,14 @@ const AnimatedNavLink = ({ to, children, onClick, className = "" }: NavLinkProps
       onClick={onClick}
       className={`relative text-sm font-medium transition-colors duration-300 group py-2 font-mono uppercase tracking-wider ${
         isActive 
-          ? "text-primary" 
+          ? "text-gold-400" 
           : "text-muted-foreground hover:text-foreground"
       } ${className}`}
     >
       {children}
-      {/* Animated underline with glow */}
       <span 
-        className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-px bg-primary transition-all duration-300 ${
-          isActive ? "w-full shadow-glow-cyan" : "w-0 group-hover:w-full"
+        className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-px bg-gold-400 transition-all duration-300 ${
+          isActive ? "w-full" : "w-0 group-hover:w-full"
         }`}
       />
     </Link>
@@ -112,12 +115,12 @@ interface MobileMenuProps {
 
 const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
   const menuLinks = [
-    { to: "/", label: "Home" },
-    { to: "/markets", label: "Markets" },
-    { to: "/trade", label: "Trade" },
-    { to: "/earn", label: "Wallet" },
-    { to: "/learn", label: "Learn" },
-    { to: "/contact", label: "Support" },
+    { to: "/", label: "Home", icon: Shield },
+    { to: "/markets", label: "Markets", icon: LineChart },
+    { to: "/trade", label: "Trade", icon: Briefcase },
+    { to: "/earn", label: "Wallet", icon: Wallet },
+    { to: "/learn", label: "Learn", icon: BookOpen },
+    { to: "/contact", label: "Support", icon: HelpCircle },
   ];
 
   return (
@@ -134,29 +137,28 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
       {/* Menu Panel */}
       <div 
         className={`fixed inset-0 z-50 bg-background/98 backdrop-blur-2xl transition-all duration-500 transform ${
-          isOpen ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
+          isOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
         }`}
         role="dialog"
         aria-modal="true"
         aria-label="Mobile navigation menu"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
           <Link to="/" className="flex items-center gap-3" onClick={onClose}>
-            <div className="relative">
-              <div className="h-10 w-10 bg-primary flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-black" />
-              </div>
-              <div className="absolute inset-0 bg-primary/30 blur-xl -z-10" />
-            </div>
+            <img 
+              src="/logo.svg" 
+              alt="CryptoVault" 
+              className="h-10 w-10 object-contain"
+            />
             <span className="font-display text-xl font-bold tracking-tight">
-              Crypto<span className="text-primary">Vault</span>
+              Crypto<span className="text-gold-400">Vault</span>
             </span>
           </Link>
           
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+            className="p-3 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close menu"
           >
             <X className="h-6 w-6" />
@@ -164,40 +166,42 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
         </div>
         
         {/* Navigation Links */}
-        <nav className="flex flex-col px-6 py-8 space-y-2">
-          {menuLinks.map((link, index) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={onClose}
-              className="text-lg font-mono uppercase tracking-wider text-muted-foreground hover:text-primary py-3 px-4 hover:bg-primary/5 transition-colors flex items-center justify-between group border-b border-white/5"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              {link.label}
-              <ChevronDown className="h-4 w-4 -rotate-90 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-          ))}
+        <nav className="flex flex-col px-4 sm:px-6 py-6 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
+          {menuLinks.map((link, index) => {
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={onClose}
+                className="text-base font-medium text-muted-foreground hover:text-gold-400 py-4 px-4 hover:bg-gold-500/5 transition-colors flex items-center gap-4 rounded-lg min-h-[56px]"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <Icon className="h-5 w-5" />
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
         
         {/* Bottom Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/10 bg-background/80 backdrop-blur-xl">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 border-t border-white/10 bg-background/80 backdrop-blur-xl safe-area-pb">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between mb-4">
-              <LanguageSelector />
-            </div>
-            
             {user ? (
               <>
                 <Button 
                   variant="outline" 
-                  className="w-full border-white/20 hover:border-primary hover:bg-primary/10 hover:text-primary font-mono uppercase"
+                  className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
                   asChild
                 >
-                  <Link to="/dashboard" onClick={onClose}>Dashboard</Link>
+                  <Link to="/dashboard" onClick={onClose}>
+                    <LayoutDashboard className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Link>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full text-muted-foreground hover:text-destructive font-mono uppercase"
+                  className="w-full h-12 text-muted-foreground hover:text-destructive font-mono uppercase"
                   onClick={() => { onSignOut(); onClose(); }}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -208,13 +212,13 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
               <>
                 <Button 
                   variant="outline" 
-                  className="w-full border-white/20 hover:border-primary hover:bg-primary/10 hover:text-primary font-mono uppercase"
+                  className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
                   asChild
                 >
                   <Link to="/auth" onClick={onClose}>Sign In</Link>
                 </Button>
                 <Button 
-                  className="w-full bg-primary hover:bg-primary/90 text-black font-bold font-mono uppercase tracking-wider hover:shadow-glow-cyan transition-shadow"
+                  className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold font-mono uppercase tracking-wider"
                   asChild
                 >
                   <Link to="/auth" onClick={onClose}>
@@ -282,35 +286,36 @@ const Header = () => {
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled 
-            ? "bg-background/95 backdrop-blur-2xl border-b border-white/5" 
+            ? "bg-background/95 backdrop-blur-2xl border-b border-white/5 shadow-lg" 
             : "bg-transparent"
         }`}
         data-testid="header"
         role="banner"
       >
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex h-18 lg:h-20 items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex h-16 sm:h-18 lg:h-20 items-center justify-between">
             
             {/* LEFT: Logo */}
             <Link 
               to="/" 
-              className="flex items-center gap-3 lg:gap-4 group"
+              className="flex items-center gap-2 sm:gap-3 group"
               data-testid="logo-link"
               aria-label="CryptoVault - Go to homepage"
             >
               <div className="relative">
-                <div className="h-10 w-10 lg:h-12 lg:w-12 bg-primary flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                  <Wallet className="h-5 w-5 lg:h-6 lg:w-6 text-black" />
-                </div>
-                <div className="absolute inset-0 bg-primary/40 blur-xl transition-all duration-300 group-hover:bg-primary/60 -z-10" />
+                <img 
+                  src="/logo.svg" 
+                  alt="CryptoVault Logo" 
+                  className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
               
               <div className="flex flex-col">
-                <span className="font-display text-xl lg:text-2xl font-semibold tracking-tight leading-none">
-                  Crypto<span className="text-primary">Vault</span>
+                <span className="font-display text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight leading-none">
+                  Crypto<span className="text-gold-400">Vault</span>
                 </span>
                 <span className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground tracking-widest uppercase mt-0.5 font-mono">
-                  <Shield className="h-2.5 w-2.5 text-primary" />
+                  <Shield className="h-2.5 w-2.5 text-gold-400" />
                   Secure Global Trading
                 </span>
               </div>
@@ -318,7 +323,7 @@ const Header = () => {
 
             {/* CENTER: Desktop Navigation */}
             <nav 
-              className="hidden lg:flex items-center gap-8"
+              className="hidden lg:flex items-center gap-6 xl:gap-8"
               role="navigation"
               aria-label="Main navigation"
             >
@@ -330,8 +335,8 @@ const Header = () => {
             </nav>
 
             {/* RIGHT: Actions */}
-            <div className="flex items-center gap-2 lg:gap-3">
-              <div className="hidden lg:block">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+              <div className="hidden md:block">
                 <LanguageSelector />
               </div>
 
@@ -343,7 +348,7 @@ const Header = () => {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 font-mono uppercase tracking-wider"
+                      className="text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 font-mono uppercase tracking-wider min-h-[44px]"
                       asChild 
                       data-testid="nav-dashboard"
                     >
@@ -353,19 +358,18 @@ const Header = () => {
                       variant="ghost" 
                       size="sm" 
                       onClick={handleSignOut}
-                      className="text-muted-foreground hover:text-destructive font-mono uppercase tracking-wider"
+                      className="text-muted-foreground hover:text-destructive min-h-[44px]"
                       data-testid="nav-signout"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
+                      <LogOut className="h-4 w-4" />
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       size="sm"
-                      className="border-white/20 hover:border-primary hover:bg-primary/10 hover:text-primary transition-colors font-mono uppercase tracking-wider"
+                      className="text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-colors font-mono uppercase tracking-wider min-h-[44px]"
                       asChild 
                       data-testid="nav-signin"
                     >
@@ -374,12 +378,12 @@ const Header = () => {
                     
                     <Button 
                       size="sm"
-                      className="bg-primary hover:bg-primary/90 text-black font-bold font-mono uppercase tracking-wider hover:shadow-glow-cyan transition-shadow group"
+                      className="bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold font-mono uppercase tracking-wider min-h-[44px] group"
                       asChild 
                       data-testid="nav-get-started"
                     >
                       <Link to="/auth">
-                        <Zap className="h-4 w-4 mr-1.5" />
+                        <Zap className="h-4 w-4 mr-1.5 transition-transform group-hover:scale-110" />
                         Get Started
                       </Link>
                     </Button>
@@ -389,7 +393,7 @@ const Header = () => {
 
               {/* Mobile Menu Toggle */}
               <button 
-                className="lg:hidden p-2.5 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="lg:hidden p-2.5 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 data-testid="mobile-menu-toggle"
                 aria-expanded={isMenuOpen}
