@@ -1,0 +1,64 @@
+{
+  "total_tests": 8,
+  "passed_tests": 4,
+  "failed_tests": 4,
+  "success_rate": 50.0,
+  "test_results": [
+    {
+      "test": "Root Endpoint",
+      "success": false,
+      "details": "Root endpoint error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:01.982878"
+    },
+    {
+      "test": "Health Check",
+      "success": false,
+      "details": "Health check failed: {'detail': 'Not Found'}",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.020831"
+    },
+    {
+      "test": "Get All Cryptocurrencies",
+      "success": true,
+      "details": "Retrieved 9 cryptocurrencies",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.555311"
+    },
+    {
+      "test": "Get Bitcoin Details",
+      "success": true,
+      "details": "Bitcoin details retrieved successfully",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.713536"
+    },
+    {
+      "test": "User Signup",
+      "success": false,
+      "details": "Signup failed: {'detail': [{'type': 'value_error', 'loc': ['body', 'email'], 'msg': 'value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.', 'input': 'test_20260114_030602@cryptovault.test', 'ctx': {'reason': 'The part after the @-sign is a special-use or reserved name that cannot be used with email.'}}]}",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.771103"
+    },
+    {
+      "test": "Portfolio Endpoint (Auth Required)",
+      "success": true,
+      "details": "Correctly requires authentication",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.804805"
+    },
+    {
+      "test": "Orders Endpoint (Auth Required)",
+      "success": true,
+      "details": "Correctly requires authentication",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.839460"
+    },
+    {
+      "test": "CORS Configuration",
+      "success": false,
+      "details": "No CORS headers found",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:06:02.870960"
+    }
+  ]
+}
