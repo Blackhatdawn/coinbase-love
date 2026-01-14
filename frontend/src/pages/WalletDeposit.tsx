@@ -43,6 +43,7 @@ interface DepositResponse {
   invoiceId?: string;
   paymentUrl?: string;
   payAddress?: string;
+  address?: string;
   payAmount?: number;
   amount: number;
   currency: string;
