@@ -144,7 +144,7 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
         aria-label="Mobile navigation menu"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10 relative z-10">
           <Link to="/" className="flex items-center gap-3" onClick={onClose}>
             <img 
               src="/logo.svg" 
@@ -158,7 +158,7 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
           
           <button
             onClick={onClose}
-            className="p-3 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-3 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center relative z-20"
             aria-label="Close menu"
           >
             <X className="h-6 w-6" />
