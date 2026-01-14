@@ -70,9 +70,9 @@ class CryptoVaultAPITester:
             return False, {"error": str(e)}
 
     def test_health_check(self):
-        """Test health endpoint (should be at /health, not /api/health)"""
+        """Test health endpoint (should be at /api/health)"""
         try:
-            response = requests.get(f"{self.base_url}/health", timeout=10)
+            response = requests.get(f"{self.api_base}/health", timeout=10)
             success = response.status_code == 200
             if success:
                 data = response.json()
