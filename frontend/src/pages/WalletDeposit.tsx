@@ -90,12 +90,23 @@ const WalletDeposit = () => {
         currency: currency,
       });
       
-      setDepositInfo(response);
+      // Map response to our interface
+      setDepositInfo({
+        ...response,
+        address: response.payAddress,
+        paymentUrl: response.paymentUrl,
+      });
       
-      // If payment URL is returned, redirect to payment gateway
+      // If payment URL is returned, show toast
       if (response.paymentUrl) {
-        toast.success('Redirecting to payment...');
-        window.open(response.paymentUrl, '_blank');
+        toast.success('Payment invoice created!');
+      } else if (response.payAddress) {
+        toast.success('Deposit address generated!');
+      }
+      
+      // Show mock warning if applicable
+      if (response.mock) {
+        toast.info('Running in demo mode - this is a simulated deposit');
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to create deposit');
