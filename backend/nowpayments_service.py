@@ -341,6 +341,22 @@ class NOWPaymentsService:
         except Exception as e:
             logger.error(f"IPN signature verification error: {e}")
             return False
+    
+    def _generate_mock_address(self, currency: str) -> str:
+        """Generate a mock cryptocurrency address for testing"""
+        prefix_map = {
+            "btc": "bc1q",
+            "eth": "0x",
+            "usdt": "0x",
+            "usdc": "0x",
+            "ltc": "ltc1q",
+            "sol": "",
+            "bnb": "bnb1",
+            "xrp": "r"
+        }
+        prefix = prefix_map.get(currency.lower(), "")
+        random_hex = str(uuid.uuid4()).replace("-", "")[:32]
+        return f"{prefix}{random_hex}"
 
 
 # Payment status constants
