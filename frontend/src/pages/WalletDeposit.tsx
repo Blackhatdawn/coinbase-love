@@ -66,8 +66,9 @@ const WalletDeposit = () => {
   };
 
   const copyAddress = async () => {
-    if (depositInfo?.address) {
-      await navigator.clipboard.writeText(depositInfo.address);
+    const address = depositInfo?.address || depositInfo?.payAddress;
+    if (address) {
+      await navigator.clipboard.writeText(address);
       setCopied(true);
       toast.success('Address copied!');
       setTimeout(() => setCopied(false), 2000);
