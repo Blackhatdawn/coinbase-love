@@ -35,9 +35,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  /**
-   * Validate form using Zod schema based on current mode (login/signup)
-   */
   const validateForm = (): boolean => {
     const schema = isLogin ? signInSchema : signUpSchema;
     const formData = isLogin
@@ -54,9 +51,6 @@ const Auth = () => {
     return newErrors.length === 0;
   };
 
-  /**
-   * Get error message for a specific field
-   */
   const getFieldError = (field: string): string | null => {
     const error = errors.find(e => e.field === field);
     return error ? error.message : null;
@@ -84,7 +78,6 @@ const Auth = () => {
         description: "Your email has been verified. You can now sign in.",
       });
 
-      // Reset form and show login
       setEmailVerificationStep(false);
       setVerificationCode("");
       setPendingEmail("");
@@ -106,7 +99,6 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form before submitting
     if (!validateForm()) {
       return;
     }
@@ -118,7 +110,6 @@ const Auth = () => {
         const result = await signIn(email, password);
 
         if (result.error) {
-          // Check if error is due to unverified email
           if (result.error.includes("Email not verified")) {
             toast({
               title: "Email not verified",
@@ -154,7 +145,6 @@ const Auth = () => {
             description: "Please check your email for a verification code.",
           });
 
-          // Store user info and show OTP modal
           setPendingEmail(email);
           setPendingUserName(name);
           setShowOTPModal(true);
@@ -166,19 +156,20 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left Panel - Branding */}
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+      {/* Left Panel - Branding (Desktop Only) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-background to-gold-600/5" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.15),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(217,119,6,0.1),transparent_50%)]" />
         
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          <div className="flex items-center gap-3 mb-8">
+          {/* Logo - Desktop */}
+          <div className="flex items-center gap-4 mb-10">
             <img 
-              src="/favicon.svg" 
+              src="/logo.svg" 
               alt="CryptoVault" 
-              className="h-12 w-12 object-contain"
+              className="h-16 w-16 object-contain drop-shadow-lg"
             />
             <span className="font-display text-3xl font-bold">
               Crypto<span className="text-gold-400">Vault</span>
@@ -194,196 +185,211 @@ const Auth = () => {
             Join millions of users trading cryptocurrencies securely. Start your journey with CryptoVault today.
           </p>
           
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-4 xl:gap-6">
             <div className="glass-card p-4 rounded-xl border border-gold-500/10">
-              <div className="text-2xl font-bold text-gold-400">$2.8T+</div>
-              <div className="text-sm text-muted-foreground">Trading Volume</div>
+              <div className="text-xl xl:text-2xl font-bold text-gold-400">$2.8T+</div>
+              <div className="text-xs xl:text-sm text-muted-foreground">Trading Volume</div>
             </div>
             <div className="glass-card p-4 rounded-xl border border-gold-500/10">
-              <div className="text-2xl font-bold text-gold-400">100M+</div>
-              <div className="text-sm text-muted-foreground">Users</div>
+              <div className="text-xl xl:text-2xl font-bold text-gold-400">100M+</div>
+              <div className="text-xs xl:text-sm text-muted-foreground">Users</div>
             </div>
             <div className="glass-card p-4 rounded-xl border border-gold-500/10">
-              <div className="text-2xl font-bold text-gold-400">150+</div>
-              <div className="text-sm text-muted-foreground">Countries</div>
+              <div className="text-xl xl:text-2xl font-bold text-gold-400">150+</div>
+              <div className="text-xs xl:text-sm text-muted-foreground">Countries</div>
             </div>
           </div>
         </div>
       </div>
       
       {/* Right Panel - Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <button 
-              onClick={() => navigate("/")}
-              className="p-2 hover:bg-gold-500/10 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <img 
-                src="/favicon.svg" 
-                alt="CryptoVault" 
-                className="h-9 w-9 object-contain"
-              />
-              <span className="font-display text-xl font-bold">
-                Crypto<span className="text-gold-400">Vault</span>
-              </span>
-            </div>
+      <div className="flex-1 lg:w-1/2 flex flex-col">
+        {/* Mobile Header with Logo */}
+        <div className="lg:hidden flex items-center justify-between p-4 sm:p-6 border-b border-border/30">
+          <button 
+            onClick={() => navigate("/")}
+            className="p-2 -ml-2 hover:bg-gold-500/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo.svg" 
+              alt="CryptoVault" 
+              className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+            />
+            <span className="font-display text-lg sm:text-xl font-bold">
+              Crypto<span className="text-gold-400">Vault</span>
+            </span>
           </div>
-          
-          <div className="hidden lg:block mb-8">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to home
-            </button>
-          </div>
-          
-          {emailVerificationStep ? (
-            <>
-              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
-                Verify Your Email
-              </h2>
-              <p className="text-muted-foreground mb-8">
-                We've sent a verification link to {pendingEmail}. Enter the verification code below.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
-                {isLogin ? "Welcome back" : "Create account"}
-              </h2>
-              <p className="text-muted-foreground mb-8">
-                {isLogin
-                  ? "Enter your credentials to access your account"
-                  : "Start your crypto journey today"}
-              </p>
-            </>
-          )}
+          <div className="w-10" /> {/* Spacer for centering */}
+        </div>
 
-          <form onSubmit={emailVerificationStep ? handleVerifyEmail : handleSubmit} className="space-y-5">
-            {!isLogin && (
+        {/* Form Container */}
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12">
+          <div className="w-full max-w-md">
+            {/* Desktop Back Button */}
+            <div className="hidden lg:block mb-8">
+              <button 
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to home
+              </button>
+            </div>
+            
+            {emailVerificationStep ? (
+              <>
+                <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                  Verify Your Email
+                </h2>
+                <p className="text-muted-foreground mb-8 text-sm sm:text-base">
+                  We've sent a verification link to {pendingEmail}. Enter the verification code below.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                  {isLogin ? "Welcome back" : "Create account"}
+                </h2>
+                <p className="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base">
+                  {isLogin
+                    ? "Enter your credentials to access your account"
+                    : "Start your crypto journey today"}
+                </p>
+              </>
+            )}
+
+            <form onSubmit={emailVerificationStep ? handleVerifyEmail : handleSubmit} className="space-y-4 sm:space-y-5">
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm sm:text-base">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className={`pl-10 sm:pl-11 h-12 sm:h-14 text-base bg-muted/50 border-border/50 focus:border-primary ${
+                        getFieldError("name") ? "border-destructive" : ""
+                      }`}
+                      data-testid="signup-name-input"
+                    />
+                  </div>
+                  {getFieldError("name") && (
+                    <p className="text-xs text-destructive">{getFieldError("name")}</p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   <Input
-                    id="name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
-                      getFieldError("name") ? "border-destructive" : ""
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`pl-10 sm:pl-11 h-12 sm:h-14 text-base bg-muted/50 border-border/50 focus:border-primary ${
+                      getFieldError("email") ? "border-destructive" : ""
                     }`}
+                    data-testid="auth-email-input"
                   />
                 </div>
-                {getFieldError("name") && (
-                  <p className="text-xs text-destructive">{getFieldError("name")}</p>
+                {getFieldError("email") && (
+                  <p className="text-xs text-destructive">{getFieldError("email")}</p>
                 )}
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`pl-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
-                    getFieldError("email") ? "border-destructive" : ""
-                  }`}
-                />
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`pl-10 sm:pl-11 pr-12 h-12 sm:h-14 text-base bg-muted/50 border-border/50 focus:border-primary ${
+                      getFieldError("password") ? "border-destructive" : ""
+                    }`}
+                    data-testid="auth-password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
+                  </button>
+                </div>
+                {getFieldError("password") && (
+                  <p className="text-xs text-destructive">{getFieldError("password")}</p>
+                )}
+                {!isLogin && !getFieldError("password") && password && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ Password meets security requirements
+                  </p>
+                )}
               </div>
-              {getFieldError("email") && (
-                <p className="text-xs text-destructive">{getFieldError("email")}</p>
+              
+              {isLogin && (
+                <div className="flex justify-end">
+                  <button 
+                    type="button" 
+                    className="text-sm text-gold-400 hover:text-gold-300 hover:underline min-h-[44px] px-2"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`pl-10 pr-10 h-12 bg-muted/50 border-border/50 focus:border-primary ${
-                    getFieldError("password") ? "border-destructive" : ""
-                  }`}
-                />
+              
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="w-full h-12 sm:h-14 text-base bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
+                disabled={isLoading}
+                data-testid="auth-submit-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 animate-spin" />
+                    Please wait...
+                  </>
+                ) : isLogin ? "Sign In" : "Create Account"}
+              </Button>
+            </form>
+            
+            <div className="mt-6 sm:mt-8 text-center">
+              <p className="text-muted-foreground text-sm sm:text-base">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                {" "}
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-gold-400 hover:text-gold-300 hover:underline font-medium min-h-[44px]"
+                  data-testid="auth-toggle-mode"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {isLogin ? "Sign up" : "Sign in"}
                 </button>
-              </div>
-              {getFieldError("password") && (
-                <p className="text-xs text-destructive">{getFieldError("password")}</p>
-              )}
-              {!isLogin && !getFieldError("password") && password && (
-                <p className="text-xs text-muted-foreground">
-                  ✓ Password meets security requirements
-                </p>
-              )}
+              </p>
             </div>
             
-            {isLogin && (
-              <div className="flex justify-end">
-                <button type="button" className="text-sm text-gold-400 hover:text-gold-300 hover:underline">
-                  Forgot password?
-                </button>
-              </div>
-            )}
-            
-            <Button 
-              type="submit" 
-              size="lg" 
-              className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Please wait...
-                </>
-              ) : isLogin ? "Sign In" : "Create Account"}
-            </Button>
-          </form>
-          
-          <div className="mt-8 text-center">
-            <p className="text-muted-foreground">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
-              {" "}
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-gold-400 hover:text-gold-300 hover:underline font-medium"
-              >
-                {isLogin ? "Sign up" : "Sign in"}
-              </button>
+            <p className="mt-6 sm:mt-8 text-xs text-center text-muted-foreground px-4">
+              By continuing, you agree to our{" "}
+              <a href="/terms" className="underline hover:text-gold-400">Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" className="underline hover:text-gold-400">Privacy Policy</a>
             </p>
           </div>
-          
-          <p className="mt-8 text-xs text-center text-muted-foreground">
-            By continuing, you agree to our{" "}
-            <a href="/terms" className="underline hover:text-gold-400">Terms of Service</a>
-            {" "}and{" "}
-            <a href="/privacy" className="underline hover:text-gold-400">Privacy Policy</a>
-          </p>
         </div>
       </div>
 
