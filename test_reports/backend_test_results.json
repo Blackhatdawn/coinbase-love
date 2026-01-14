@@ -1,71 +1,71 @@
 {
   "total_tests": 9,
-  "passed_tests": 6,
-  "failed_tests": 3,
-  "success_rate": 66.66666666666666,
+  "passed_tests": 7,
+  "failed_tests": 2,
+  "success_rate": 77.77777777777779,
   "test_results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:30.370086"
+      "timestamp": "2026-01-14T04:40:22.105985"
     },
     {
       "test": "Health Check",
-      "success": false,
-      "details": "Health check error: Expecting value: line 1 column 1 (char 0)",
+      "success": true,
+      "details": "API is healthy",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:30.487074"
+      "timestamp": "2026-01-14T04:40:22.169801"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 9 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:30.917431"
+      "timestamp": "2026-01-14T04:40:22.568312"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.061105"
+      "timestamp": "2026-01-14T04:40:22.707170"
     },
     {
       "test": "User Signup",
       "success": true,
-      "details": "User created with ID: 83f0670b-b0c5-40e9-8d4f-a3ee5e728ac2",
+      "details": "User created with ID: e3f90d96-1e10-44f2-8125-641272a4bdc4",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.495117"
+      "timestamp": "2026-01-14T04:40:23.121389"
     },
     {
       "test": "User Login",
       "success": false,
       "details": "Email verification required (expected for new accounts)",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.787160"
+      "timestamp": "2026-01-14T04:40:23.408892"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.861624"
+      "timestamp": "2026-01-14T04:40:23.446560"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.940354"
+      "timestamp": "2026-01-14T04:40:23.480047"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-14T04:37:31.971965"
+      "timestamp": "2026-01-14T04:40:23.511514"
     }
   ]
 }
