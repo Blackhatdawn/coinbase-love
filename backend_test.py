@@ -231,6 +231,10 @@ class CryptoVaultAPITester:
         print("\n💰 Testing Cryptocurrency APIs...")
         self.test_crypto_endpoints()
         
+        # New features tests
+        print("\n🆕 Testing New Feature Endpoints...")
+        self.test_new_features_endpoints()
+        
         # Authentication tests
         print("\n🔐 Testing Authentication...")
         test_email = self.test_auth_signup()
