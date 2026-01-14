@@ -9,63 +9,63 @@
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:53.856256"
+      "timestamp": "2026-01-14T04:37:30.370086"
     },
     {
       "test": "Health Check",
       "success": false,
       "details": "Health check error: Expecting value: line 1 column 1 (char 0)",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:53.894669"
+      "timestamp": "2026-01-14T04:37:30.487074"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 9 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:54.343512"
+      "timestamp": "2026-01-14T04:37:30.917431"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:54.483155"
+      "timestamp": "2026-01-14T04:37:31.061105"
     },
     {
       "test": "User Signup",
       "success": true,
-      "details": "User created with ID: 7c71dd98-92a4-4edd-90f1-bab95911d42b",
+      "details": "User created with ID: 83f0670b-b0c5-40e9-8d4f-a3ee5e728ac2",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:54.912177"
+      "timestamp": "2026-01-14T04:37:31.495117"
     },
     {
       "test": "User Login",
       "success": false,
       "details": "Email verification required (expected for new accounts)",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:55.206455"
+      "timestamp": "2026-01-14T04:37:31.787160"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:55.240994"
+      "timestamp": "2026-01-14T04:37:31.861624"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:55.273873"
+      "timestamp": "2026-01-14T04:37:31.940354"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-14T03:12:55.309053"
+      "timestamp": "2026-01-14T04:37:31.971965"
     }
   ]
 }
