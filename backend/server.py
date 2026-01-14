@@ -59,6 +59,15 @@ from security_middleware import SecurityMiddleware, CSRFMiddleware
 # Blacklist import for secure logout
 from blacklist import blacklist_token
 
+# Import new services
+from nowpayments_service import nowpayments_service, PaymentStatus
+from fcm_service import fcm_service
+from websocket_feed import price_feed
+from referral_service import ReferralService
+
+# Redis cache import
+from redis_cache import redis_cache
+
 # Configure structured logging
 logging.basicConfig(
     level=logging.INFO,
