@@ -1,22 +1,25 @@
 """
 Firebase Cloud Messaging (FCM) Service
 Push notifications for price alerts, order confirmations, etc.
+Supports MOCK mode when Firebase credentials are not configured
 """
 import os
 import json
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+import uuid
 
 logger = logging.getLogger(__name__)
 
 # Firebase Admin SDK
 firebase_initialized = False
 firebase_app = None
+mock_mode = False
 
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
-    global firebase_initialized, firebase_app
+    global firebase_initialized, firebase_app, mock_mode
     
     if firebase_initialized:
         return True
@@ -37,17 +40,26 @@ def initialize_firebase():
             # Load from file
             cred = credentials.Certificate(creds_path)
         else:
-            logger.warning("⚠️ Firebase credentials not found - FCM disabled")
-            return False
+            logger.warning("⚠️ Firebase credentials not found - FCM running in MOCK mode")
+            mock_mode = True
+            firebase_initialized = True
+            return True
         
         firebase_app = firebase_admin.initialize_app(cred)
         firebase_initialized = True
         logger.info("✅ Firebase Admin SDK initialized")
         return True
         
+    except ImportError:
+        logger.warning("⚠️ firebase-admin not installed - FCM running in MOCK mode")
+        mock_mode = True
+        firebase_initialized = True
+        return True
     except Exception as e:
-        logger.error(f"❌ Firebase initialization failed: {e}")
-        return False
+        logger.error(f"❌ Firebase initialization failed: {e} - Running in MOCK mode")
+        mock_mode = True
+        firebase_initialized = True
+        return True
 
 
 class FCMService:
