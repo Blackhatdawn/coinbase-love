@@ -63,10 +63,13 @@ def initialize_firebase():
 
 
 class FCMService:
-    """Firebase Cloud Messaging service for push notifications"""
+    """Firebase Cloud Messaging service for push notifications (with mock fallback)"""
     
     def __init__(self):
         self.initialized = initialize_firebase()
+        self.mock_mode = mock_mode
+        if self.mock_mode:
+            logger.info("📱 FCM Service running in MOCK mode")
     
     async def send_notification(
         self,
@@ -86,6 +89,16 @@ class FCMService:
             data: Additional data payload
             image_url: Image URL for rich notification
         """
+        # MOCK MODE: Log and return success
+        if self.mock_mode:
+            mock_id = f"mock-msg-{str(uuid.uuid4())[:8]}"
+            logger.info(f"📱 [MOCK] Notification sent: {title} - {body}")
+            return {
+                "success": True,
+                "mock": True,
+                "message_id": mock_id
+            }
+        
         if not self.initialized:
             logger.warning("FCM not initialized, skipping notification")
             return {"success": False, "error": "FCM not initialized"}
