@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
-  ArrowUpRight,
+  TrendingDown,
   PieChart,
   Activity,
   Settings,
@@ -13,10 +13,16 @@ import {
   Bell,
   Wallet,
   LogOut,
-  History
+  History,
+  Menu,
+  X,
+  Home,
+  LineChart,
+  RefreshCw
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/apiClient";
+import { cn } from "@/lib/utils";
 
 interface Holding {
   symbol: string;
@@ -36,28 +42,42 @@ const Dashboard = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchPortfolio = async (isBackground = false) => {
+    try {
+      if (!isBackground) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+      const response = await api.portfolio.get();
+      const portfolio = response.portfolio;
+
+      setTotalValue(portfolio.totalBalance);
+      setHoldings(portfolio.holdings || []);
+    } catch (error) {
+      console.error("Failed to fetch portfolio:", error);
+      setTotalValue(0);
+      setHoldings([]);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        setIsLoading(true);
-        const response = await api.portfolio.get();
-        const portfolio = response.portfolio;
-
-        setTotalValue(portfolio.totalBalance);
-        setHoldings(portfolio.holdings || []);
-      } catch (error) {
-        console.error("Failed to fetch portfolio:", error);
-        setTotalValue(0);
-        setHoldings([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (user) {
       fetchPortfolio();
     }
+  }, [user]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => fetchPortfolio(true), 30000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const handleSignOut = () => {
@@ -65,142 +85,254 @@ const Dashboard = () => {
     navigate("/");
   };
 
+  // Calculate total change
+  const totalChange = holdings.reduce((acc, h) => acc + (h.change || 0) * (h.allocation / 100), 0);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Dashboard Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-                <Wallet className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-bold">CryptoVault</span>
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <img 
+                src="/logo.svg" 
+                alt="CryptoVault" 
+                className="h-9 w-9 sm:h-10 sm:w-10 object-contain"
+              />
+              <span className="font-display text-lg sm:text-xl font-bold">
+                Crypto<span className="text-gold-400">Vault</span>
+              </span>
             </Link>
             
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:block">
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
                 Welcome, {user?.name}
               </span>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="min-h-[44px]"
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
             </div>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              className="sm:hidden p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="sm:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl">
+            <div className="container mx-auto px-4 py-4 space-y-2">
+              <div className="text-sm text-muted-foreground mb-4">
+                Welcome, {user?.name}
+              </div>
+              <Link 
+                to="/" 
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Home className="h-5 w-5" />
+                Home
+              </Link>
+              <Link 
+                to="/markets" 
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <LineChart className="h-5 w-5" />
+                Markets
+              </Link>
+              <Link 
+                to="/trade" 
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Activity className="h-5 w-5" />
+                Trade
+              </Link>
+              <button 
+                onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}
+                className="flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-500 rounded-lg w-full min-h-[48px]"
+              >
+                <LogOut className="h-5 w-5" />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {/* Page Title */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Manage your portfolio and account settings
-          </p>
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Dashboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Manage your portfolio and account settings
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchPortfolio(true)}
+            disabled={isRefreshing}
+            className="min-h-[44px] self-start sm:self-auto"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+            Refresh
+          </Button>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Portfolio Section */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Portfolio Summary Card */}
-            <Card className="glass-card border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between">
+            <Card className="glass-card border-gold-500/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-4">
                 <div>
-                  <CardTitle className="text-lg">Total Balance</CardTitle>
-                  <CardDescription>Your portfolio value</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Total Balance</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Your portfolio value</CardDescription>
                 </div>
-                <PieChart className="h-5 w-5 text-primary" />
+                <PieChart className="h-5 w-5 text-gold-400" />
               </CardHeader>
               <CardContent>
-                <div className="mb-6">
-                  <div className="font-display text-4xl font-bold mb-2">
+                <div className="mb-4 sm:mb-6">
+                  <div className="font-display text-3xl sm:text-4xl font-bold mb-2">
                     ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
-                  <div className="flex items-center gap-2 text-success">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-sm font-medium">+$4,523.45 (4.12%) today</span>
+                  <div className={cn(
+                    "flex items-center gap-2 text-sm",
+                    totalChange >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {totalChange >= 0 ? (
+                      <TrendingUp className="h-4 w-4" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4" />
+                    )}
+                    <span className="font-medium">
+                      {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}% today
+                    </span>
                   </div>
                 </div>
 
                 {/* Allocation Chart */}
-                <div className="space-y-3">
-                  <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-secondary">
-                    {holdings.map((h, i) => (
-                      <div 
-                        key={h.symbol}
-                        className="h-full transition-all duration-500"
-                        style={{ 
-                          width: `${h.allocation}%`,
-                          backgroundColor: i === 0 ? 'hsl(var(--primary))' : 
-                                          i === 1 ? 'hsl(var(--accent))' : 
-                                          i === 2 ? 'hsl(var(--success))' : 
-                                          'hsl(var(--muted-foreground))'
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {holdings.map((h, i) => (
-                      <div key={h.symbol} className="flex items-center gap-2 text-xs">
+                {holdings.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex gap-1 h-2 sm:h-3 rounded-full overflow-hidden bg-secondary">
+                      {holdings.map((h, i) => (
                         <div 
-                          className="w-2 h-2 rounded-full"
+                          key={h.symbol}
+                          className="h-full transition-all duration-500"
                           style={{ 
-                            backgroundColor: i === 0 ? 'hsl(var(--primary))' : 
-                                            i === 1 ? 'hsl(var(--accent))' : 
-                                            i === 2 ? 'hsl(var(--success))' : 
-                                            'hsl(var(--muted-foreground))'
+                            width: `${h.allocation}%`,
+                            backgroundColor: i === 0 ? '#F59E0B' : 
+                                            i === 1 ? '#8B5CF6' : 
+                                            i === 2 ? '#10B981' : 
+                                            '#6B7280'
                           }}
                         />
-                        <span className="text-muted-foreground">{h.symbol} {h.allocation}%</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                      {holdings.map((h, i) => (
+                        <div key={h.symbol} className="flex items-center gap-1.5 sm:gap-2 text-xs">
+                          <div 
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ 
+                              backgroundColor: i === 0 ? '#F59E0B' : 
+                                              i === 1 ? '#8B5CF6' : 
+                                              i === 2 ? '#10B981' : 
+                                              '#6B7280'
+                            }}
+                          />
+                          <span className="text-muted-foreground">{h.symbol} {h.allocation}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <Button variant="gradient" className="w-full mt-6">
+                <Button 
+                  className="w-full mt-4 sm:mt-6 h-11 sm:h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
+                >
                   Deposit Funds
                 </Button>
               </CardContent>
             </Card>
 
             {/* Holdings List */}
-            <Card className="glass-card border-border/50 overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50">
+            <Card className="glass-card border-gold-500/10 overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 py-3 sm:py-4">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Your Holdings</CardTitle>
+                  <Activity className="h-5 w-5 text-gold-400" />
+                  <CardTitle className="text-base sm:text-lg">Your Holdings</CardTitle>
                 </div>
                 <Link to="/transactions">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="min-h-[44px]">
                     <History className="h-4 w-4 mr-1" />
-                    History
+                    <span className="hidden sm:inline">History</span>
                   </Button>
                 </Link>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Loading holdings...
+                  <div className="p-4 sm:p-6 space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4 animate-pulse">
+                        <div className="w-10 h-10 rounded-full bg-gold-500/10" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-20 bg-gold-500/10 rounded" />
+                          <div className="h-3 w-16 bg-gold-500/10 rounded" />
+                        </div>
+                        <div className="text-right space-y-2">
+                          <div className="h-4 w-16 bg-gold-500/10 rounded ml-auto" />
+                          <div className="h-3 w-12 bg-gold-500/10 rounded ml-auto" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : holdings.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {holdings.map((holding) => (
-                      <div key={holding.symbol} className="p-4 hover:bg-secondary/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
+                      <div 
+                        key={holding.symbol} 
+                        className="p-4 hover:bg-gold-500/5 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
                               {holding.symbol.charAt(0)}
                             </div>
-                            <div>
-                              <div className="font-semibold">{holding.symbol}</div>
-                              <div className="text-sm text-muted-foreground">{holding.amount.toFixed(4)} {holding.symbol}</div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
+                              <div className="text-xs sm:text-sm text-muted-foreground">
+                                {holding.amount.toFixed(4)} {holding.symbol}
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-semibold">${holding.value.toLocaleString()}</div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-semibold text-sm sm:text-base">
+                              ${holding.value.toLocaleString()}
+                            </div>
                             {holding.change !== undefined && (
-                              <div className={`text-sm ${holding.change >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              <div className={cn(
+                                "text-xs sm:text-sm font-medium",
+                                holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                              )}>
                                 {holding.change >= 0 ? '+' : ''}{holding.change}%
                               </div>
                             )}
@@ -210,8 +342,14 @@ const Dashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No holdings yet. Add some to get started!
+                  <div className="p-6 sm:p-8 text-center text-muted-foreground">
+                    <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm sm:text-base">No holdings yet.</p>
+                    <Link to="/trade">
+                      <Button variant="link" className="mt-2 text-gold-400">
+                        Start trading →
+                      </Button>
+                    </Link>
                   </div>
                 )}
               </CardContent>
@@ -219,27 +357,27 @@ const Dashboard = () => {
           </div>
 
           {/* Settings Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Account Info Card */}
-            <Card className="glass-card border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
+            <Card className="glass-card border-gold-500/10">
+              <CardHeader className="pb-2 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <User className="h-5 w-5 text-gold-400" />
                   Account
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Name</label>
-                  <p className="font-medium">{user?.name}</p>
+                  <p className="font-medium text-sm sm:text-base truncate">{user?.name}</p>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Email</label>
-                  <p className="font-medium">{user?.email}</p>
+                  <p className="font-medium text-sm sm:text-base truncate">{user?.email}</p>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Member Since</label>
-                  <p className="font-medium">
+                  <p className="font-medium text-sm sm:text-base">
                     {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
@@ -247,26 +385,66 @@ const Dashboard = () => {
             </Card>
 
             {/* Quick Settings */}
-            <Card className="glass-card border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-primary" />
+            <Card className="glass-card border-gold-500/10">
+              <CardHeader className="pb-2 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-gold-400" />
                   Settings
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="ghost" className="w-full justify-start" size="sm">
+              <CardContent className="space-y-1 sm:space-y-2">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start min-h-[48px]" 
+                  size="sm"
+                >
                   <Shield className="h-4 w-4 mr-3" />
                   Security
                 </Button>
-                <Button variant="ghost" className="w-full justify-start" size="sm">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start min-h-[48px]" 
+                  size="sm"
+                >
                   <Bell className="h-4 w-4 mr-3" />
                   Notifications
                 </Button>
-                <Button variant="ghost" className="w-full justify-start" size="sm">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start min-h-[48px]" 
+                  size="sm"
+                >
                   <User className="h-4 w-4 mr-3" />
                   Edit Profile
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions - Mobile Only */}
+            <Card className="glass-card border-gold-500/10 lg:hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-gold-400" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2">
+                <Link to="/trade">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
+                  >
+                    Trade
+                  </Button>
+                </Link>
+                <Link to="/markets">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
+                  >
+                    Markets
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
