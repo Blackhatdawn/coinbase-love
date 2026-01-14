@@ -278,6 +278,11 @@ export const api = {
   // Wallet
   wallet: {
     getBalances: () => request<any>('/wallet/balances'),
+    createDeposit: (data: { amount: number; currency: string }) =>
+      request<any>('/wallet/deposit/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     deposit: (data: any) =>
       request<any>('/wallet/deposit', {
         method: 'POST',
@@ -290,6 +295,7 @@ export const api = {
       }),
     getDepositAddress: (asset: string) =>
       request<any>(`/wallet/deposit-address/${asset}`),
+    getWithdrawalLimits: () => request<any>('/wallet/withdrawal-limits'),
   },
 
   // Transfers
