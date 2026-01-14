@@ -138,6 +138,33 @@ class NOWPaymentsService:
             cancel_url: Redirect URL on cancel
             customer_email: Customer email for receipt
         """
+        # MOCK MODE: Return simulated payment data
+        if self.mock_mode:
+            mock_address = self._generate_mock_address(pay_currency)
+            mock_payment_id = f"mock-{str(uuid.uuid4())[:8]}"
+            
+            # Simulate crypto amount based on current rough prices
+            mock_rates = {"btc": 95000, "eth": 3300, "usdt": 1, "usdc": 1, "ltc": 100, "sol": 145}
+            rate = mock_rates.get(pay_currency.lower(), 100)
+            pay_amount = round(price_amount / rate, 8)
+            
+            logger.info(f"📦 [MOCK] Payment created: {mock_payment_id} for ${price_amount}")
+            
+            return {
+                "success": True,
+                "mock": True,
+                "payment_id": mock_payment_id,
+                "payment_status": "waiting",
+                "pay_address": mock_address,
+                "pay_amount": pay_amount,
+                "pay_currency": pay_currency.upper(),
+                "price_amount": price_amount,
+                "price_currency": price_currency.upper(),
+                "order_id": order_id,
+                "expiration_estimate_date": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+                "qr_code": f"https://api.qrserver.com/v1/create-qr-code/?data={mock_address}&size=200x200"
+            }
+        
         try:
             payload = {
                 "price_amount": price_amount,
