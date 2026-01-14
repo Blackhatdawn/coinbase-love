@@ -113,6 +113,38 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Get Bitcoin Details", False, f"Failed to get Bitcoin details: {data}")
 
+    def test_new_features_endpoints(self):
+        """Test new feature endpoints added in the update"""
+        # Test password reset request endpoint
+        reset_data = {"email": "test@example.com"}
+        success, data = self.make_request('POST', '/auth/password-reset/request', reset_data, expected_status=200)
+        if success or "password reset" in str(data).lower():
+            self.log_test("Password Reset Request", True, "Password reset endpoint working")
+        else:
+            self.log_test("Password Reset Request", False, f"Password reset failed: {data}")
+
+        # Test alerts endpoints (should require auth)
+        success, data = self.make_request('GET', '/alerts', expected_status=401)
+        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+            self.log_test("Alerts Endpoint (Auth Required)", True, "Alerts endpoint correctly requires authentication")
+        else:
+            self.log_test("Alerts Endpoint (Auth Required)", False, f"Unexpected alerts response: {data}")
+
+        # Test admin stats endpoint (should require auth)
+        success, data = self.make_request('GET', '/admin/stats', expected_status=401)
+        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+            self.log_test("Admin Stats Endpoint (Auth Required)", True, "Admin stats endpoint correctly requires authentication")
+        else:
+            self.log_test("Admin Stats Endpoint (Auth Required)", False, f"Unexpected admin stats response: {data}")
+
+        # Test wallet deposit endpoint (should require auth)
+        deposit_data = {"amount": 100, "currency": "btc"}
+        success, data = self.make_request('POST', '/wallet/deposit', deposit_data, expected_status=401)
+        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+            self.log_test("Wallet Deposit Endpoint (Auth Required)", True, "Wallet deposit endpoint correctly requires authentication")
+        else:
+            self.log_test("Wallet Deposit Endpoint (Auth Required)", False, f"Unexpected wallet deposit response: {data}")
+
     def test_auth_signup(self):
         """Test user signup"""
         test_email = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}@example.com"  # Use valid domain
