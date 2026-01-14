@@ -317,6 +317,7 @@ async def shutdown_event():
 # ============================================
 
 @app.get("/health", tags=["health"])
+@api_router.get("/health", tags=["health"])
 async def health_check():
     global db_connection
     try:
