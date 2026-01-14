@@ -38,12 +38,16 @@ const CRYPTO_OPTIONS = [
 const PRESET_AMOUNTS = [100, 500, 1000, 5000];
 
 interface DepositResponse {
-  invoiceId: string;
-  paymentUrl: string;
-  address?: string;
+  success: boolean;
+  orderId?: string;
+  invoiceId?: string;
+  paymentUrl?: string;
+  payAddress?: string;
+  payAmount?: number;
   amount: number;
   currency: string;
-  expiresAt: string;
+  expiresAt?: string;
+  mock?: boolean;
 }
 
 const WalletDeposit = () => {
