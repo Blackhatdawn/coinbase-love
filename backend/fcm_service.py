@@ -162,6 +162,16 @@ class FCMService:
         data: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Send notification to multiple devices"""
+        # MOCK MODE
+        if self.mock_mode:
+            logger.info(f"📱 [MOCK] Multicast notification to {len(tokens)} devices: {title}")
+            return {
+                "success": True,
+                "mock": True,
+                "success_count": len(tokens),
+                "failure_count": 0
+            }
+        
         if not self.initialized:
             return {"success": False, "error": "FCM not initialized"}
         
