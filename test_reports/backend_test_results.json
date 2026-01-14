@@ -1,64 +1,71 @@
 {
-  "total_tests": 8,
-  "passed_tests": 4,
-  "failed_tests": 4,
-  "success_rate": 50.0,
+  "total_tests": 9,
+  "passed_tests": 6,
+  "failed_tests": 3,
+  "success_rate": 66.66666666666666,
   "test_results": [
     {
       "test": "Root Endpoint",
-      "success": false,
-      "details": "Root endpoint error: Expecting value: line 1 column 1 (char 0)",
+      "success": true,
+      "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:01.982878"
+      "timestamp": "2026-01-14T03:07:20.848602"
     },
     {
       "test": "Health Check",
       "success": false,
-      "details": "Health check failed: {'detail': 'Not Found'}",
+      "details": "Health check error: Expecting value: line 1 column 1 (char 0)",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.020831"
+      "timestamp": "2026-01-14T03:07:20.887055"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 9 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.555311"
+      "timestamp": "2026-01-14T03:07:21.396742"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.713536"
+      "timestamp": "2026-01-14T03:07:21.527396"
     },
     {
       "test": "User Signup",
-      "success": false,
-      "details": "Signup failed: {'detail': [{'type': 'value_error', 'loc': ['body', 'email'], 'msg': 'value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.', 'input': 'test_20260114_030602@cryptovault.test', 'ctx': {'reason': 'The part after the @-sign is a special-use or reserved name that cannot be used with email.'}}]}",
+      "success": true,
+      "details": "User created with ID: 79fd0313-20fa-44b7-a662-fca0d4682546",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.771103"
+      "timestamp": "2026-01-14T03:07:22.011599"
+    },
+    {
+      "test": "User Login",
+      "success": false,
+      "details": "Email verification required (expected for new accounts)",
+      "response_data": null,
+      "timestamp": "2026-01-14T03:07:22.295077"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.804805"
+      "timestamp": "2026-01-14T03:07:22.332908"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.839460"
+      "timestamp": "2026-01-14T03:07:22.365167"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-14T03:06:02.870960"
+      "timestamp": "2026-01-14T03:07:22.398508"
     }
   ]
 }
