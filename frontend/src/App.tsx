@@ -18,6 +18,7 @@ import { Toaster as HotToaster } from 'react-hot-toast';
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { ResetRequest, ResetConfirm } from "./pages/PasswordReset";
 
 // Lazy loaded pages for performance
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -41,9 +42,6 @@ const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const AMLPolicy = lazy(() => import("./pages/AMLPolicy"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
-
-// New pages
-const { ResetRequest, ResetConfirm } = await import("./pages/PasswordReset");
 const WalletDeposit = lazy(() => import("./pages/WalletDeposit"));
 const PriceAlerts = lazy(() => import("./pages/PriceAlerts"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -51,7 +49,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000, // 30 seconds
+      staleTime: 30 * 1000,
       retry: 2,
       refetchOnWindowFocus: false,
     },
@@ -78,30 +76,22 @@ const AppContent = () => {
 
   useRedirectSpinner((visible) => setIsLoading(visible));
 
-  // Initial app warm-up
   useEffect(() => {
     const warmUp = async () => {
       try {
-        // Preload critical data
         await Promise.all([
-          // Auth check happens automatically via AuthProvider
-          // Optionally preload crypto prices
           fetch('/api/crypto').catch(() => {}),
         ]);
       } finally {
-        // Minimum 2 second display for brand experience
         setTimeout(() => setIsInitializing(false), 2000);
       }
     };
-    
     warmUp();
   }, []);
 
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
-    const handleNavigationEnd = () => {
-      setTimeout(() => setIsLoading(false), 300);
-    };
+    const handleNavigationEnd = () => setTimeout(() => setIsLoading(false), 300);
 
     window.addEventListener("popstate", handleNavigationStart);
     window.addEventListener("load", handleNavigationEnd);
@@ -114,14 +104,8 @@ const AppContent = () => {
 
   return (
     <>
-      {/* Onboarding Loader */}
       <OnboardingLoader isLoading={isInitializing} minDisplayTime={2000} />
-      
-      {/* Navigation Spinner */}
-      <RedirectLoadingSpinner
-        isVisible={isLoading}
-        onLoadComplete={() => setIsLoading(false)}
-      />
+      <RedirectLoadingSpinner isVisible={isLoading} onLoadComplete={() => setIsLoading(false)} />
       
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -129,11 +113,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/markets" element={<Markets />} />
-          <Route path="/trade" element={
-            <ErrorBoundary>
-              <EnhancedTrade />
-            </ErrorBoundary>
-          } />
+          <Route path="/trade" element={<ErrorBoundary><EnhancedTrade /></ErrorBoundary>} />
           <Route path="/earn" element={<Earn />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/contact" element={<Contact />} />
@@ -168,9 +148,9 @@ const AppContent = () => {
           <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
           
           {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           
-          {/* 404 Catch-all - MUST BE LAST */}
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
