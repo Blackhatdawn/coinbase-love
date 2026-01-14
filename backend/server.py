@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from bson import ObjectId
 import logging
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime, timedelta
@@ -1558,7 +1559,7 @@ async def create_p2p_transfer(
     )
     
     # Broadcast real-time update
-    await manager.broadcast({
+    await ws_manager.broadcast({
         "type": "p2p_transfer",
         "data": {
             "transfer_id": transfer_id,
@@ -2857,13 +2858,20 @@ async def nowpayments_webhook(request: Request):
             
             # Credit user balance
             users_col = db_connection.get_collection("users")
+            # user_id might be stored as a string representation of ObjectId
+            # Try to convert it to ObjectId, otherwise use it as is
+            try:
+                user_oid = ObjectId(user_id)
+            except:
+                user_oid = user_id
+            
             await users_col.update_one(
-                {"_id": ObjectId(user_id)},
+                {"_id": user_oid},
                 {"$inc": {"balance": amount}}
             )
             
             # Get user for email and FCM
-            user = await users_col.find_one({"_id": ObjectId(user_id)})
+            user = await users_col.find_one({"_id": user_oid})
             
             if user:
                 # Send confirmation email
