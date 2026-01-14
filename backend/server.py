@@ -2551,18 +2551,58 @@ class DepositCreate(PydanticBaseModel):
 
 @api_router.post("/wallet/deposit/create", tags=["wallet"])
 async def create_deposit(data: DepositCreate, current_user: dict = Depends(get_current_user)):
-    """Create a new deposit invoice"""
+    """Create a new deposit invoice via NOWPayments"""
     try:
-        # Generate invoice ID
-        invoice_id = str(uuid.uuid4())
+        if data.amount < 10:
+            raise HTTPException(status_code=400, detail="Minimum deposit is $10")
         
-        # In production, integrate with NOWPayments or Coinbase Commerce
-        # For now, return mock data
+        # Generate unique order ID
+        order_id = f"DEP-{str(uuid.uuid4())[:8].upper()}"
+        
+        # Get backend URL for webhook
+        backend_url = os.environ.get("BACKEND_URL", "https://api.cryptovault.financial")
+        ipn_callback_url = f"{backend_url}/api/webhook/nowpayments"
+        success_url = f"https://cryptovault.financial/wallet?deposit=success"
+        cancel_url = f"https://cryptovault.financial/wallet?deposit=cancelled"
+        
+        # Create invoice via NOWPayments
+        result = await nowpayments_service.create_invoice(
+            price_amount=data.amount,
+            price_currency="usd",
+            order_id=order_id,
+            order_description=f"CryptoVault Deposit - ${data.amount}",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            ipn_callback_url=ipn_callback_url
+        )
+        
+        if not result.get("success"):
+            # Fallback to direct payment if invoice fails
+            result = await nowpayments_service.create_payment(
+                price_amount=data.amount,
+                price_currency="usd",
+                pay_currency=data.currency.lower(),
+                order_id=order_id,
+                order_description=f"CryptoVault Deposit - ${data.amount}",
+                ipn_callback_url=ipn_callback_url,
+                success_url=success_url,
+                cancel_url=cancel_url,
+                customer_email=current_user.get("email")
+            )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "Payment creation failed"))
+        
+        # Store deposit record
         deposit_doc = {
-            "invoice_id": invoice_id,
+            "order_id": order_id,
             "user_id": str(current_user["_id"]),
+            "user_email": current_user.get("email"),
             "amount": data.amount,
             "currency": data.currency.lower(),
+            "payment_id": result.get("payment_id") or result.get("invoice_id"),
+            "pay_address": result.get("pay_address"),
+            "pay_amount": result.get("pay_amount"),
             "status": "pending",
             "created_at": datetime.utcnow(),
             "expires_at": datetime.utcnow() + timedelta(hours=1)
@@ -2570,20 +2610,288 @@ async def create_deposit(data: DepositCreate, current_user: dict = Depends(get_c
         
         await db_connection.get_collection("deposits").insert_one(deposit_doc)
         
-        # Mock payment URL (in production, get from payment gateway)
-        payment_url = f"https://pay.cryptovault.financial/invoice/{invoice_id}"
+        logger.info(f"✅ Deposit created: {order_id} for user {current_user['_id']}")
         
         return {
-            "invoiceId": invoice_id,
-            "paymentUrl": payment_url,
+            "success": True,
+            "orderId": order_id,
+            "invoiceId": result.get("invoice_id"),
+            "paymentId": result.get("payment_id"),
+            "paymentUrl": result.get("invoice_url") or result.get("payment_url"),
+            "payAddress": result.get("pay_address"),
+            "payAmount": result.get("pay_amount"),
+            "payCurrency": result.get("pay_currency") or data.currency,
             "amount": data.amount,
-            "currency": data.currency,
+            "currency": "usd",
+            "qrCode": result.get("qr_code"),
             "expiresAt": deposit_doc["expires_at"].isoformat()
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create deposit error: {e}")
         raise HTTPException(status_code=500, detail="Failed to create deposit")
+
+# ============================================
+# NOWPAYMENTS WEBHOOK
+# ============================================
+
+@api_router.post("/webhook/nowpayments", tags=["webhooks"])
+async def nowpayments_webhook(request: Request):
+    """Handle NOWPayments IPN (Instant Payment Notification)"""
+    try:
+        # Get raw body and signature
+        body = await request.body()
+        signature = request.headers.get("x-nowpayments-sig", "")
+        
+        # Verify signature
+        if not nowpayments_service.verify_ipn_signature(body, signature):
+            logger.warning("Invalid NOWPayments webhook signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        
+        # Parse payload
+        data = json.loads(body)
+        
+        payment_id = data.get("payment_id")
+        payment_status = data.get("payment_status")
+        order_id = data.get("order_id")
+        actually_paid = float(data.get("actually_paid", 0))
+        pay_currency = data.get("pay_currency")
+        price_amount = float(data.get("price_amount", 0))
+        
+        logger.info(f"📥 NOWPayments webhook: {order_id} - Status: {payment_status}")
+        
+        # Find deposit record
+        deposits_col = db_connection.get_collection("deposits")
+        deposit = await deposits_col.find_one({"order_id": order_id})
+        
+        if not deposit:
+            logger.warning(f"Deposit not found for order: {order_id}")
+            return {"status": "ok", "message": "Deposit not found"}
+        
+        # Update deposit status
+        await deposits_col.update_one(
+            {"order_id": order_id},
+            {
+                "$set": {
+                    "status": payment_status,
+                    "payment_id": payment_id,
+                    "actually_paid": actually_paid,
+                    "pay_currency": pay_currency,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        # Handle successful payment
+        if payment_status in PaymentStatus.SUCCESS_STATUSES:
+            user_id = deposit["user_id"]
+            amount = deposit["amount"]
+            
+            # Credit user balance
+            users_col = db_connection.get_collection("users")
+            await users_col.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$inc": {"balance": amount}}
+            )
+            
+            # Get user for email and FCM
+            user = await users_col.find_one({"_id": ObjectId(user_id)})
+            
+            if user:
+                # Send confirmation email
+                await email_service.send_deposit_confirmation_email(
+                    to_email=user["email"],
+                    user_name=user.get("name", "User"),
+                    amount=amount,
+                    currency="USD",
+                    payment_id=payment_id
+                )
+                
+                # Send push notification
+                fcm_token = user.get("fcm_token")
+                if fcm_token:
+                    await fcm_service.send_deposit_confirmation(
+                        token=fcm_token,
+                        amount=amount,
+                        currency="USD",
+                        payment_id=payment_id
+                    )
+            
+            logger.info(f"✅ Deposit completed: {order_id} - ${amount} credited to {user_id}")
+        
+        return {"status": "ok"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return {"status": "error", "message": str(e)}
+
+# ============================================
+# FCM PUSH NOTIFICATIONS
+# ============================================
+
+class FCMTokenRegister(PydanticBaseModel):
+    token: str
+    platform: str = "web"
+
+@api_router.post("/notifications/register-token", tags=["notifications"])
+async def register_fcm_token(data: FCMTokenRegister, current_user: dict = Depends(get_current_user)):
+    """Register FCM token for push notifications"""
+    try:
+        users_col = db_connection.get_collection("users")
+        
+        await users_col.update_one(
+            {"_id": current_user["_id"]},
+            {
+                "$set": {
+                    "fcm_token": data.token,
+                    "fcm_platform": data.platform,
+                    "fcm_updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        logger.info(f"📱 FCM token registered for user {current_user['_id']}")
+        return {"success": True, "message": "Push notifications enabled"}
+        
+    except Exception as e:
+        logger.error(f"FCM token registration error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to register token")
+
+@api_router.delete("/notifications/unregister", tags=["notifications"])
+async def unregister_fcm_token(current_user: dict = Depends(get_current_user)):
+    """Unregister FCM token"""
+    try:
+        users_col = db_connection.get_collection("users")
+        
+        await users_col.update_one(
+            {"_id": current_user["_id"]},
+            {"$unset": {"fcm_token": "", "fcm_platform": ""}}
+        )
+        
+        return {"success": True, "message": "Push notifications disabled"}
+        
+    except Exception as e:
+        logger.error(f"FCM unregister error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to unregister")
+
+# ============================================
+# WEBSOCKET PRICE FEED
+# ============================================
+
+@app.websocket("/ws/prices")
+async def websocket_prices(websocket: WebSocket):
+    """Real-time price updates via WebSocket"""
+    await websocket.accept()
+    price_feed.add_connection(websocket)
+    
+    try:
+        # Send initial prices
+        current = price_feed.get_current_prices()
+        await price_feed.send_to_client(websocket, {
+            "type": "initial",
+            "data": current["prices"],
+            "timestamp": current["last_update"]
+        })
+        
+        # Keep connection alive with ping/pong
+        while True:
+            try:
+                # Wait for messages (ping/pong or subscribe)
+                data = await asyncio.wait_for(
+                    websocket.receive_text(),
+                    timeout=60
+                )
+                
+                message = json.loads(data)
+                
+                if message.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+                elif message.get("type") == "subscribe":
+                    # Handle subscription to specific coins
+                    pass
+                    
+            except asyncio.TimeoutError:
+                # Send keepalive ping
+                await websocket.send_text(json.dumps({"type": "ping"}))
+                
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.debug(f"WebSocket error: {e}")
+    finally:
+        price_feed.remove_connection(websocket)
+
+# ============================================
+# REFERRAL SYSTEM ENDPOINTS
+# ============================================
+
+@api_router.get("/referrals", tags=["referrals"])
+async def get_referral_info(current_user: dict = Depends(get_current_user)):
+    """Get user's referral code and stats"""
+    try:
+        referral_service = ReferralService(db_connection)
+        stats = await referral_service.get_referral_stats(str(current_user["_id"]))
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Get referral stats error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get referral stats")
+
+@api_router.get("/referrals/code", tags=["referrals"])
+async def get_referral_code(current_user: dict = Depends(get_current_user)):
+    """Get or create referral code for current user"""
+    try:
+        referral_service = ReferralService(db_connection)
+        code = await referral_service.get_or_create_referral_code(str(current_user["_id"]))
+        
+        return {
+            "code": code,
+            "link": f"https://cryptovault.financial/auth?ref={code}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Get referral code error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get referral code")
+
+class ApplyReferralCode(PydanticBaseModel):
+    code: str
+
+@api_router.post("/referrals/apply", tags=["referrals"])
+async def apply_referral_code(data: ApplyReferralCode, current_user: dict = Depends(get_current_user)):
+    """Apply a referral code to current user"""
+    try:
+        referral_service = ReferralService(db_connection)
+        result = await referral_service.apply_referral_code(
+            referee_id=str(current_user["_id"]),
+            referral_code=data.code.upper().strip()
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error"))
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Apply referral code error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to apply referral code")
+
+@api_router.get("/referrals/leaderboard", tags=["referrals"])
+async def get_referral_leaderboard():
+    """Get top referrers leaderboard"""
+    try:
+        referral_service = ReferralService(db_connection)
+        leaderboard = await referral_service.get_leaderboard(limit=10)
+        return {"leaderboard": leaderboard}
+        
+    except Exception as e:
+        logger.error(f"Get leaderboard error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get leaderboard")
 
 # ============================================
 # ADMIN ENDPOINTS
