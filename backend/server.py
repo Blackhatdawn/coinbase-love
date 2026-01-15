@@ -17,15 +17,15 @@ import sys
 import json
 
 # Configuration and database
-from .config import settings
-from .database import DatabaseConnection
+from config import settings
+from database import DatabaseConnection
 
 # Routers
-from .routers import auth, portfolio, trading, crypto, admin
+from routers import auth, portfolio, trading, crypto, admin
 
 # Services
-from .coingecko_service import coingecko_service
-from .websocket_feed import price_feed
+from coingecko_service import coingecko_service
+from websocket_feed import price_feed
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -33,7 +33,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 # Dependencies
-from . import dependencies
+import dependencies
 
 # ============================================
 # LOGGING CONFIGURATION
