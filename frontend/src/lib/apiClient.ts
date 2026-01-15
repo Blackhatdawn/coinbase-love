@@ -357,6 +357,8 @@ export const api = {
       apiClient.get(`/api/wallet/deposit/${orderId}`),
     getDeposits: (skip: number = 0, limit: number = 20) =>
       apiClient.get(`/api/wallet/deposits?skip=${skip}&limit=${limit}`),
+    withdraw: (data: { amount: number; currency: string; address: string }) =>
+      apiClient.post('/api/wallet/withdraw', data),
   },
 
   // Price alerts
