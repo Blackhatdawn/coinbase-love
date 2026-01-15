@@ -3,7 +3,7 @@ from pathlib import Path
 
 # Load environment variables from .env file in backend directory
 env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path, override=True)
+load_dotenv(dotenv_path=".env", override=True)
 
 """
 Configuration module with environment variable validation and structured settings.
