@@ -11,10 +11,18 @@ Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, 
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
 from typing import Optional, List
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
+
+
+class EnvironmentValidationError(Exception):
+    """Raised when critical environment variables are missing or invalid."""
+    pass
+
 
 class Settings(BaseSettings):
     """Application settings with validation and defaults."""
@@ -65,6 +73,11 @@ class Settings(BaseSettings):
     upstash_redis_rest_url: Optional[str] = None
     upstash_redis_rest_token: Optional[str] = None
 
+    # Sentry Configuration (Error Tracking)
+    sentry_dsn: Optional[str] = None
+    sentry_traces_sample_rate: float = 0.1
+    sentry_profiles_sample_rate: float = 0.1
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -72,15 +85,96 @@ class Settings(BaseSettings):
         extra="ignore",  # Ignore unknown env vars
     )
 
+    @field_validator('jwt_secret')
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Ensure JWT secret is sufficiently long for security."""
+        if len(v) < 32:
+            raise ValueError('JWT_SECRET must be at least 32 characters long for security')
+        return v
+
+    @field_validator('mongo_url')
+    @classmethod
+    def validate_mongo_url(cls, v: str) -> str:
+        """Ensure MongoDB URL is valid."""
+        if not v or not (v.startswith('mongodb://') or v.startswith('mongodb+srv://')):
+            raise ValueError('MONGO_URL must be a valid MongoDB connection string')
+        return v
+
+    @model_validator(mode='after')
+    def validate_environment_configuration(self):
+        """Validate environment-specific configurations."""
+        if self.environment == 'production':
+            # Stricter validations for production
+            if self.cors_origins == '*':
+                logger.warning("⚠️ CORS is set to '*' in production - consider restricting to specific origins")
+            
+            if not self.sentry_dsn:
+                logger.warning("⚠️ Sentry DSN not configured in production - error tracking will be disabled")
+            
+            if self.use_mock_prices:
+                logger.warning("⚠️ Mock prices enabled in production - should use real data")
+        
+        return self
+
     def is_redis_available(self) -> bool:
         """Check if Redis is properly configured and should be used."""
         return self.use_redis and bool(self.upstash_redis_rest_url) and bool(self.upstash_redis_rest_token)
+
+    def is_sentry_available(self) -> bool:
+        """Check if Sentry is properly configured."""
+        return bool(self.sentry_dsn)
 
     def get_cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list."""
         if self.cors_origins == "*":
             return ["*"]
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    def validate_critical_settings(self) -> List[str]:
+        """
+        Validate critical settings on startup.
+        Returns list of warnings/errors.
+        """
+        issues = []
+        
+        # Check MongoDB
+        if not self.mongo_url:
+            issues.append("CRITICAL: MONGO_URL is not set")
+        
+        # Check JWT
+        if not self.jwt_secret:
+            issues.append("CRITICAL: JWT_SECRET is not set")
+        elif len(self.jwt_secret) < 32:
+            issues.append("WARNING: JWT_SECRET should be at least 32 characters")
+        
+        # Check environment
+        if self.environment not in ['development', 'staging', 'production']:
+            issues.append(f"WARNING: Unknown environment '{self.environment}'")
+        
+        return issues
+
+
+def validate_startup_environment():
+    """
+    Validate environment variables at startup.
+    Logs warnings and raises errors for critical issues.
+    """
+    issues = settings.validate_critical_settings()
+    
+    for issue in issues:
+        if issue.startswith("CRITICAL"):
+            logger.critical(issue)
+        else:
+            logger.warning(issue)
+    
+    critical_issues = [i for i in issues if i.startswith("CRITICAL")]
+    if critical_issues:
+        raise EnvironmentValidationError(
+            f"Critical configuration issues found: {', '.join(critical_issues)}"
+        )
+    
+    return True
 
 
 # Global settings instance (auto-loads and validates .env)
@@ -102,6 +196,8 @@ try:
     logger.debug(f"Redis: {redis_status}")
     if settings.is_redis_available():
         logger.debug(f"Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
+    sentry_status = "enabled" if settings.is_sentry_available() else "disabled"
+    logger.debug(f"Sentry: {sentry_status}")
 except Exception as e:
     logger.critical(f"❌ Failed to load/validate settings: {str(e)}")
     raise
