@@ -274,6 +274,8 @@ export const api = {
       apiClient.post('/api/auth/reset-password', data),
     getMe: () =>
       apiClient.get('/api/auth/me'),
+    getProfile: () =>
+      apiClient.get('/api/auth/me'),
     refresh: () =>
       apiClient.post('/api/auth/refresh'),
   },
@@ -314,6 +316,57 @@ export const api = {
       apiClient.get(`/api/crypto/${coinId}`),
     getHistory: (coinId: string, days: number = 7) =>
       apiClient.get(`/api/crypto/${coinId}/history?days=${days}`),
+  },
+
+  // Wallet and deposits
+  wallet: {
+    getBalance: () =>
+      apiClient.get('/api/wallet/balance'),
+    createDeposit: (data: { amount: number; currency: string }) =>
+      apiClient.post('/api/wallet/deposit/create', data),
+    getDeposit: (orderId: string) =>
+      apiClient.get(`/api/wallet/deposit/${orderId}`),
+    getDeposits: (skip: number = 0, limit: number = 20) =>
+      apiClient.get(`/api/wallet/deposits?skip=${skip}&limit=${limit}`),
+  },
+
+  // Price alerts
+  alerts: {
+    getAll: () =>
+      apiClient.get('/api/alerts'),
+    get: (alertId: string) =>
+      apiClient.get(`/api/alerts/${alertId}`),
+    create: (data: {
+      symbol: string;
+      targetPrice: number;
+      condition: string;
+      notifyPush?: boolean;
+      notifyEmail?: boolean;
+    }) =>
+      apiClient.post('/api/alerts', data),
+    update: (alertId: string, data: {
+      isActive?: boolean;
+      targetPrice?: number;
+      condition?: string;
+      notifyPush?: boolean;
+      notifyEmail?: boolean;
+    }) =>
+      apiClient.patch(`/api/alerts/${alertId}`, data),
+    delete: (alertId: string) =>
+      apiClient.delete(`/api/alerts/${alertId}`),
+  },
+
+  // Transactions
+  transactions: {
+    getAll: (skip: number = 0, limit: number = 50, type?: string) => {
+      let url = `/api/transactions?skip=${skip}&limit=${limit}`;
+      if (type) url += `&type=${type}`;
+      return apiClient.get(url);
+    },
+    get: (transactionId: string) =>
+      apiClient.get(`/api/transactions/${transactionId}`),
+    getStats: () =>
+      apiClient.get('/api/transactions/summary/stats'),
   },
 
   // Admin (requires admin privileges)
