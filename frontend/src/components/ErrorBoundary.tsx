@@ -12,6 +12,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  eventId: string | null;
 }
 
 /**
@@ -21,13 +22,14 @@ interface State {
  * - Catches all React component errors
  * - Displays branded fallback UI
  * - Logs errors for monitoring
+ * - Integrates with Sentry for error tracking
  * - Provides recovery options
  * - No sensitive data exposed
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, eventId: null };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
@@ -35,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error (in production, send to monitoring service like Sentry)
+    // Log error details
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error);
       console.error('Component stack:', errorInfo.componentStack);
@@ -46,8 +48,29 @@ export class ErrorBoundary extends Component<Props, State> {
 
     this.setState({ errorInfo });
 
-    // In production, you would send this to your error tracking service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
+    // Send to Sentry in production (if configured)
+    this.reportToSentry(error, errorInfo);
+  }
+
+  private async reportToSentry(error: Error, errorInfo: ErrorInfo) {
+    // Dynamic import to avoid bundling Sentry in all environments
+    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+      try {
+        const Sentry = await import('@sentry/react');
+        const eventId = Sentry.captureException(error, {
+          extra: {
+            componentStack: errorInfo.componentStack,
+          },
+          tags: {
+            type: 'react_error_boundary',
+          },
+        });
+        this.setState({ eventId });
+      } catch (e) {
+        // Sentry not available, fail silently
+        console.warn('Sentry reporting failed:', e);
+      }
+    }
   }
 
   handleReload = () => {
@@ -59,7 +82,22 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null, errorInfo: null, eventId: null });
+  };
+
+  handleReportFeedback = async () => {
+    // Open Sentry feedback dialog if available
+    if (this.state.eventId && import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+      try {
+        const Sentry = await import('@sentry/react');
+        Sentry.showReportDialog({ eventId: this.state.eventId });
+      } catch (e) {
+        // Fallback to email
+        window.location.href = 'mailto:support@cryptovault.financial?subject=Error Report';
+      }
+    } else {
+      window.location.href = 'mailto:support@cryptovault.financial?subject=Error Report';
+    }
   };
 
   render() {
@@ -98,12 +136,20 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             )}
 
+            {/* Event ID for support (production only) */}
+            {this.state.eventId && (
+              <p className="text-xs text-muted-foreground mb-4">
+                Error ID: <code className="bg-muted px-1 py-0.5 rounded">{this.state.eventId}</code>
+              </p>
+            )}
+
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
                 onClick={this.handleReset}
                 variant="outline"
                 className="border-gold-500/30 hover:border-gold-400"
+                data-testid="error-try-again-btn"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Try Again
@@ -111,6 +157,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <Button
                 onClick={this.handleGoHome}
                 className="bg-gradient-to-r from-gold-500 to-gold-600 text-black"
+                data-testid="error-go-home-btn"
               >
                 <Home className="w-4 h-4 mr-2" />
                 Go Home
@@ -120,13 +167,14 @@ export class ErrorBoundary extends Component<Props, State> {
             {/* Support link */}
             <p className="mt-8 text-sm text-muted-foreground">
               Need help?{' '}
-              <a
-                href="mailto:support@cryptovault.financial"
+              <button
+                onClick={this.handleReportFeedback}
                 className="text-gold-400 hover:underline inline-flex items-center gap-1"
+                data-testid="error-contact-support"
               >
                 <Mail className="w-3 h-3" />
                 Contact Support
-              </a>
+              </button>
             </p>
           </div>
         </div>
@@ -145,9 +193,19 @@ export function useErrorBoundary() {
 
   const resetError = () => setError(null);
 
-  const captureError = (error: Error) => {
+  const captureError = async (error: Error) => {
     setError(error);
-    // In production, log to monitoring service
+    
+    // Report to Sentry in production
+    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+      try {
+        const Sentry = await import('@sentry/react');
+        Sentry.captureException(error);
+      } catch (e) {
+        console.warn('Sentry reporting failed:', e);
+      }
+    }
+    
     if (import.meta.env.DEV) {
       console.error('useErrorBoundary captured:', error);
     }
@@ -167,14 +225,14 @@ export function ErrorFallback({
   resetError?: () => void;
 }) {
   return (
-    <div className="p-6 text-center border border-destructive/20 rounded-lg bg-destructive/5">
+    <div className="p-6 text-center border border-destructive/20 rounded-lg bg-destructive/5" data-testid="error-fallback">
       <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-3" />
       <h3 className="font-semibold mb-2">Unable to load this section</h3>
       <p className="text-sm text-muted-foreground mb-4">
         {error?.message || 'An unexpected error occurred'}
       </p>
       {resetError && (
-        <Button variant="outline" size="sm" onClick={resetError}>
+        <Button variant="outline" size="sm" onClick={resetError} data-testid="error-fallback-retry">
           <RefreshCw className="w-3 h-3 mr-2" />
           Retry
         </Button>
