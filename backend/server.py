@@ -6,6 +6,7 @@ with token blacklisting, CSRF token endpoint, and all recovered endpoints proper
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, status, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from typing import Optional, Dict, Any
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
@@ -56,6 +57,14 @@ from auth import (
 )
 
 from dependencies import get_current_user_id, optional_current_user_id
+
+# ============================================
+# REQUEST ID DEPENDENCY
+# ============================================
+
+def get_request_id(request: Request) -> str:
+    """Get request ID from request state."""
+    return getattr(request.state, "request_id", "unknown")
 from coingecko_service import coingecko_service
 from security_middleware import SecurityMiddleware, CSRFMiddleware
 
@@ -71,12 +80,62 @@ from referral_service import ReferralService
 # Redis cache import
 from redis_cache import redis_cache
 
-# Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Configure structured logging with JSON format in production
+if settings.environment == "production":
+    import json
+    import sys
+    
+    class JSONFormatter(logging.Formatter):
+        def format(self, record):
+            log_data = {
+                "timestamp": self.formatTime(record),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+            }
+            
+            # Add extra fields if present
+            if hasattr(record, "request_id"):
+                log_data["request_id"] = record.request_id
+            if hasattr(record, "type"):
+                log_data["type"] = record.type
+            if hasattr(record, "method"):
+                log_data["method"] = record.method
+            if hasattr(record, "path"):
+                log_data["path"] = record.path
+            if hasattr(record, "status_code"):
+                log_data["status_code"] = record.status_code
+            if hasattr(record, "duration_ms"):
+                log_data["duration_ms"] = record.duration_ms
+            if hasattr(record, "error_type"):
+                log_data["error_type"] = record.error_type
+            if hasattr(record, "error_code"):
+                log_data["error_code"] = record.error_code
+            
+            # Add exception info if present
+            if record.exc_info:
+                log_data["exception"] = self.formatException(record.exc_info)
+            
+            return json.dumps(log_data)
+    
+    # Configure JSON logging for production
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JSONFormatter())
+    
+    root_logger = logging.getLogger()
+    root_logger.handlers = []  # Remove default handlers
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+    
+    logger = logging.getLogger(__name__)
+    logger.info("JSON logging configured for production")
+else:
+    # Development logging with human-readable format
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] %(message)s' if hasattr(logging, 'request_id') else '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
 
 # ============================================
 # DATABASE CONNECTION (production-ready)
@@ -216,6 +275,283 @@ class DatabaseConnection:
 db_connection: Optional[DatabaseConnection] = None
 
 # ============================================
+# REQUEST ID & STRUCTURED LOGGING MIDDLEWARE
+# ============================================
+
+import time
+from uuid import uuid4
+
+class RequestIDMiddleware:
+    """Middleware to add request ID for correlation and structured logging."""
+    
+    def __init__(self, app):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        
+        # Generate request ID
+        request_id = str(uuid4())
+        
+        # Add request ID to scope for use in endpoints
+        scope["request_id"] = request_id
+        
+        # Create a wrapper for send to add request ID to response headers
+        async def send_with_request_id(message):
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                headers[b"x-request-id"] = request_id.encode()
+                message["headers"] = [(k, v) for k, v in headers.items()]
+            
+            await send(message)
+        
+        # Log request start with structured data
+        start_time = time.time()
+        logger.info(
+            "Request started",
+            extra={
+                "request_id": request_id,
+                "method": scope.get("method", "UNKNOWN"),
+                "path": scope.get("path", "UNKNOWN"),
+                "client": scope.get("client", ["UNKNOWN", 0])[0],
+                "type": "request_start"
+            }
+        )
+        
+        try:
+            await self.app(scope, receive, send_with_request_id)
+            
+            # Log successful completion
+            duration = time.time() - start_time
+            logger.info(
+                "Request completed",
+                extra={
+                    "request_id": request_id,
+                    "method": scope.get("method", "UNKNOWN"),
+                    "path": scope.get("path", "UNKNOWN"),
+                    "status_code": 200,  # We don't know the actual status here
+                    "duration_ms": round(duration * 1000, 2),
+                    "type": "request_complete"
+                }
+            )
+            
+        except Exception as exc:
+            # Log error with structured data
+            duration = time.time() - start_time
+            logger.error(
+                f"Request failed: {str(exc)}",
+                extra={
+                    "request_id": request_id,
+                    "method": scope.get("method", "UNKNOWN"),
+                    "path": scope.get("path", "UNKNOWN"),
+                    "duration_ms": round(duration * 1000, 2),
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "type": "request_error"
+                },
+                exc_info=True
+            )
+            raise
+
+# ============================================
+# CENTRALIZED ERROR HANDLING
+# ============================================
+
+class AppException(Exception):
+    """Base exception for application errors with structured data."""
+    
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 500,
+        error_code: str = "INTERNAL_ERROR",
+        details: Optional[Dict] = None
+    ):
+        self.message = message
+        self.status_code = status_code
+        self.error_code = error_code
+        self.details = details or {}
+        super().__init__(message)
+
+class ValidationException(AppException):
+    """Raised when input validation fails."""
+    def __init__(self, message: str, details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            status_code=400,
+            error_code="VALIDATION_ERROR",
+            details=details
+        )
+
+class AuthenticationException(AppException):
+    """Raised when authentication fails."""
+    def __init__(self, message: str = "Authentication failed", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            status_code=401,
+            error_code="AUTHENTICATION_ERROR",
+            details=details
+        )
+
+class AuthorizationException(AppException):
+    """Raised when authorization fails."""
+    def __init__(self, message: str = "Not authorized", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            status_code=403,
+            error_code="AUTHORIZATION_ERROR",
+            details=details
+        )
+
+class NotFoundException(AppException):
+    """Raised when a resource is not found."""
+    def __init__(self, message: str = "Resource not found", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            status_code=404,
+            error_code="NOT_FOUND",
+            details=details
+        )
+
+class RateLimitException(AppException):
+    """Raised when rate limit is exceeded."""
+    def __init__(self, message: str = "Rate limit exceeded", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            status_code=429,
+            error_code="RATE_LIMIT_EXCEEDED",
+            details=details
+        )
+
+# ============================================
+# ERROR RESPONSE FORMATTER
+# ============================================
+
+def create_error_response(
+    request: Request,
+    status_code: int,
+    error_code: str,
+    message: str,
+    details: Optional[Dict] = None
+) -> JSONResponse:
+    """Create standardized error response with request ID."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    
+    error_data = {
+        "error": {
+            "code": error_code,
+            "message": message,
+            "request_id": request_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    }
+    
+    if details:
+        error_data["error"]["details"] = details
+    
+    return JSONResponse(
+        status_code=status_code,
+        content=error_data
+    )
+
+# ============================================
+# GLOBAL EXCEPTION HANDLER
+# ============================================
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    """Handle AppException with structured error response."""
+    logger.warning(
+        f"Application exception: {exc.error_code} - {exc.message}",
+        extra={
+            "request_id": getattr(request.state, "request_id", "unknown"),
+            "error_code": exc.error_code,
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method,
+            "type": "app_exception"
+        }
+    )
+    
+    return create_error_response(
+        request=request,
+        status_code=exc.status_code,
+        error_code=exc.error_code,
+        message=exc.message,
+        details=exc.details
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handle FastAPI HTTPException with structured error response."""
+    logger.warning(
+        f"HTTP exception: {exc.status_code} - {exc.detail}",
+        extra={
+            "request_id": getattr(request.state, "request_id", "unknown"),
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method,
+            "type": "http_exception"
+        }
+    )
+    
+    # Map common HTTP exceptions to error codes
+    error_code_map = {
+        400: "BAD_REQUEST",
+        401: "UNAUTHORIZED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        409: "CONFLICT",
+        422: "VALIDATION_ERROR",
+        429: "RATE_LIMIT_EXCEEDED",
+        500: "INTERNAL_ERROR",
+        503: "SERVICE_UNAVAILABLE"
+    }
+    
+    error_code = error_code_map.get(exc.status_code, "HTTP_ERROR")
+    
+    return create_error_response(
+        request=request,
+        status_code=exc.status_code,
+        error_code=error_code,
+        message=str(exc.detail)
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle all unhandled exceptions with structured error response."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    
+    logger.error(
+        f"Unhandled exception: {type(exc).__name__} - {str(exc)}",
+        extra={
+            "request_id": request_id,
+            "error_type": type(exc).__name__,
+            "path": request.url.path,
+            "method": request.method,
+            "type": "unhandled_exception"
+        },
+        exc_info=True
+    )
+    
+    # Don't expose internal details in production
+    if settings.environment == "production":
+        message = "Internal server error"
+        details = None
+    else:
+        message = f"{type(exc).__name__}: {str(exc)}"
+        details = {"traceback": "See server logs for details"}
+    
+    return create_error_response(
+        request=request,
+        status_code=500,
+        error_code="INTERNAL_ERROR",
+        message=message,
+        details=details
+    )
+
+# ============================================
 # SECURITY HEADERS MIDDLEWARE
 # ============================================
 
@@ -332,6 +668,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Add security headers middleware
+# Add request ID middleware first (so it runs before other middleware)
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
 
@@ -458,34 +796,67 @@ async def shutdown_event():
 
 @app.get("/health", tags=["health"])
 @api_router.get("/health", tags=["health"])
-async def health_check():
+async def health_check(request: Request):
+    """Health check endpoint with request ID correlation."""
     global db_connection
+    request_id = get_request_id(request)
+    
     try:
         if not db_connection or not await db_connection.health_check():
+            logger.warning(
+                "Health check failed: database disconnected",
+                extra={
+                    "request_id": request_id,
+                    "type": "health_check",
+                    "status": "unhealthy"
+                }
+            )
+            
             return JSONResponse(
                 status_code=503,
                 content={
                     "status": "unhealthy",
                     "database": "disconnected",
+                    "request_id": request_id,
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
 
+        logger.info(
+            "Health check passed",
+            extra={
+                "request_id": request_id,
+                "type": "health_check",
+                "status": "healthy"
+            }
+        )
+        
         return {
             "status": "healthy",
             "database": "connected",
             "environment": settings.environment,
             "version": "1.0.0",
+            "request_id": request_id,
             "timestamp": datetime.utcnow().isoformat()
         }
 
     except Exception as e:
-        logger.error(f"❌ Health check failed: {str(e)}")
+        logger.error(
+            f"Health check failed: {str(e)}",
+            extra={
+                "request_id": request_id,
+                "type": "health_check_error",
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        
         return JSONResponse(
             status_code=503,
             content={
                 "status": "error",
-                "error": str(e),
+                "error": "Health check failed",
+                "request_id": request_id,
                 "timestamp": datetime.utcnow().isoformat()
             }
         )
@@ -494,9 +865,31 @@ async def health_check():
 # HELPER FUNCTIONS
 # ============================================
 
-async def log_audit(user_id: str, action: str, resource: Optional[str] = None,
-                   ip_address: Optional[str] = None, details: Optional[dict] = None):
+async def log_audit(
+    user_id: str, 
+    action: str, 
+    resource: Optional[str] = None,
+    ip_address: Optional[str] = None, 
+    details: Optional[dict] = None,
+    request_id: Optional[str] = None
+):
+    """Log audit event with structured data."""
     global db_connection
+    
+    # Log to application logs
+    logger.info(
+        f"Audit log: {action}",
+        extra={
+            "type": "audit_log",
+            "user_id": user_id,
+            "action": action,
+            "resource": resource,
+            "ip_address": ip_address,
+            "request_id": request_id
+        }
+    )
+    
+    # Store in database
     audit_log = AuditLog(
         user_id=user_id,
         action=action,
@@ -519,7 +912,10 @@ async def signup(user_data: UserCreate, request: Request):
 
     existing_user = await users_collection.find_one({"email": user_data.email})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise ValidationException(
+            message="Email already registered",
+            details={"email": user_data.email}
+        )
 
     verification_code = generate_verification_code()
     verification_token = generate_verification_token()
@@ -558,7 +954,13 @@ async def signup(user_data: UserCreate, request: Request):
     if not email_sent:
         logger.warning(f"⚠️ Verification email failed to send to {user.email}")
 
-    await log_audit(user.id, "USER_SIGNUP", ip_address=request.client.host)
+    request_id = get_request_id(request)
+    await log_audit(
+        user.id, 
+        "USER_SIGNUP", 
+        ip_address=request.client.host,
+        request_id=request_id
+    )
 
     return {
         "user": UserResponse(
@@ -582,7 +984,10 @@ async def login(credentials: UserLogin, request: Request):
     if not user_doc:
         # Simulate password verification to prevent timing attacks
         verify_password("dummy_password", bcrypt.gensalt().decode())
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise AuthenticationException(
+            message="Invalid credentials",
+            details={"email": credentials.email}
+        )
     
     user = User(**user_doc)
 
@@ -641,9 +1046,9 @@ async def login(credentials: UserLogin, request: Request):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not user.email_verified:
-        raise HTTPException(
-            status_code=401,
-            detail="Email not verified. Please check your email and verify your account."
+        raise AuthenticationException(
+            message="Email not verified. Please check your email and verify your account.",
+            details={"email": user.email}
         )
 
     await users_collection.update_one(
@@ -2498,6 +2903,49 @@ async def admin_freeze_account(
     })
     
     return {"message": "Account frozen"}
+
+# ============================================
+# TEST ENDPOINTS FOR ERROR HANDLING
+# ============================================
+
+@api_router.get("/test/error/{error_type}", tags=["test"])
+async def test_error_handling(
+    error_type: str,
+    request: Request
+):
+    """Test endpoint to demonstrate error handling."""
+    request_id = get_request_id(request)
+    
+    if error_type == "validation":
+        raise ValidationException(
+            message="Test validation error",
+            details={"field": "email", "issue": "invalid_format"}
+        )
+    elif error_type == "auth":
+        raise AuthenticationException(
+            message="Test authentication error",
+            details={"reason": "invalid_token"}
+        )
+    elif error_type == "not_found":
+        raise NotFoundException(
+            message="Test resource not found",
+            details={"resource": "user", "id": "123"}
+        )
+    elif error_type == "rate_limit":
+        raise RateLimitException(
+            message="Test rate limit exceeded",
+            details={"limit": "5/minute", "reset_in": "60s"}
+        )
+    elif error_type == "internal":
+        # This will trigger the global exception handler
+        raise ValueError("Test internal error")
+    else:
+        return {
+            "message": "Error test endpoint",
+            "available_errors": ["validation", "auth", "not_found", "rate_limit", "internal"],
+            "request_id": request_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 # ============================================
 # LEGACY ENDPOINTS (optional – keep or remove)
