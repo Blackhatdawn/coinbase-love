@@ -291,6 +291,10 @@ export const api = {
       apiClient.get('/api/auth/2fa/status'),
     disable2FA: () =>
       apiClient.post('/api/auth/2fa/disable', {}),
+    getBackupCodes: () =>
+      apiClient.post('/api/auth/2fa/backup-codes'),
+    validateResetToken: (token: string) =>
+      apiClient.get(`/api/auth/validate-reset-token/${token}`),
   },
 
   // Portfolio
