@@ -88,8 +88,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       }
     });
 
-    // v5 API: Use addSeries('Area', options) instead of addAreaSeries(options)
-    const areaSeries = chart.addSeries('Area', {
+    // v5 API: Use chart.addSeries(AreaSeries, options) - AreaSeries is imported from lightweight-charts
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: priceChange24h >= 0 ? '#10b981' : '#ef4444',
       topColor: priceChange24h >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
       bottomColor: 'rgba(16, 185, 129, 0.0)',
