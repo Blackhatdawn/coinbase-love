@@ -242,16 +242,18 @@ class RateLimitHeadersMiddleware:
         
         async def send_with_rate_limit_headers(message):
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
+                # Get existing headers as a list (preserve duplicates like set-cookie)
+                existing_headers = list(message.get("headers", []))
                 
                 # Add rate limit headers
-                rate_limit_headers = {
-                    b"x-ratelimit-limit": str(settings.rate_limit_per_minute).encode(),
-                    b"x-ratelimit-policy": f"{settings.rate_limit_per_minute};w=60".encode(),
-                }
+                rate_limit_headers = [
+                    (b"x-ratelimit-limit", str(settings.rate_limit_per_minute).encode()),
+                    (b"x-ratelimit-policy", f"{settings.rate_limit_per_minute};w=60".encode()),
+                ]
                 
-                headers.update(rate_limit_headers)
-                message["headers"] = [(k, v) for k, v in headers.items()]
+                # Append new headers (don't convert to dict which removes duplicates)
+                existing_headers.extend(rate_limit_headers)
+                message["headers"] = existing_headers
             
             await send(message)
         
