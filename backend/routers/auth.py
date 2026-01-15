@@ -7,28 +7,28 @@ import uuid
 import bcrypt
 from typing import Optional
 
-from ..models import (
+from models import (
     User, UserCreate, UserLogin, UserResponse,
     VerifyEmailRequest, ResendVerificationRequest,
     ForgotPasswordRequest, ResetPasswordRequest,
     TwoFactorSetup, TwoFactorVerify, BackupCodes
 )
-from ..config import settings
-from ..email_service import (
+from config import settings
+from email_service import (
     email_service,
     generate_verification_code,
     generate_verification_token,
     generate_password_reset_token,
     get_token_expiration
 )
-from ..auth import (
+from auth import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token,
     decode_token, generate_backup_codes, generate_2fa_secret,
     generate_device_fingerprint
 )
-from ..dependencies import get_current_user_id, get_db, get_limiter
-from ..blacklist import blacklist_token
+from dependencies import get_current_user_id, get_db, get_limiter
+from blacklist import blacklist_token
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
