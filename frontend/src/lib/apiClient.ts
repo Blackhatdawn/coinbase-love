@@ -308,6 +308,22 @@ export const api = {
       apiClient.get(`/api/orders/${orderId}`),
   },
 
+  // Legacy orders API (alias for trading)
+  orders: {
+    get: () =>
+      apiClient.get('/api/orders'),
+    create: (data: {
+      trading_pair: string;
+      order_type: string;
+      side: string;
+      amount: number;
+      price: number;
+    }) =>
+      apiClient.post('/api/orders', data),
+    getById: (orderId: string) =>
+      apiClient.get(`/api/orders/${orderId}`),
+  },
+
   // Cryptocurrency market data
   crypto: {
     getAll: () =>
