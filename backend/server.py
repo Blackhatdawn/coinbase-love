@@ -334,6 +334,9 @@ app.include_router(portfolio.router, prefix="/api")
 app.include_router(trading.router, prefix="/api")
 app.include_router(crypto.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(wallet.router, prefix="/api")
+app.include_router(alerts.router, prefix="/api")
+app.include_router(transactions.router, prefix="/api")
 
 # ============================================
 # ROOT & HEALTH ENDPOINTS
