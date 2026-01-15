@@ -656,6 +656,14 @@ async def startup_event():
     logger.info("="*70)
 
     try:
+        # Validate environment configuration
+        try:
+            validate_startup_environment()
+            logger.info("✅ Environment validation passed")
+        except Exception as e:
+            logger.error(f"❌ Environment validation failed: {str(e)}")
+            raise
+        
         # Connect to database
         db_connection = DatabaseConnection(
             mongo_url=settings.mongo_url,
