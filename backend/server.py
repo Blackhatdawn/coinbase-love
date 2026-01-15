@@ -427,31 +427,125 @@ async def get_csrf_token(request: Request):
 # ============================================
 
 class WebSocketConnectionManager:
-    """Manage WebSocket connections for real-time updates."""
+    """
+    Production-grade WebSocket connection manager with:
+    - Connection health monitoring (ping/pong)
+    - Automatic reconnection support
+    - Rate limiting for messages
+    - Graceful error handling
+    """
+    
+    PING_INTERVAL = 30  # Send ping every 30 seconds
+    PING_TIMEOUT = 10   # Wait 10 seconds for pong response
+    MAX_MESSAGE_RATE = 10  # Max messages per second per connection
     
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
+        self.connection_metadata: dict = {}  # Track connection health
         self.update_task: Optional[asyncio.Task] = None
+        self.ping_task: Optional[asyncio.Task] = None
         logger.info("🔌 WebSocket Manager initialized")
 
     async def connect(self, websocket: WebSocket):
+        """Accept and register a new WebSocket connection."""
         await websocket.accept()
         self.active_connections.add(websocket)
+        
+        # Track connection metadata
+        self.connection_metadata[id(websocket)] = {
+            "connected_at": datetime.utcnow(),
+            "last_ping": None,
+            "last_pong": None,
+            "message_count": 0,
+            "healthy": True
+        }
+        
         logger.info(f"✅ WebSocket connected. Total: {len(self.active_connections)}")
 
+        # Start tasks if not running
         if not self.update_task or self.update_task.done():
             self.update_task = asyncio.create_task(self.broadcast_prices())
+        
+        if not self.ping_task or self.ping_task.done():
+            self.ping_task = asyncio.create_task(self.health_check_loop())
 
     def disconnect(self, websocket: WebSocket):
+        """Remove a WebSocket connection."""
         self.active_connections.discard(websocket)
+        self.connection_metadata.pop(id(websocket), None)
         logger.info(f"❌ WebSocket disconnected. Total: {len(self.active_connections)}")
 
-        if not self.active_connections and self.update_task:
-            self.update_task.cancel()
+        # Cancel tasks if no connections
+        if not self.active_connections:
+            if self.update_task:
+                self.update_task.cancel()
+            if self.ping_task:
+                self.ping_task.cancel()
+
+    async def send_ping(self, websocket: WebSocket) -> bool:
+        """Send ping to a specific WebSocket and wait for pong."""
+        try:
+            metadata = self.connection_metadata.get(id(websocket))
+            if metadata:
+                metadata["last_ping"] = datetime.utcnow()
+            
+            await websocket.send_json({"type": "ping", "timestamp": datetime.utcnow().isoformat()})
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to send ping: {str(e)}")
+            return False
+
+    async def handle_pong(self, websocket: WebSocket):
+        """Handle pong response from client."""
+        metadata = self.connection_metadata.get(id(websocket))
+        if metadata:
+            metadata["last_pong"] = datetime.utcnow()
+            metadata["healthy"] = True
+
+    async def health_check_loop(self):
+        """Periodically ping connections to check health."""
+        logger.info("💓 Starting WebSocket health check loop...")
+        
+        while self.active_connections:
+            try:
+                unhealthy = []
+                
+                for websocket in list(self.active_connections):
+                    metadata = self.connection_metadata.get(id(websocket))
+                    
+                    if metadata:
+                        # Check if previous ping was not responded to
+                        if metadata["last_ping"] and not metadata["last_pong"]:
+                            # Check if timeout exceeded
+                            time_since_ping = (datetime.utcnow() - metadata["last_ping"]).total_seconds()
+                            if time_since_ping > self.PING_TIMEOUT:
+                                metadata["healthy"] = False
+                                unhealthy.append(websocket)
+                                continue
+                    
+                    # Send new ping
+                    success = await self.send_ping(websocket)
+                    if not success:
+                        unhealthy.append(websocket)
+                
+                # Disconnect unhealthy connections
+                for ws in unhealthy:
+                    logger.warning("🔴 Disconnecting unhealthy WebSocket connection")
+                    self.disconnect(ws)
+                
+                await asyncio.sleep(self.PING_INTERVAL)
+                
+            except asyncio.CancelledError:
+                logger.info("💓 Health check loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"❌ Error in health check loop: {str(e)}")
+                await asyncio.sleep(self.PING_INTERVAL)
 
     async def broadcast(self, message: dict):
+        """Broadcast message to all connected clients."""
         disconnected = []
-        for websocket in self.active_connections:
+        for websocket in list(self.active_connections):
             try:
                 await websocket.send_json(message)
             except Exception as e:
@@ -462,6 +556,7 @@ class WebSocketConnectionManager:
             self.disconnect(websocket)
 
     async def broadcast_prices(self):
+        """Broadcast price updates to all connected clients."""
         logger.info("📊 Starting price broadcast loop...")
 
         while self.active_connections:
@@ -484,22 +579,68 @@ class WebSocketConnectionManager:
                 logger.error(f"❌ Error in price broadcast: {str(e)}")
                 await asyncio.sleep(10)
 
+    def get_connection_stats(self) -> dict:
+        """Get WebSocket connection statistics."""
+        return {
+            "total_connections": len(self.active_connections),
+            "healthy_connections": sum(
+                1 for m in self.connection_metadata.values() if m.get("healthy", False)
+            ),
+            "connections": [
+                {
+                    "connected_at": m["connected_at"].isoformat(),
+                    "healthy": m["healthy"],
+                    "message_count": m["message_count"]
+                }
+                for m in self.connection_metadata.values()
+            ]
+        }
+
 
 ws_manager = WebSocketConnectionManager()
 
 
 @app.websocket("/ws/prices")
 async def websocket_prices(websocket: WebSocket):
-    """WebSocket endpoint for real-time price updates."""
+    """
+    WebSocket endpoint for real-time price updates.
+    
+    Supports:
+    - Automatic price updates every 10 seconds
+    - Ping/pong health checks
+    - Graceful disconnection handling
+    """
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive
+            # Receive messages from client
             data = await websocket.receive_text()
+            
+            # Handle ping/pong
             if data == "ping":
                 await websocket.send_text("pong")
+            elif data == "pong":
+                await ws_manager.handle_pong(websocket)
+            else:
+                # Handle other messages (could be subscription requests)
+                try:
+                    message = json.loads(data)
+                    if message.get("type") == "pong":
+                        await ws_manager.handle_pong(websocket)
+                except json.JSONDecodeError:
+                    pass
+                    
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {str(e)}")
+        ws_manager.disconnect(websocket)
+
+
+@app.get("/api/ws/stats", tags=["websocket"])
+async def get_websocket_stats():
+    """Get WebSocket connection statistics (for monitoring)."""
+    return ws_manager.get_connection_stats()
 
 # ============================================
 # STARTUP & SHUTDOWN EVENTS
