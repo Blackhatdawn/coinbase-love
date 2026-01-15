@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
 from typing import Optional
 
-from ..dependencies import get_current_user_id, get_db
+from dependencies import get_current_user_id, get_db
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

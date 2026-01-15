@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 import logging
 
-from ..coingecko_service import coingecko_service
+from coingecko_service import coingecko_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/crypto", tags=["cryptocurrency"])

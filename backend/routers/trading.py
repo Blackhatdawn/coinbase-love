@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime
 import logging
 
-from ..models import Order, OrderCreate, Transaction
-from ..dependencies import get_current_user_id, get_db, get_limiter
+from models import Order, OrderCreate, Transaction
+from dependencies import get_current_user_id, get_db, get_limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["trading"])
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/orders", tags=["trading"])
 
 async def log_audit(db, user_id, action, resource=None, ip_address=None, details=None, request_id=None):
     """Log audit event."""
-    from ..models import AuditLog
+    from models import AuditLog
     
     logger.info(
         f"Audit log: {action}",

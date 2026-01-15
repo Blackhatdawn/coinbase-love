@@ -4,8 +4,8 @@ from fastapi import Request, HTTPException, status
 from typing import Optional
 import logging
 
-from .auth import decode_token
-from .blacklist import is_token_blacklisted
+from auth import decode_token
+from blacklist import is_token_blacklisted
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from typing import List
 
-from ..models import Portfolio, Holding, HoldingCreate
-from ..dependencies import get_current_user_id, get_db
-from ..coingecko_service import coingecko_service
+from models import Portfolio, Holding, HoldingCreate
+from dependencies import get_current_user_id, get_db
+from coingecko_service import coingecko_service
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
