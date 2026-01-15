@@ -53,10 +53,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private async reportToSentry(error: Error, errorInfo: ErrorInfo) {
-    // Dynamic import to avoid bundling Sentry in all environments
+    // Only attempt Sentry reporting in production with DSN configured
+    // Note: Install @sentry/react when deploying to production with Sentry
     if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
       try {
-        const Sentry = await import('@sentry/react');
+        // Use dynamic import that Vite won't pre-analyze
+        const sentryModule = '@sentry/react';
+        const Sentry = await import(/* @vite-ignore */ sentryModule);
         const eventId = Sentry.captureException(error, {
           extra: {
             componentStack: errorInfo.componentStack,
@@ -67,8 +70,10 @@ export class ErrorBoundary extends Component<Props, State> {
         });
         this.setState({ eventId });
       } catch (e) {
-        // Sentry not available, fail silently
-        console.warn('Sentry reporting failed:', e);
+        // Sentry not installed or not available, fail silently
+        if (import.meta.env.DEV) {
+          console.warn('Sentry reporting skipped (not installed):', e);
+        }
       }
     }
   }
