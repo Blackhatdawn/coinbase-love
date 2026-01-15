@@ -1569,34 +1569,6 @@ class WebSocketConnectionManager:
 
 ws_manager = WebSocketConnectionManager()
 
-@app.websocket("/ws/prices")
-async def websocket_prices(websocket: WebSocket):
-    await ws_manager.connect(websocket)
-
-    try:
-        prices = await coingecko_service.get_prices()
-        await ws_manager.send_personal_message({
-            "type": "initial_prices",
-            "data": prices,
-            "timestamp": datetime.utcnow().isoformat()
-        }, websocket)
-
-        while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-
-            if message.get("type") == "ping":
-                await ws_manager.send_personal_message({
-                    "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat()
-                }, websocket)
-
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
-        logger.info("Client disconnected normally")
-    except Exception as e:
-        logger.error(f"❌ WebSocket error: {str(e)}")
-        ws_manager.disconnect(websocket)
 
 # ============================================
 # PORTFOLIO ENDPOINTS (real prices)
