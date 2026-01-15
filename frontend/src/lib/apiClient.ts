@@ -422,6 +422,19 @@ export const api = {
       if (action) url += `&action=${action}`;
       return apiClient.get(url);
     },
+    setupFirstAdmin: (email: string) =>
+      apiClient.post('/api/admin/setup-first-admin', { email }),
+    getWithdrawals: (skip: number = 0, limit: number = 50, status?: string) => {
+      let url = `/api/admin/withdrawals?skip=${skip}&limit=${limit}`;
+      if (status) url += `&status=${status}`;
+      return apiClient.get(url);
+    },
+    approveWithdrawal: (withdrawalId: string) =>
+      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/approve`),
+    completeWithdrawal: (withdrawalId: string, transactionHash: string) =>
+      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/complete`, { transaction_hash: transactionHash }),
+    rejectWithdrawal: (withdrawalId: string, reason: string) =>
+      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/reject`, { reason }),
   },
 
   // Health check
