@@ -363,14 +363,14 @@ async def change_password(
     
     user = User(**user_doc)
     
-    if not verify_password(current_password, user.hashed_password):
+    if not verify_password(current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
     new_hashed_password = get_password_hash(new_password)
     
     await users_collection.update_one(
         {"id": user_id},
-        {"$set": {"hashed_password": new_hashed_password}}
+        {"$set": {"password_hash": new_hashed_password}}
     )
     
     await log_audit(db, user_id, "PASSWORD_CHANGED", ip_address=request.client.host)
