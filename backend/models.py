@@ -177,3 +177,106 @@ class TwoFactorVerify(BaseModel):
 
 class BackupCodes(BaseModel):
     codes: List[str]
+
+
+# Wallet Models
+class Wallet(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    balances: dict = Field(default_factory=dict)  # {"USD": 1000.0, "BTC": 0.5}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Deposit(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    order_id: str
+    payment_id: Optional[str] = None
+    amount: float
+    currency: str  # USD
+    pay_currency: str  # BTC, ETH, etc.
+    pay_amount: Optional[float] = None
+    pay_address: Optional[str] = None
+    status: str = "pending"  # pending, confirming, confirmed, finished, failed
+    mock: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: Optional[datetime] = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Withdrawal(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    amount: float
+    currency: str
+    address: str
+    status: str = "pending"  # pending, processing, completed, failed, cancelled
+    fee: float = 0.0
+    net_amount: float
+    transaction_hash: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    processed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+
+# Price Alert Models
+class PriceAlert(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    symbol: str  # BTC, ETH, etc.
+    target_price: float
+    condition: str  # "above" or "below"
+    is_active: bool = True
+    notify_email: bool = True
+    notify_push: bool = False
+    triggered_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PriceAlertCreate(BaseModel):
+    symbol: str
+    target_price: float = Field(gt=0)
+    condition: str  # "above" or "below"
+    notify_email: bool = True
+    notify_push: bool = False
+
+
+class PriceAlertUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    target_price: Optional[float] = Field(default=None, gt=0)
+    condition: Optional[str] = None
+    notify_email: Optional[bool] = None
+    notify_push: Optional[bool] = None
+
+
+# Notification Models
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    message: str
+    type: str  # info, success, warning, error, alert
+    read: bool = False
+    link: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class NotificationCreate(BaseModel):
+    title: str
+    message: str
+    type: str = "info"
+    link: Optional[str] = None
+
+
+# Session Models
+class Session(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    device_info: Optional[str] = None
+    ip_address: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime
+    last_activity: datetime = Field(default_factory=datetime.utcnow)
+
