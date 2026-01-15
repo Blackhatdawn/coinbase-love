@@ -276,8 +276,21 @@ export const api = {
       apiClient.get('/api/auth/me'),
     getProfile: () =>
       apiClient.get('/api/auth/me'),
+    updateProfile: (data: { name: string }) =>
+      apiClient.put('/api/auth/profile', data),
+    changePassword: (data: { current_password: string; new_password: string }) =>
+      apiClient.post('/api/auth/change-password', data),
     refresh: () =>
       apiClient.post('/api/auth/refresh'),
+    // 2FA endpoints
+    setup2FA: () =>
+      apiClient.post('/api/auth/2fa/setup'),
+    verify2FA: (data: { code: string }) =>
+      apiClient.post('/api/auth/2fa/verify', data),
+    get2FAStatus: () =>
+      apiClient.get('/api/auth/2fa/status'),
+    disable2FA: () =>
+      apiClient.post('/api/auth/2fa/disable', {}),
   },
 
   // Portfolio
