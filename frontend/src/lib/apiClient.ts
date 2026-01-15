@@ -1,421 +1,338 @@
 /**
- * CryptoVault API Client - Production-Grade Configuration
- * 
- * SECURITY FEATURES:
- * - No hardcoded URLs or secrets
- * - Environment-based configuration
- * - Automatic retry with exponential backoff
- * - Request/response interceptors
- * - CSRF protection ready
- * - Graceful error handling
- * 
- * ENVIRONMENT VARIABLES:
- * - VITE_API_BASE_URL: Backend URL (optional in dev, required in prod)
+ * API Client with automatic token refresh and error handling
+ * Production-ready HTTP client for CryptoVault API
  */
 
-import { create } from 'zustand';
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-// ============================================
-// ENVIRONMENT CONFIGURATION (SECURE)
-// ============================================
+// Get base URL from environment or use proxy in development
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-const IS_PRODUCTION = import.meta.env.PROD;
-const IS_DEVELOPMENT = import.meta.env.DEV;
-const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-// Determine API base URL securely
-let API_BASE: string;
-
-if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
-  // Production or explicitly configured
-  API_BASE = `${VITE_API_BASE_URL.replace(/\/$/, '')}/api`;
-} else if (IS_DEVELOPMENT) {
-  // Development: use Vite proxy (no hardcoded localhost!)
-  API_BASE = '/api';
-} else {
-  // Production without config - use relative path (assumes same domain)
-  API_BASE = '/api';
+/**
+ * Error response structure from backend
+ */
+interface APIError {
+  error: {
+    code: string;
+    message: string;
+    request_id?: string;
+    timestamp?: string;
+    details?: Record<string, any>;
+  };
 }
 
-// Log configuration ONLY in development (no secrets!)
-if (IS_DEVELOPMENT) {
-  console.log('🔌 API Configuration:', {
-    mode: IS_PRODUCTION ? 'production' : 'development',
-    apiBase: API_BASE,
-    usingProxy: !VITE_API_BASE_URL,
+/**
+ * Custom error class for API errors
+ */
+export class APIClientError extends Error {
+  code: string;
+  statusCode: number;
+  requestId?: string;
+  details?: Record<string, any>;
+
+  constructor(message: string, code: string, statusCode: number, requestId?: string, details?: Record<string, any>) {
+    super(message);
+    this.name = 'APIClientError';
+    this.code = code;
+    this.statusCode = statusCode;
+    this.requestId = requestId;
+    this.details = details;
+  }
+}
+
+/**
+ * Create axios instance with default configuration
+ */
+const createAxiosInstance = (): AxiosInstance => {
+  const instance = axios.create({
+    baseURL: BASE_URL,
+    timeout: 30000, // 30 seconds
+    withCredentials: true, // Send cookies with requests
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
-}
 
-// ============================================
-// CONNECTION STATE MANAGEMENT
-// ============================================
-
-interface ConnectionState {
-  isConnected: boolean;
-  isConnecting: boolean;
-  connectionError: string | null;
-  retryCount: number;
-  setConnected: (connected: boolean) => void;
-  setConnecting: (connecting: boolean) => void;
-  setError: (error: string | null) => void;
-  incrementRetry: () => void;
-  resetRetry: () => void;
-}
-
-export const useConnectionStore = create<ConnectionState>((set) => ({
-  isConnected: false,
-  isConnecting: true,
-  connectionError: null,
-  retryCount: 0,
-  setConnected: (connected) => set({ isConnected: connected, connectionError: null }),
-  setConnecting: (connecting) => set({ isConnecting: connecting }),
-  setError: (error) => set({ connectionError: error, isConnected: false }),
-  incrementRetry: () => set((state) => ({ retryCount: state.retryCount + 1 })),
-  resetRetry: () => set({ retryCount: 0 }),
-}));
-
-// ============================================
-// RETRY CONFIGURATION
-// ============================================
-
-const RETRY_CONFIG = {
-  maxRetries: 3,
-  delays: [1000, 2000, 4000], // Exponential backoff
-  retryableStatuses: [408, 429, 500, 502, 503, 504],
+  return instance;
 };
 
-// ============================================
-// REQUEST UTILITIES
-// ============================================
+/**
+ * API Client with token refresh and error handling
+ */
+class APIClient {
+  private client: AxiosInstance;
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
-interface RequestOptions extends RequestInit {
-  skipAuth?: boolean;
-  timeout?: number;
-}
+  constructor() {
+    this.client = createAxiosInstance();
+    this.setupInterceptors();
+  }
 
-async function request<T>(
-  endpoint: string,
-  options: RequestOptions = {}
-): Promise<T> {
-  const { skipAuth = false, timeout = 30000, ...fetchOptions } = options;
-  const url = `${API_BASE}${endpoint}`;
+  /**
+   * Setup request and response interceptors
+   */
+  private setupInterceptors(): void {
+    // Request interceptor
+    this.client.interceptors.request.use(
+      (config) => {
+        // Add any request-level logic here
+        // Cookies are automatically sent with withCredentials: true
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
 
-  // Set up timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+    // Response interceptor
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError<APIError>) => {
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(fetchOptions.headers as Record<string, string>),
-  };
+        // If error is 401 and we haven't retried yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (this.isRefreshing) {
+            // If already refreshing, queue this request
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            })
+              .then(() => {
+                return this.client(originalRequest);
+              })
+              .catch((err) => {
+                return Promise.reject(err);
+              });
+          }
 
-  // Add auth token if available and not skipped
-  if (!skipAuth) {
-    const token = localStorage.getItem('token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+          originalRequest._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            // Attempt to refresh token
+            await this.refreshToken();
+
+            // Process failed queue
+            this.failedQueue.forEach((promise) => {
+              promise.resolve();
+            });
+            this.failedQueue = [];
+
+            // Retry original request
+            return this.client(originalRequest);
+          } catch (refreshError) {
+            // Refresh failed, clear queue and reject all
+            this.failedQueue.forEach((promise) => {
+              promise.reject(refreshError);
+            });
+            this.failedQueue = [];
+
+            // Clear auth state and redirect to login
+            this.handleAuthFailure();
+
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+
+        // Transform error to APIClientError
+        return Promise.reject(this.transformError(error));
+      }
+    );
+  }
+
+  /**
+   * Refresh access token
+   */
+  private async refreshToken(): Promise<void> {
+    try {
+      await this.client.post('/api/auth/refresh');
+    } catch (error) {
+      throw new Error('Token refresh failed');
     }
   }
 
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers,
-      credentials: 'include', // For cookies/CSRF
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    // Handle non-OK responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
-      (error as any).status = response.status;
-      (error as any).data = errorData;
-      throw error;
+  /**
+   * Handle authentication failure
+   */
+  private handleAuthFailure(): void {
+    // Clear any stored auth state
+    // You can emit an event here or use a global state manager
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+      // Redirect to login page
+      window.location.href = '/auth';
     }
-
-    // Handle empty responses
-    const text = await response.text();
-    if (!text) return {} as T;
-
-    return JSON.parse(text) as T;
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-
-    // Handle abort (timeout)
-    if (error.name === 'AbortError') {
-      throw new Error('Request timeout - please try again');
-    }
-
-    // Handle network errors gracefully
-    if (error.message === 'Failed to fetch') {
-      throw new Error('Unable to connect to server - please check your connection');
-    }
-
-    throw error;
   }
-}
 
-// Retry wrapper
-async function requestWithRetry<T>(
-  endpoint: string,
-  options: RequestOptions = {},
-  retryCount = 0
-): Promise<T> {
-  try {
-    return await request<T>(endpoint, options);
-  } catch (error: any) {
-    const shouldRetry =
-      retryCount < RETRY_CONFIG.maxRetries &&
-      RETRY_CONFIG.retryableStatuses.includes(error.status);
-
-    if (shouldRetry) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, RETRY_CONFIG.delays[retryCount])
+  /**
+   * Transform Axios error to APIClientError
+   */
+  private transformError(error: AxiosError<APIError>): APIClientError {
+    if (error.response?.data?.error) {
+      const apiError = error.response.data.error;
+      return new APIClientError(
+        apiError.message,
+        apiError.code,
+        error.response.status,
+        apiError.request_id,
+        apiError.details
       );
-      return requestWithRetry<T>(endpoint, options, retryCount + 1);
     }
 
-    throw error;
+    // Network or other errors
+    if (error.code === 'ECONNABORTED') {
+      return new APIClientError(
+        'Request timeout',
+        'TIMEOUT_ERROR',
+        408
+      );
+    }
+
+    if (!error.response) {
+      return new APIClientError(
+        'Network error. Please check your internet connection.',
+        'NETWORK_ERROR',
+        0
+      );
+    }
+
+    return new APIClientError(
+      error.message || 'An unexpected error occurred',
+      'UNKNOWN_ERROR',
+      error.response?.status || 500
+    );
+  }
+
+  /**
+   * GET request
+   */
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.get(url, config);
+    return response.data;
+  }
+
+  /**
+   * POST request
+   */
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.post(url, data, config);
+    return response.data;
+  }
+
+  /**
+   * PUT request
+   */
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.put(url, data, config);
+    return response.data;
+  }
+
+  /**
+   * PATCH request
+   */
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.patch(url, data, config);
+    return response.data;
+  }
+
+  /**
+   * DELETE request
+   */
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.delete(url, config);
+    return response.data;
   }
 }
 
-// ============================================
-// API METHODS
-// ============================================
+// Create and export singleton instance
+const apiClient = new APIClient();
+export default apiClient;
 
+// Export API endpoints as typed functions
 export const api = {
-  // Health check
-  health: () => requestWithRetry<{ status: string }>('/health', { skipAuth: true }),
-
   // Authentication
   auth: {
-    signup: (email: string, password: string, name: string) =>
-      request<any>('/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, name }),
-      }),
-    login: (email: string, password: string, totp_code?: string) =>
-      request<any>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, totp_code }),
-      }),
-    logout: () => request<any>('/auth/logout', { method: 'POST' }),
-    me: () => request<any>('/auth/me'),
-    refresh: () => request<any>('/auth/refresh', { method: 'POST' }),
-    forgotPassword: (email: string) =>
-      request('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      }),
-    resetPassword: (token: string, password: string) =>
-      request('/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ token, password }),
-      }),
-    verifyEmail: (token: string, code: string) =>
-      request('/auth/verify-email', {
-        method: 'POST',
-        body: JSON.stringify({ token, code }),
-      }),
-    resendVerification: (token: string) =>
-      request('/auth/resend-verification', {
-        method: 'POST',
-        body: JSON.stringify({ token }),
-      }),
-    // 2FA
-    setup2FA: () => request('/auth/2fa/setup', { method: 'POST' }),
-    verify2FA: (code: string) =>
-      request('/auth/2fa/verify', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-      }),
-    disable2FA: (password: string) =>
-      request('/auth/2fa/disable', {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      }),
-    get2FAStatus: () => request('/auth/2fa/status'),
-    getBackupCodes: () => request('/auth/2fa/backup-codes', { method: 'POST' }),
-    // Sessions
-    getSessions: () => request('/auth/sessions'),
-    revokeSession: (sessionId: string) =>
-      request(`/auth/sessions/${sessionId}`, { method: 'DELETE' }),
-    revokeAllSessions: () =>
-      request('/auth/sessions/revoke-all', { method: 'POST' }),
-  },
-
-  // Crypto data
-  crypto: {
-    getAll: () => requestWithRetry<any>('/crypto', { skipAuth: true }),
-    getOne: (coinId: string) =>
-      requestWithRetry<any>(`/crypto/${coinId}`, { skipAuth: true }),
-    getHistory: (coinId: string, days = 7) =>
-      requestWithRetry<any>(`/crypto/${coinId}/history?days=${days}`, { skipAuth: true }),
+    signup: (data: { email: string; password: string; name: string }) =>
+      apiClient.post('/api/auth/signup', data),
+    login: (data: { email: string; password: string }) =>
+      apiClient.post('/api/auth/login', data),
+    logout: () =>
+      apiClient.post('/api/auth/logout'),
+    verifyEmail: (data: { token: string }) =>
+      apiClient.post('/api/auth/verify-email', data),
+    resendVerification: (data: { email: string }) =>
+      apiClient.post('/api/auth/resend-verification', data),
+    forgotPassword: (data: { email: string }) =>
+      apiClient.post('/api/auth/forgot-password', data),
+    resetPassword: (data: { token: string; new_password: string }) =>
+      apiClient.post('/api/auth/reset-password', data),
+    getMe: () =>
+      apiClient.get('/api/auth/me'),
+    refresh: () =>
+      apiClient.post('/api/auth/refresh'),
   },
 
   // Portfolio
   portfolio: {
-    get: () => request<any>('/portfolio'),
-    getHolding: (symbol: string) => request<any>(`/portfolio/holding/${symbol}`),
-    addHolding: (data: any) =>
-      request<any>('/portfolio/holding', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    updateHolding: (symbol: string, data: any) =>
-      request<any>(`/portfolio/holding/${symbol}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }),
+    get: () =>
+      apiClient.get('/api/portfolio'),
+    addHolding: (data: { symbol: string; name: string; amount: number }) =>
+      apiClient.post('/api/portfolio/holding', data),
     deleteHolding: (symbol: string) =>
-      request<any>(`/portfolio/holding/${symbol}`, { method: 'DELETE' }),
+      apiClient.delete(`/api/portfolio/holding/${symbol}`),
+    getHolding: (symbol: string) =>
+      apiClient.get(`/api/portfolio/holding/${symbol}`),
   },
 
-  // Wallet
-  wallet: {
-    getBalances: () => request<any>('/wallet/balances'),
-    createDeposit: (data: { amount: number; currency: string }) =>
-      request<any>('/wallet/deposit/create', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    deposit: (data: any) =>
-      request<any>('/wallet/deposit', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    withdraw: (data: any) =>
-      request<any>('/wallet/withdraw', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    getDepositAddress: (asset: string) =>
-      request<any>(`/wallet/deposit-address/${asset}`),
-    getWithdrawalLimits: () => request<any>('/wallet/withdrawal-limits'),
+  // Trading
+  trading: {
+    getOrders: () =>
+      apiClient.get('/api/orders'),
+    createOrder: (data: {
+      trading_pair: string;
+      order_type: string;
+      side: string;
+      amount: number;
+      price: number;
+    }) =>
+      apiClient.post('/api/orders', data),
+    getOrder: (orderId: string) =>
+      apiClient.get(`/api/orders/${orderId}`),
   },
 
-  // Transfers
-  transfers: {
-    p2p: (data: any) =>
-      request<any>('/transfers/p2p', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    getHistory: (params?: any) => {
-      const query = params ? `?${new URLSearchParams(params)}` : '';
-      return request<any>(`/transfers/history${query}`);
-    },
+  // Cryptocurrency market data
+  crypto: {
+    getAll: () =>
+      apiClient.get('/api/crypto'),
+    get: (coinId: string) =>
+      apiClient.get(`/api/crypto/${coinId}`),
+    getHistory: (coinId: string, days: number = 7) =>
+      apiClient.get(`/api/crypto/${coinId}/history?days=${days}`),
   },
 
-  // Orders
-  orders: {
-    create: (data: any) =>
-      request<any>('/orders', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    getAll: (params?: any) => {
-      const query = params ? `?${new URLSearchParams(params)}` : '';
-      return request<any>(`/orders${query}`);
-    },
-    getOne: (orderId: string) => request<any>(`/orders/${orderId}`),
-    cancel: (orderId: string) =>
-      request<any>(`/orders/${orderId}/cancel`, { method: 'POST' }),
-  },
-
-  // Staking
-  staking: {
-    getProducts: () => requestWithRetry<any>('/staking/products', { skipAuth: true }),
-    stake: (data: any) =>
-      request<any>('/staking/stake', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    unstake: (stakeId: string) =>
-      request<any>(`/staking/${stakeId}/unstake`, { method: 'POST' }),
-    getMyStakes: () => request<any>('/staking/my-stakes'),
-    getRewards: () => request<any>('/staking/rewards'),
-  },
-
-  // KYC
-  kyc: {
-    getStatus: () => request<any>('/kyc/status'),
-    submitLevel1: (data: any) =>
-      request<any>('/kyc/level1', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-  },
-
-  // Referrals
-  referrals: {
-    getCode: () => request<any>('/referrals/code'),
-    applyCode: (code: string) =>
-      request<any>('/referrals/apply', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-      }),
-    getStats: () => request<any>('/referrals/stats'),
-  },
-
-  // Contact
-  contact: {
-    submit: (data: any) =>
-      request<any>('/contact', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        skipAuth: true,
-      }),
-  },
-
-  // Price Alerts
-  alerts: {
-    getAll: () => request<any>('/alerts'),
-    create: (data: { symbol: string; targetPrice: number; condition: 'above' | 'below'; notifyPush?: boolean; notifyEmail?: boolean }) =>
-      request<any>('/alerts', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    update: (alertId: string, data: { isActive?: boolean }) =>
-      request<any>(`/alerts/${alertId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-    delete: (alertId: string) =>
-      request<any>(`/alerts/${alertId}`, { method: 'DELETE' }),
-  },
-
-  // Admin (protected)
+  // Admin (requires admin privileges)
   admin: {
-    getStats: () => request<any>('/admin/stats'),
-    getUsers: (params?: any) => {
-      const query = params ? `?${new URLSearchParams(params)}` : '';
-      return request<any>(`/admin/users${query}`);
+    getStats: () =>
+      apiClient.get('/api/admin/stats'),
+    getUsers: (skip: number = 0, limit: number = 50) =>
+      apiClient.get(`/api/admin/users?skip=${skip}&limit=${limit}`),
+    getTrades: (skip: number = 0, limit: number = 100) =>
+      apiClient.get(`/api/admin/trades?skip=${skip}&limit=${limit}`),
+    getAuditLogs: (skip: number = 0, limit: number = 100, userId?: string, action?: string) => {
+      let url = `/api/admin/audit-logs?skip=${skip}&limit=${limit}`;
+      if (userId) url += `&user_id=${userId}`;
+      if (action) url += `&action=${action}`;
+      return apiClient.get(url);
     },
-    getTrades: (params?: any) => {
-      const query = params ? `?${new URLSearchParams(params)}` : '';
-      return request<any>(`/admin/trades${query}`);
-    },
-    getUser: (userId: string) => request<any>(`/admin/users/${userId}`),
-    freezeUser: (userId: string, reason: string) =>
-      request<any>(`/admin/users/${userId}/freeze`, {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-      }),
-    getPendingDeposits: () => request<any>('/admin/deposits/pending'),
-    approveDeposit: (depositId: string) =>
-      request<any>(`/admin/deposits/${depositId}/approve`, { method: 'POST' }),
-    rejectDeposit: (depositId: string, reason: string) =>
-      request<any>(`/admin/deposits/${depositId}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-      }),
   },
-};
 
-export { API_BASE };
-export default api;
+  // Health check
+  health: () =>
+    apiClient.get('/health'),
+};
