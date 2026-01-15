@@ -80,7 +80,7 @@ const OnboardingLoader = ({ isLoading, minDisplayTime = 2000 }: OnboardingLoader
 
         {/* Loading text */}
         <p className="mt-6 text-sm text-muted-foreground animate-pulse">
-          Initializing secure connection...
+          Currently Initializing secure connection...
         </p>
       </div>
 
