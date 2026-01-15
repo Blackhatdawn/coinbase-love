@@ -41,7 +41,7 @@ async def log_audit(
     request_id: Optional[str] = None
 ):
     """Log audit event."""
-    from ..models import AuditLog
+    from models import AuditLog
     import logging
     
     logger = logging.getLogger(__name__)
