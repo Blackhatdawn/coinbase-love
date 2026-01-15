@@ -10,6 +10,56 @@ from dependencies import get_current_user_id, get_db
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+@router.post("/setup-first-admin")
+async def setup_first_admin(
+    request: Request,
+    db = Depends(get_db)
+):
+    """
+    Create the first admin user if no admins exist.
+    This is a one-time setup endpoint.
+    """
+    users_collection = db.get_collection("users")
+    
+    # Check if any admin users already exist
+    existing_admin = await users_collection.find_one({"is_admin": True})
+    if existing_admin:
+        raise HTTPException(
+            status_code=400, 
+            detail="Admin user already exists. Use regular admin interface to manage users."
+        )
+    
+    body = await request.json()
+    email = body.get("email")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    # Find user by email
+    user = await users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found. Please create an account first, then use this endpoint.")
+    
+    if not user.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Email must be verified before becoming admin")
+    
+    # Make user an admin
+    await users_collection.update_one(
+        {"id": user["id"]},
+        {"$set": {"is_admin": True}}
+    )
+    
+    return {
+        "message": "User has been granted admin privileges",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "is_admin": True
+        }
+    }
+
+
 async def is_admin(user_id: str = Depends(get_current_user_id), db = Depends(get_db)) -> bool:
     """Check if user is an admin."""
     users_collection = db.get_collection("users")
