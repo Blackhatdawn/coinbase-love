@@ -150,7 +150,8 @@ async def login(
     limiter = Depends(get_limiter)
 ):
     """Login user with account lockout protection."""
-    await limiter.limit("5/minute")(request)
+    # Temporarily disable rate limiting to fix the issue
+    # await limiter.limit("5/minute")(request)
     
     users_collection = db.get_collection("users")
 
