@@ -45,13 +45,13 @@ const Trade = () => {
 
     setIsLoading(true);
     try {
-      await api.orders.create(
-        tradingPair,
-        orderType,
-        side,
-        parseFloat(amount),
-        parseFloat(price)
-      );
+      await api.orders.create({
+        trading_pair: tradingPair,
+        order_type: orderType,
+        side: side,
+        amount: parseFloat(amount),
+        price: parseFloat(price)
+      });
 
       toast({
         title: "Order placed successfully",
