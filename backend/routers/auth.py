@@ -71,13 +71,9 @@ async def log_audit(
 async def signup(
     user_data: UserCreate, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Register a new user with email verification."""
-    # Temporarily disable rate limiting to fix the issue
-    # await limiter.limit("3/minute")(request)
-    
     users_collection = db.get_collection("users")
     portfolios_collection = db.get_collection("portfolios")
 
