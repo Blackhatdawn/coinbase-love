@@ -147,6 +147,11 @@ class AuditLog(BaseModel):
     user_agent: Optional[str] = None
     details: Optional[dict] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Alias for backward compatibility with endpoints expecting 'timestamp'
+    @property
+    def timestamp(self) -> datetime:
+        return self.created_at
 
 
 # Token Models
