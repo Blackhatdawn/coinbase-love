@@ -299,6 +299,85 @@ async def get_current_user_profile(
     }
 
 
+@router.put("/profile")
+async def update_profile(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """Update user profile."""
+    users_collection = db.get_collection("users")
+    
+    body = await request.json()
+    name = body.get("name")
+    
+    if not name or len(name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
+    
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"name": name.strip()}}
+    )
+    
+    user_doc = await users_collection.find_one({"id": user_id})
+    user = User(**user_doc)
+    
+    await log_audit(db, user_id, "PROFILE_UPDATED", ip_address=request.client.host)
+    
+    return {
+        "message": "Profile updated successfully",
+        "user": UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            createdAt=user.created_at.isoformat()
+        ).dict()
+    }
+
+
+@router.post("/change-password")
+async def change_password(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db),
+    limiter = Depends(get_limiter)
+):
+    """Change user password."""
+    await limiter.limit("5/minute")(request)
+    
+    users_collection = db.get_collection("users")
+    
+    body = await request.json()
+    current_password = body.get("current_password")
+    new_password = body.get("new_password")
+    
+    if not current_password or not new_password:
+        raise HTTPException(status_code=400, detail="Current and new password are required")
+    
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    
+    user_doc = await users_collection.find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = User(**user_doc)
+    
+    if not verify_password(current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    new_hashed_password = get_password_hash(new_password)
+    
+    await users_collection.update_one(
+        {"id": user_id},
+        {"$set": {"hashed_password": new_hashed_password}}
+    )
+    
+    await log_audit(db, user_id, "PASSWORD_CHANGED", ip_address=request.client.host)
+    
+    return {"message": "Password changed successfully"}
+
+
 @router.post("/refresh")
 async def refresh_token(request: Request):
     """Refresh access token."""
