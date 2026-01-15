@@ -143,11 +143,11 @@ class DatabaseConnection:
     @property
     def is_connected(self) -> bool:
         """Quick flag-based check if the database appears connected."""
-        return self._is_connected and self.client is not None and self.db is not None
+        return self._is_connected and (self.client is not None) and (self.db is not None)
 
     def get_collection(self, collection_name: str):
         """Get a collection from the database."""
-        if not self.db or not self.is_connected:
+        if self.db is None or not self._is_connected:
             raise RuntimeError("Database not connected. Call connect() first or use async context manager.")
         return self.db[collection_name]
 
