@@ -3,7 +3,6 @@
  */
 
 import * as Sentry from '@sentry/react';
-import { BrowserTracing } from '@sentry/tracing';
 
 // Initialize Sentry only in production and when DSN is available
 export const initSentry = () => {
@@ -19,16 +18,7 @@ export const initSentry = () => {
       
       // Performance monitoring
       integrations: [
-        new BrowserTracing({
-          // Capture all routes
-          routingInstrumentation: Sentry.reactRouterV6Instrumentation(
-            React.useEffect,
-            useLocation,
-            useNavigationType,
-            createRoutesFromChildren,
-            matchRoutes
-          ),
-        }),
+        Sentry.browserTracingIntegration(),
       ],
       
       // Performance monitoring sample rate (10% of transactions)
@@ -126,12 +116,3 @@ export const captureError = (error: Error, context?: Record<string, any>) => {
     Sentry.captureException(error);
   });
 };
-
-// Required imports for React Router integration
-import React from 'react';
-import {
-  createRoutesFromChildren,
-  matchRoutes,
-  useLocation,
-  useNavigationType,
-} from 'react-router-dom';
