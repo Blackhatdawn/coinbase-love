@@ -605,12 +605,27 @@ async def verify_2fa(
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
-    """Verify 2FA code."""
+    """Verify 2FA code and enable 2FA if valid."""
     users_collection = db.get_collection("users")
 
     if len(data.code) != 6 or not data.code.isdigit():
-        raise HTTPException(status_code=400, detail="Invalid code")
+        raise HTTPException(status_code=400, detail="Invalid code format")
 
+    # Get user to retrieve the 2FA secret
+    user_doc = await users_collection.find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if 2FA secret exists
+    secret = user_doc.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA setup not initiated. Please setup 2FA first.")
+    
+    # Verify the TOTP code
+    if not verify_2fa_code(secret, data.code):
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    # Generate backup codes and enable 2FA
     backup_codes = generate_backup_codes()
     await users_collection.update_one(
         {"id": user_id},
