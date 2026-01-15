@@ -141,3 +141,193 @@ async def get_audit_logs(
         "skip": skip,
         "limit": limit
     }
+
+
+@router.get("/withdrawals")
+async def get_pending_withdrawals(
+    skip: int = 0,
+    limit: int = 50,
+    status: str = "pending",
+    admin_check: bool = Depends(is_admin),
+    db = Depends(get_db)
+):
+    """Get withdrawal requests for admin review."""
+    withdrawals_collection = db.get_collection("withdrawals")
+    users_collection = db.get_collection("users")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    withdrawals = await withdrawals_collection.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await withdrawals_collection.count_documents(query)
+    
+    # Enrich with user information
+    for withdrawal in withdrawals:
+        user = await users_collection.find_one({"id": withdrawal["user_id"]})
+        if user:
+            withdrawal["user_email"] = user.get("email")
+            withdrawal["user_name"] = user.get("name")
+    
+    return {
+        "withdrawals": withdrawals,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.post("/withdrawals/{withdrawal_id}/approve")
+async def approve_withdrawal(
+    withdrawal_id: str,
+    admin_check: bool = Depends(is_admin),
+    db = Depends(get_db)
+):
+    """Approve a withdrawal request (changes status to processing)."""
+    withdrawals_collection = db.get_collection("withdrawals")
+    
+    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    
+    if withdrawal["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Only pending withdrawals can be approved")
+    
+    await withdrawals_collection.update_one(
+        {"id": withdrawal_id},
+        {
+            "$set": {
+                "status": "processing",
+                "processed_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    return {"message": "Withdrawal approved and is now processing"}
+
+
+@router.post("/withdrawals/{withdrawal_id}/complete")
+async def complete_withdrawal(
+    withdrawal_id: str,
+    request: Request,
+    admin_check: bool = Depends(is_admin),
+    db = Depends(get_db)
+):
+    """Mark withdrawal as completed with transaction hash."""
+    body = await request.json()
+    transaction_hash = body.get("transaction_hash")
+    
+    if not transaction_hash:
+        raise HTTPException(status_code=400, detail="Transaction hash is required")
+    
+    withdrawals_collection = db.get_collection("withdrawals")
+    
+    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    
+    if withdrawal["status"] not in ["pending", "processing"]:
+        raise HTTPException(status_code=400, detail="Only pending or processing withdrawals can be completed")
+    
+    await withdrawals_collection.update_one(
+        {"id": withdrawal_id},
+        {
+            "$set": {
+                "status": "completed",
+                "transaction_hash": transaction_hash,
+                "completed_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    # Update transaction record
+    transactions_collection = db.get_collection("transactions")
+    await transactions_collection.update_one(
+        {"reference": withdrawal_id, "type": "withdrawal"},
+        {
+            "$set": {
+                "status": "completed",
+                "transaction_hash": transaction_hash
+            }
+        }
+    )
+    
+    return {"message": "Withdrawal marked as completed", "transaction_hash": transaction_hash}
+
+
+@router.post("/withdrawals/{withdrawal_id}/reject")
+async def reject_withdrawal(
+    withdrawal_id: str,
+    request: Request,
+    admin_check: bool = Depends(is_admin),
+    db = Depends(get_db)
+):
+    """Reject a withdrawal request and refund the user."""
+    body = await request.json()
+    reason = body.get("reason", "Withdrawal rejected by administrator")
+    
+    withdrawals_collection = db.get_collection("withdrawals")
+    
+    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    
+    if withdrawal["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Only pending withdrawals can be rejected")
+    
+    # Refund the user's wallet
+    wallets_collection = db.get_collection("wallets")
+    wallet = await wallets_collection.find_one({"user_id": withdrawal["user_id"]})
+    
+    if wallet:
+        currency = withdrawal["currency"]
+        total_amount = withdrawal.get("total_amount", withdrawal["amount"] + withdrawal["fee"])
+        current_balance = wallet.get("balances", {}).get(currency, 0)
+        
+        await wallets_collection.update_one(
+            {"user_id": withdrawal["user_id"]},
+            {
+                "$set": {
+                    f"balances.{currency}": current_balance + total_amount,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+    
+    # Update withdrawal status
+    await withdrawals_collection.update_one(
+        {"id": withdrawal_id},
+        {
+            "$set": {
+                "status": "cancelled",
+                "notes": reason,
+                "processed_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    # Update transaction records
+    transactions_collection = db.get_collection("transactions")
+    await transactions_collection.update_many(
+        {"reference": withdrawal_id},
+        {
+            "$set": {
+                "status": "cancelled"
+            }
+        }
+    )
+    
+    # Create refund transaction
+    await transactions_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": withdrawal["user_id"],
+        "type": "refund",
+        "amount": withdrawal["amount"] + withdrawal["fee"],
+        "currency": withdrawal["currency"],
+        "status": "completed",
+        "reference": withdrawal_id,
+        "description": f"Refund for rejected withdrawal: {reason}",
+        "created_at": datetime.utcnow()
+    })
+    
+    return {"message": "Withdrawal rejected and user refunded", "reason": reason}
