@@ -86,7 +86,7 @@ async def cleanup_blacklisted_tokens():
     if not settings.is_redis_available():
         try:
             await db_connection.get_collection("blacklisted_tokens").delete_many({
-                "expires_at": {"": datetime.utcnow()}
+                "expires_at": {"$lt": datetime.utcnow()}
             })
             logger.info("Cleaned expired blacklisted tokens from MongoDB")
         except Exception as e:
