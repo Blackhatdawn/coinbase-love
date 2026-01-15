@@ -94,7 +94,8 @@ export class ErrorBoundary extends Component<Props, State> {
     // Open Sentry feedback dialog if available
     if (this.state.eventId && import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
       try {
-        const Sentry = await import('@sentry/react');
+        const sentryModule = '@sentry/react';
+        const Sentry = await import(/* @vite-ignore */ sentryModule);
         Sentry.showReportDialog({ eventId: this.state.eventId });
       } catch (e) {
         // Fallback to email
