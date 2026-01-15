@@ -19,14 +19,21 @@ export default defineConfig(({ mode }) => ({
         manualChunks: (id) => {
           // Vendor chunk
           if (id.includes('node_modules')) {
+            // Sentry should be in its own chunk
+            if (id.includes('@sentry')) {
+              return 'sentry-vendor';
+            }
             if (id.includes('ethers')) {
               return 'web3-vendor';
             }
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
               return 'ui-vendor';
             }
-            if (id.includes('recharts') || id.includes('lightweight-charts')) {
+            if (id.includes('recharts') || id.includes('lightweight-charts') || id.includes('chart.js')) {
               return 'charts-vendor';
+            }
+            if (id.includes('@tanstack/react-query') || id.includes('axios')) {
+              return 'data-vendor';
             }
             return 'vendor';
           }
@@ -42,6 +49,12 @@ export default defineConfig(({ mode }) => ({
             return 'core';
           }
         },
+      },
+    },
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production',
+        drop_debugger: mode === 'production',
       },
     },
   },
@@ -63,4 +76,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Production optimizations
+  ...(mode === 'production' && {
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
+  }),
 }));
