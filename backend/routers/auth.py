@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import uuid
 import bcrypt
 from typing import Optional
+import logging
 
 from models import (
     User, UserCreate, UserLogin, UserResponse,
@@ -30,6 +31,7 @@ from auth import (
 from dependencies import get_current_user_id, get_db, get_limiter
 from blacklist import blacklist_token
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
