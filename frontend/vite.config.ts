@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
     __VERSION__: JSON.stringify(process.env.npm_package_version),
   },
   build: {
-    outDir: 'build',
+    outDir: 'dist',
     minify: 'terser',
     sourcemap: mode !== 'production',
     target: 'ES2020',
