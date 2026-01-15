@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { api } from "@/lib/apiClient";
+import { setSentryUser, clearSentryUser } from "@/lib/sentry";
 
 interface User {
   id: string;
@@ -36,6 +37,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           createdAt: response.user.createdAt,
         };
         setUser(userData);
+        
+        // Set user context in Sentry
+        setSentryUser({
+          id: userData.id,
+          email: userData.email,
+          username: userData.name,
+        });
       } catch (error: any) {
         // Expected: No valid session, user is not authenticated
         // Log errors only if they seem unexpected
@@ -43,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.warn('⚠️ Session check failed:', error.message);
         }
         setUser(null);
+        clearSentryUser();
       } finally {
         setIsLoading(false);
       }
