@@ -29,8 +29,15 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
               return 'ui-vendor';
             }
-            if (id.includes('recharts') || id.includes('lightweight-charts') || id.includes('chart.js')) {
-              return 'charts-vendor';
+            // Separate chart libraries to avoid circular dependencies
+            if (id.includes('recharts')) {
+              return 'recharts-vendor';
+            }
+            if (id.includes('lightweight-charts')) {
+              return 'tradingview-vendor';
+            }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'chartjs-vendor';
             }
             if (id.includes('@tanstack/react-query') || id.includes('axios')) {
               return 'data-vendor';
