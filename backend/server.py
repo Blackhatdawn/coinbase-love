@@ -59,6 +59,64 @@ from auth import (
 from dependencies import get_current_user_id, optional_current_user_id
 
 # ============================================
+# CURRENT USER DEPENDENCY
+# ============================================
+
+async def get_current_user(request: Request) -> dict:
+    """Get current user document."""
+    user_id = await get_current_user_id(request)
+    
+    global db_connection
+    if not db_connection:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not connected"
+        )
+    
+    users_collection = db_connection.get_collection("users")
+    user_doc = await users_collection.find_one({"id": user_id})
+    
+    if not user_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Convert ObjectId to string for consistency
+    if "_id" in user_doc:
+        user_doc["_id"] = str(user_doc["_id"])
+    return user_doc
+
+# ============================================
+# CURRENT USER DEPENDENCY
+# ============================================
+
+async def get_current_user(request: Request) -> dict:
+    """Get current user document."""
+    user_id = await get_current_user_id(request)
+    
+    global db_connection
+    if not db_connection:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not connected"
+        )
+    
+    users_collection = db_connection.get_collection("users")
+    user_doc = await users_collection.find_one({"id": user_id})
+    
+    if not user_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Convert ObjectId to string for consistency
+    if "_id" in user_doc:
+        user_doc["_id"] = str(user_doc["_id"])
+    return user_doc
+
+# ============================================
 # REQUEST ID DEPENDENCY
 # ============================================
 

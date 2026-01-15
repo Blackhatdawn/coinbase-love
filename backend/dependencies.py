@@ -46,6 +46,26 @@ async def get_current_user_id(request: Request) -> str:
    
     return user_id
 
+async def get_current_user(request: Request) -> dict:
+    """Get full current user document."""
+    user_id = await get_current_user_id(request)
+    
+    # Import here to avoid circular imports
+    from database import db_connection
+    
+    users_collection = db_connection.get_collection("users")
+    user_doc = await users_collection.find_one({"id": user_id})
+    
+    if not user_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Convert ObjectId to string for consistency
+    user_doc["_id"] = str(user_doc["_id"])
+    return user_doc
+
 async def optional_current_user_id(request: Request) -> Optional[str]:
     """Optional version – returns None if not authenticated."""
     try:
