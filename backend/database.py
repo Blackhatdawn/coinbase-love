@@ -7,7 +7,7 @@ Uses Motor for async operations. Fully compatible with MongoDB Atlas.
 import asyncio
 import logging
 from typing import Optional, Dict, Any
-from .config import settings
+from config import settings
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 

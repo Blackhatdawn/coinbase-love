@@ -14,7 +14,7 @@ from bson import ObjectId
 import logging
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime, timedelta
-from .config import settings
+from config import settings
 import asyncio
 import json
 import os
@@ -28,10 +28,10 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 # Import configuration
-from .config import settings
+from config import settings
 
 # Import models
-from .models import (
+from models import (
     User, UserCreate, UserLogin, UserResponse,
     Cryptocurrency, Portfolio, Holding, HoldingCreate,
     Order, OrderCreate, Transaction, TransactionCreate,
@@ -41,7 +41,7 @@ from .models import (
 )
 from pydantic import BaseModel as PydanticBaseModel
 
-from .email_service import (
+from email_service import (
     email_service,
     generate_verification_code,
     generate_verification_token,
@@ -49,7 +49,7 @@ from .email_service import (
     get_token_expiration
 )
 
-from .auth import (
+from auth import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token,
     decode_token, generate_backup_codes, generate_2fa_secret,
@@ -136,7 +136,7 @@ from .websocket_feed import price_feed
 from .referral_service import ReferralService
 
 # Redis cache import
-from .redis_cache import redis_cache
+from redis_cache import redis_cache
 
 # Configure structured logging with JSON format in production
 if settings.environment == "production":
