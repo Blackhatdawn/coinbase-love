@@ -1,113 +1,113 @@
 {
   "total_tests": 15,
-  "passed_tests": 12,
-  "failed_tests": 3,
-  "success_rate": 80.0,
+  "passed_tests": 13,
+  "failed_tests": 2,
+  "success_rate": 86.66666666666667,
   "test_results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.099907"
+      "timestamp": "2026-01-15T17:34:41.674771"
     },
     {
       "test": "Health Check",
       "success": true,
       "details": "API is healthy",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.173875"
+      "timestamp": "2026-01-15T17:34:41.740134"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 9 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.610416"
+      "timestamp": "2026-01-15T17:34:42.158701"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.756511"
+      "timestamp": "2026-01-15T17:34:42.304075"
     },
     {
       "test": "Password Reset Request",
-      "success": false,
-      "details": "Password reset failed: {'status_code': 520, 'text': 'Internal Server Error'}",
+      "success": true,
+      "details": "Password reset endpoint working",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.804138"
+      "timestamp": "2026-01-15T17:34:42.385094"
     },
     {
       "test": "Alerts Endpoint (Auth Required)",
       "success": true,
       "details": "Alerts endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.847855"
+      "timestamp": "2026-01-15T17:34:42.420649"
     },
     {
       "test": "Admin Stats Endpoint (Auth Required)",
       "success": true,
       "details": "Admin stats endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.894894"
+      "timestamp": "2026-01-15T17:34:42.458007"
     },
     {
       "test": "Wallet Deposit Endpoint (Auth Required)",
       "success": true,
       "details": "Wallet deposit endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.934896"
+      "timestamp": "2026-01-15T17:34:42.498460"
     },
     {
       "test": "Wallet Balance Endpoint (Auth Required)",
       "success": true,
       "details": "Wallet balance endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:08.972873"
+      "timestamp": "2026-01-15T17:34:42.533852"
     },
     {
       "test": "Transactions Endpoint (Auth Required)",
       "success": true,
       "details": "Transactions endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.014227"
+      "timestamp": "2026-01-15T17:34:42.568013"
     },
     {
       "test": "User Signup",
       "success": true,
-      "details": "User created with ID: 014b3ee4-0495-424b-8bef-73cc446d14d3",
+      "details": "User created with ID: 29cfb025-8c01-4e5b-8dcd-a49d5bc3afac",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.725367"
+      "timestamp": "2026-01-15T17:34:43.230331"
     },
     {
       "test": "User Login",
       "success": false,
-      "details": "Login failed: {'status_code': 520, 'text': 'Internal Server Error'}",
+      "details": "Email verification required (expected for new accounts)",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.764582"
+      "timestamp": "2026-01-15T17:34:43.521559"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.799995"
+      "timestamp": "2026-01-15T17:34:43.559402"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.836252"
+      "timestamp": "2026-01-15T17:34:43.595602"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-15T17:34:09.872077"
+      "timestamp": "2026-01-15T17:34:43.629983"
     }
   ]
 }
