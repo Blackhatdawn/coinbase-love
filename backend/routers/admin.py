@@ -1,8 +1,9 @@
 """Admin dashboard and management endpoints."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime, timedelta
 from typing import Optional
+import uuid
 
 from dependencies import get_current_user_id, get_db
 
