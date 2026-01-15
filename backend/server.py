@@ -211,7 +211,7 @@ def get_rate_limit_key(request: Request) -> str:
     client_ip = get_remote_address(request)
     
     try:
-        from .auth import decode_token
+        from auth import decode_token
         auth_header = request.headers.get("authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
