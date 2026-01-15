@@ -142,13 +142,9 @@ async def signup(
 async def login(
     credentials: UserLogin, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Login user with account lockout protection."""
-    # Temporarily disable rate limiting to fix the issue
-    # await limiter.limit("5/minute")(request)
-    
     users_collection = db.get_collection("users")
 
     user_doc = await users_collection.find_one({"email": credentials.email})
