@@ -209,6 +209,8 @@ async def login(
 
     await log_audit(db, user.id, "USER_LOGIN", ip_address=request.client.host)
 
+    logger.info(f"Setting cookies - access_token length: {len(access_token)}, refresh_token length: {len(refresh_token)}")
+
     response = JSONResponse(content={
         "user": UserResponse(
             id=user.id,
@@ -217,22 +219,30 @@ async def login(
             createdAt=user.created_at.isoformat()
         ).dict()
     })
+    
+    # Set access token first
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         secure=settings.environment == 'production',
         samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/"
     )
+    
+    # Set refresh token second
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         secure=settings.environment == 'production',
         samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path="/"
     )
+    
+    logger.info(f"Response headers: {dict(response.headers)}")
     return response
 
 
