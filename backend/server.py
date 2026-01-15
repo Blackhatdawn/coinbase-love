@@ -680,7 +680,12 @@ async def startup_event():
         
         # Create database indexes
         try:
-            if db_connection and db_connection.is_connected:
+            if db_connection is not None:
+                db_is_connected = db_connection.is_connected
+            else:
+                db_is_connected = False
+            
+            if db_is_connected:
                 # TTL index for login attempts
                 collection = db_connection.get_collection("login_attempts")
                 await collection.create_index("timestamp", expireAfterSeconds=30*24*60*60)
