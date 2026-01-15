@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import redis.asyncio as redis  # Async Redis client
-from config import settings
+from .config import settings
 from database import db_connection  # Import your global db_connection (adjust path if needed)
 
 logger = logging.getLogger(__name__)

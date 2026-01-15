@@ -1,3 +1,10 @@
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file in backend directory
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
+
 """
 Configuration module with environment variable validation and structured settings.
 Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.

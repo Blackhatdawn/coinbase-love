@@ -51,7 +51,7 @@ async def get_current_user(request: Request) -> dict:
     user_id = await get_current_user_id(request)
     
     # Import here to avoid circular imports
-    from .database import db_connection
+    from database import db_connection
     
     users_collection = db_connection.get_collection("users")
     user_doc = await users_collection.find_one({"id": user_id})

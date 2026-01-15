@@ -181,3 +181,4 @@ backend/.env
 # Environment files
 *.env
 *.env.*
+.aider*

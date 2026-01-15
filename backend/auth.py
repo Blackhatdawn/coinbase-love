@@ -11,7 +11,7 @@ import bcrypt
 import logging
 import pyotp  # Added for TOTP verification
 from fastapi import Request
-from config import settings
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
