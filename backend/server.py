@@ -752,6 +752,14 @@ async def startup_event():
                 await collection.create_index("user_id", unique=True)
                 logger.info("✅ Created indexes on wallets")
                 
+                # Index on withdrawals
+                collection = db_connection.get_collection("withdrawals")
+                await collection.create_index("user_id")
+                await collection.create_index("status")
+                await collection.create_index("created_at")
+                await collection.create_index([("user_id", 1), ("status", 1)])
+                logger.info("✅ Created indexes on withdrawals")
+                
         except Exception as e:
             logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
 
