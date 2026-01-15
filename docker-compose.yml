@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=cryptovault_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production-min-32-chars}
+      - ENVIRONMENT=development
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - cryptovault
+    restart: unless-stopped
+  
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8001
+    depends_on:
+      - backend
+    networks:
+      - cryptovault
+    restart: unless-stopped
+  
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - cryptovault
+    restart: unless-stopped
+  
+  # Redis
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cryptovault
+    restart: unless-stopped
+  
+  # MongoDB Express (optional - for dev only)
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    depends_on:
+      - mongodb
+    networks:
+      - cryptovault
+    profiles:
+      - debug
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  cryptovault:
+    driver: bridge
