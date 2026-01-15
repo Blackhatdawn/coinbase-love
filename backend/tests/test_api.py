@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from httpx import AsyncClient
-from server import app
+from .server import app
 
 @pytest.mark.anyio
 async def test_root():

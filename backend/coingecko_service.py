@@ -9,7 +9,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 import random
 from .config import settings
-from redis_cache import redis_cache
+from .redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
 
