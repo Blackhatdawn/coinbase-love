@@ -25,7 +25,7 @@ from auth import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token,
     decode_token, generate_backup_codes, generate_2fa_secret,
-    generate_device_fingerprint
+    generate_device_fingerprint, verify_2fa_code
 )
 from dependencies import get_current_user_id, get_db, get_limiter
 from blacklist import blacklist_token
