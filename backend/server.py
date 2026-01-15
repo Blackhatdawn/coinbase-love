@@ -229,6 +229,35 @@ class TimeoutMiddleware:
             )
             await response(scope, receive, send)
 
+
+class RateLimitHeadersMiddleware:
+    """Add rate limit headers to responses."""
+    
+    def __init__(self, app):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        
+        async def send_with_rate_limit_headers(message):
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                
+                # Add rate limit headers
+                rate_limit_headers = {
+                    b"x-ratelimit-limit": str(settings.rate_limit_per_minute).encode(),
+                    b"x-ratelimit-policy": f"{settings.rate_limit_per_minute};w=60".encode(),
+                }
+                
+                headers.update(rate_limit_headers)
+                message["headers"] = [(k, v) for k, v in headers.items()]
+            
+            await send(message)
+        
+        await self.app(scope, receive, send_with_rate_limit_headers)
+
+
 # ============================================
 # RATE LIMITING
 # ============================================
