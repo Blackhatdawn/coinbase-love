@@ -73,7 +73,7 @@ async def is_token_blacklisted(token: str) -> bool:
         try:
             doc = await db_connection.get_collection("blacklisted_tokens").find_one({
                 "token": token,
-                "expires_at": {"": datetime.utcnow()}
+                "expires_at": {"$gt": datetime.utcnow()}
             })
             return doc is not None
         except Exception as e:
