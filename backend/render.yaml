@@ -24,7 +24,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://cryptovault.financial,https://www.cryptovault.financial,https://cryptovault-fixes.preview.emergentagent.com
+        value: https://cryptovault.financial,https://www.cryptovault.financial,https://cryptoreview.preview.emergentagent.com
       - key: EMAIL_SERVICE
         value: sendgrid
       - key: SENDGRID_API_KEY
