@@ -43,7 +43,6 @@ async def log_audit(
     """Log audit event."""
     from models import AuditLog
     import logging
-    
     logger = logging.getLogger(__name__)
     logger.info(
         f"Audit log: {action}",
@@ -56,7 +55,6 @@ async def log_audit(
             "request_id": request_id
         }
     )
-    
     audit_log = AuditLog(
         user_id=user_id,
         action=action,
@@ -151,7 +149,6 @@ async def login(
     if not user_doc:
         verify_password("dummy_password", bcrypt.gensalt().decode())
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
     user = User(**user_doc)
 
     if user.locked_until and user.locked_until > datetime.utcnow():
@@ -162,7 +159,6 @@ async def login(
         )
 
     device_fingerprint = generate_device_fingerprint(request)
-    
     login_attempt = {
         "id": str(uuid.uuid4()),
         "user_id": user.id,
@@ -172,7 +168,6 @@ async def login(
         "timestamp": datetime.utcnow(),
         "success": False
     }
-    
     if not verify_password(credentials.password, user.password_hash):
         failed_attempts = user.failed_login_attempts + 1
         update_data = {
@@ -301,23 +296,17 @@ async def update_profile(
 ):
     """Update user profile."""
     users_collection = db.get_collection("users")
-    
     body = await request.json()
     name = body.get("name")
-    
     if not name or len(name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
-    
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {"name": name.strip()}}
     )
-    
     user_doc = await users_collection.find_one({"id": user_id})
     user = User(**user_doc)
-    
     await log_audit(db, user_id, "PROFILE_UPDATED", ip_address=request.client.host)
-    
     return {
         "message": "Profile updated successfully",
         "user": UserResponse(
@@ -337,38 +326,26 @@ async def change_password(
     limiter = Depends(get_limiter)
 ):
     """Change user password."""
-    await limiter.limit("5/minute")(request)
-    
     users_collection = db.get_collection("users")
-    
     body = await request.json()
     current_password = body.get("current_password")
     new_password = body.get("new_password")
-    
     if not current_password or not new_password:
         raise HTTPException(status_code=400, detail="Current and new password are required")
-    
     if len(new_password) < 8:
         raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
-    
     user_doc = await users_collection.find_one({"id": user_id})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
-    
     user = User(**user_doc)
-    
     if not verify_password(current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    
     new_hashed_password = get_password_hash(new_password)
-    
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {"password_hash": new_hashed_password}}
     )
-    
     await log_audit(db, user_id, "PASSWORD_CHANGED", ip_address=request.client.host)
-    
     return {"message": "Password changed successfully"}
 
 
@@ -409,8 +386,6 @@ async def verify_email(
     limiter = Depends(get_limiter)
 ):
     """Verify email with code or token."""
-    await limiter.limit("5/minute")(request)
-    
     users_collection = db.get_collection("users")
 
     user_doc = await users_collection.find_one({
@@ -498,8 +473,6 @@ async def resend_verification(
     limiter = Depends(get_limiter)
 ):
     """Resend verification email."""
-    await limiter.limit("2/minute")(request)
-    
     users_collection = db.get_collection("users")
 
     user_doc = await users_collection.find_one({"email": data.email})
@@ -550,8 +523,7 @@ async def forgot_password(
 ):
     """Request password reset email."""
     # Temporarily disable rate limiting to fix the issue
-    # await limiter.limit("2/minute")(request)
-    
+    # 
     users_collection = db.get_collection("users")
 
     user_doc = await users_collection.find_one({"email": data.email})
@@ -617,8 +589,6 @@ async def reset_password(
     limiter = Depends(get_limiter)
 ):
     """Reset password with valid token."""
-    await limiter.limit("5/minute")(request)
-    
     users_collection = db.get_collection("users")
 
     user_doc = await users_collection.find_one({"password_reset_token": data.token})
@@ -689,12 +659,10 @@ async def verify_2fa(
     user_doc = await users_collection.find_one({"id": user_id})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
-    
     # Check if 2FA secret exists
     secret = user_doc.get("two_factor_secret")
     if not secret:
         raise HTTPException(status_code=400, detail="2FA setup not initiated. Please setup 2FA first.")
-    
     # Verify the TOTP code
     if not verify_2fa_code(secret, data.code):
         raise HTTPException(status_code=400, detail="Invalid verification code")
