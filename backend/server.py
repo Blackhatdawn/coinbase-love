@@ -456,10 +456,9 @@ def create_error_response(
     )
 
 # ============================================
-# GLOBAL EXCEPTION HANDLER
+# GLOBAL EXCEPTION HANDLER FUNCTIONS
 # ============================================
 
-@app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Handle AppException with structured error response."""
     logger.warning(
@@ -482,7 +481,6 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
         details=exc.details
     )
 
-@app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Handle FastAPI HTTPException with structured error response."""
     logger.warning(
@@ -518,7 +516,6 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         message=str(exc.detail)
     )
 
-@app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle all unhandled exceptions with structured error response."""
     request_id = getattr(request.state, "request_id", "unknown")
@@ -666,6 +663,11 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Register custom exception handlers
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(Exception, global_exception_handler)
 
 # Add security headers middleware
 # Add request ID middleware first (so it runs before other middleware)
