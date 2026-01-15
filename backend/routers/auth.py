@@ -103,7 +103,7 @@ async def signup(
 
     await users_collection.insert_one(user.dict())
 
-    from ..models import Portfolio
+    from models import Portfolio
     portfolio = Portfolio(user_id=user.id)
     await portfolios_collection.insert_one(portfolio.dict())
 
