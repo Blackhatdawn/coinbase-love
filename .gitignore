@@ -182,3 +182,7 @@ backend/.env
 *.env
 *.env.*
 .aider*
+-e 
+# Environment files
+*.env
+*.env.*
