@@ -70,7 +70,6 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",  # Ignore unknown env vars
-        env_prefix="CRYPTOVAULT_",  # Add prefix for environment variables
     )
 
     def is_redis_available(self) -> bool:
