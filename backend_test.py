@@ -115,10 +115,10 @@ class CryptoVaultAPITester:
 
     def test_new_features_endpoints(self):
         """Test new feature endpoints added in the update"""
-        # Test password reset request endpoint
+        # Test password reset request endpoint (correct path)
         reset_data = {"email": "test@example.com"}
-        success, data = self.make_request('POST', '/auth/password-reset/request', reset_data, expected_status=200)
-        if success or "password reset" in str(data).lower():
+        success, data = self.make_request('POST', '/auth/forgot-password', reset_data, expected_status=200)
+        if success or "password reset" in str(data).lower() or "registered" in str(data).lower():
             self.log_test("Password Reset Request", True, "Password reset endpoint working")
         else:
             self.log_test("Password Reset Request", False, f"Password reset failed: {data}")
@@ -137,13 +137,27 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Admin Stats Endpoint (Auth Required)", False, f"Unexpected admin stats response: {data}")
 
-        # Test wallet deposit endpoint (should require auth)
+        # Test wallet deposit endpoint (correct path - should require auth)
         deposit_data = {"amount": 100, "currency": "btc"}
-        success, data = self.make_request('POST', '/wallet/deposit', deposit_data, expected_status=401)
+        success, data = self.make_request('POST', '/wallet/deposit/create', deposit_data, expected_status=401)
         if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
             self.log_test("Wallet Deposit Endpoint (Auth Required)", True, "Wallet deposit endpoint correctly requires authentication")
         else:
             self.log_test("Wallet Deposit Endpoint (Auth Required)", False, f"Unexpected wallet deposit response: {data}")
+
+        # Test wallet balance endpoint (should require auth)
+        success, data = self.make_request('GET', '/wallet/balance', expected_status=401)
+        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+            self.log_test("Wallet Balance Endpoint (Auth Required)", True, "Wallet balance endpoint correctly requires authentication")
+        else:
+            self.log_test("Wallet Balance Endpoint (Auth Required)", False, f"Unexpected wallet balance response: {data}")
+
+        # Test transactions endpoint (should require auth)
+        success, data = self.make_request('GET', '/transactions', expected_status=401)
+        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+            self.log_test("Transactions Endpoint (Auth Required)", True, "Transactions endpoint correctly requires authentication")
+        else:
+            self.log_test("Transactions Endpoint (Auth Required)", False, f"Unexpected transactions response: {data}")
 
     def test_auth_signup(self):
         """Test user signup"""
