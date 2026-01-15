@@ -21,7 +21,7 @@ from config import settings, validate_startup_environment
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions
 
 # Services
 from coingecko_service import coingecko_service
