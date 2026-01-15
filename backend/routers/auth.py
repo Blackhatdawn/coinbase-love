@@ -75,7 +75,8 @@ async def signup(
     limiter = Depends(get_limiter)
 ):
     """Register a new user with email verification."""
-    await limiter.limit("3/minute")(request)
+    # Temporarily disable rate limiting to fix the issue
+    # await limiter.limit("3/minute")(request)
     
     users_collection = db.get_collection("users")
     portfolios_collection = db.get_collection("portfolios")
