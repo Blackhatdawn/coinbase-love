@@ -11,7 +11,7 @@ from typing import Callable
 from fastapi import Request, Response, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from config import settings  # For environment check
+from .config import settings  # For environment check
 
 logger = logging.getLogger(__name__)
 

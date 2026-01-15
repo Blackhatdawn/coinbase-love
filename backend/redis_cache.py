@@ -9,7 +9,7 @@ import time
 from typing import Optional, Any, Dict
 from datetime import timedelta
 import httpx
-from config import settings
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
