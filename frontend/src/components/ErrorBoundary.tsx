@@ -202,13 +202,17 @@ export function useErrorBoundary() {
   const captureError = async (error: Error) => {
     setError(error);
     
-    // Report to Sentry in production
+    // Report to Sentry in production (install @sentry/react when deploying)
     if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
       try {
-        const Sentry = await import('@sentry/react');
+        const sentryModule = '@sentry/react';
+        const Sentry = await import(/* @vite-ignore */ sentryModule);
         Sentry.captureException(error);
       } catch (e) {
-        console.warn('Sentry reporting failed:', e);
+        // Sentry not installed, fail silently
+        if (import.meta.env.DEV) {
+          console.warn('Sentry reporting skipped (not installed)');
+        }
       }
     }
     
