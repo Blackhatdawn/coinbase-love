@@ -95,7 +95,7 @@ async def create_alert(
     limiter = Depends(get_limiter)
 ):
     """Create a new price alert."""
-    await limiter.limit("20/minute")(request)
+    
     
     # Validate condition
     if data.condition not in ["above", "below"]:

@@ -109,7 +109,7 @@ async def create_deposit(
     Create a crypto deposit invoice.
     Uses NOWPayments integration (or mock in development).
     """
-    await limiter.limit("10/minute")(request)
+    
     
     # Validate amount
     if data.amount < 10:
@@ -413,7 +413,7 @@ async def create_withdrawal(
     limiter = Depends(get_limiter)
 ):
     """Create a withdrawal request (placeholder - requires additional integration)."""
-    await limiter.limit("5/minute")(request)
+    
     
     # This would integrate with actual withdrawal processing
     # For now, return a mock response

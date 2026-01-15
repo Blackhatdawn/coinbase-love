@@ -57,7 +57,7 @@ async def create_order(
     limiter = Depends(get_limiter)
 ):
     """Create and execute a new order."""
-    await limiter.limit("20/minute")(request)
+    
     
     orders_collection = db.get_collection("orders")
     transactions_collection = db.get_collection("transactions")
