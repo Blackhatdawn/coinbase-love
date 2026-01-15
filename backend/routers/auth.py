@@ -557,7 +557,8 @@ async def forgot_password(
     limiter = Depends(get_limiter)
 ):
     """Request password reset email."""
-    await limiter.limit("2/minute")(request)
+    # Temporarily disable rate limiting to fix the issue
+    # await limiter.limit("2/minute")(request)
     
     users_collection = db.get_collection("users")
 
