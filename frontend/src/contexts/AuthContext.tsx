@@ -73,6 +73,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // HttpOnly cookies are set by the server, no need to store here
       setUser(userData);
+      
+      // Set user context in Sentry
+      setSentryUser({
+        id: userData.id,
+        email: userData.email,
+        username: userData.name,
+      });
 
       return {};
     } catch (error: any) {
@@ -93,6 +100,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // HttpOnly cookies are set by the server, no need to store here
       setUser(userData);
+      
+      // Set user context in Sentry
+      setSentryUser({
+        id: userData.id,
+        email: userData.email,
+        username: userData.name,
+      });
 
       return {};
     } catch (error: any) {
@@ -109,6 +123,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     // Clear user state (cookies are cleared by the server)
     setUser(null);
+    
+    // Clear user context in Sentry
+    clearSentryUser();
   };
 
   return (
