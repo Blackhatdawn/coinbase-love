@@ -124,16 +124,31 @@ Happy clients!
 
 ---
 
-## Solution
+## Solution - IMPLEMENTED ✅
 
-Remove duplicate/unused code in `backend/server.py`:
+### Fix #1: Remove Duplicate WebSocket Endpoint (COMPLETED)
+**File**: `backend/server.py`
+**What was removed**:
+- Lines 476-644: `WebSocketConnectionManager` class (unused)
+- Line 647: `ws_manager` initialization
+- Lines 650-684: Duplicate `@app.websocket("/ws/prices")` endpoint
+- Lines 687-690: Unused websocket stats endpoint
 
-1. **DELETE Lines 476-644**: Remove `WebSocketConnectionManager` class
-2. **DELETE Line 647**: Remove `ws_manager = WebSocketConnectionManager()`
-3. **DELETE Lines 650-684**: Remove duplicate `@app.websocket("/ws/prices")` endpoint
-4. **DELETE Lines 687-690**: Remove websocket stats endpoint that uses `ws_manager`
+**Why**: The duplicate endpoint was overwriting the proper router endpoint, causing clients to connect to a handler that only did ping/pong, not price broadcasts.
 
-After removal, the router included at line 383 will properly handle WebSocket connections.
+### Fix #2: Start Broadcast Loop (COMPLETED)
+**File**: `backend/routers/websocket.py`
+**What was added**:
+- Lines 35-37 in `connect()` method - Start the broadcast loop when first client connects
+
+**Code changed**:
+```python
+# Start broadcast loop if not already running
+if not self.broadcast_task or self.broadcast_task.done():
+    self.broadcast_task = asyncio.create_task(self.start_broadcast_loop())
+```
+
+**Why**: The broadcast loop was defined but never started, so price updates were never sent to clients.
 
 ---
 
