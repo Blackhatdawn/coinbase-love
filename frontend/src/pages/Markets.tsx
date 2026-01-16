@@ -30,6 +30,7 @@ const Markets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"price" | "change" | "marketCap">("marketCap");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { prices, status } = usePriceWebSocket();
 
   const fetchMarketData = useCallback(async (isBackground = false) => {
     try {
