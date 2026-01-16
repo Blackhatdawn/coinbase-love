@@ -89,48 +89,125 @@ class HealthCheckService {
       }
 
       const startTime = performance.now();
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const isDevelopment = import.meta.env.DEV;
 
-      // Try health endpoint first, fallback to crypto endpoint
+      // In development with no BASE_URL, use relative paths (Vite proxy)
+      const useRelativePaths = isDevelopment && !baseUrl;
+
+      // Try multiple endpoints in order of preference
+      let success = false;
+      let lastError: any = null;
+
+      // 1. Try simple ping endpoint (no database required)
       try {
-        await api.health();
-      } catch {
-        // Fallback: try crypto endpoint (always available)
-        await api.crypto.getAll();
+        const pingUrl = useRelativePaths ? '/api/ping' : `${baseUrl}/api/ping`;
+        const response = await fetch(pingUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(this.config.timeout)
+        });
+
+        if (response.ok) {
+          success = true;
+        }
+      } catch (e) {
+        lastError = e;
       }
 
-      const duration = performance.now() - startTime;
-      this.lastPingTime = Date.now();
-      this.consecutiveFailures = 0;
+      // 2. Fallback to health endpoint
+      if (!success) {
+        try {
+          await api.health();
+          success = true;
+        } catch (e) {
+          lastError = e;
+        }
+      }
 
-      this.logInfo(`✅ Health check passed (${duration.toFixed(0)}ms) | Rate limit: ${this.rateLimitRemaining}/60`);
-      return true;
+      // 3. Last resort: try crypto endpoint
+      if (!success) {
+        try {
+          await api.crypto.getAll();
+          success = true;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (success) {
+        const duration = performance.now() - startTime;
+        this.lastPingTime = Date.now();
+        this.consecutiveFailures = 0;
+
+        this.logInfo(`✅ Health check passed (${duration.toFixed(0)}ms) | Rate limit: ${this.rateLimitRemaining}/60`);
+        return true;
+      } else {
+        throw lastError || new Error('All health check endpoints failed');
+      }
+
     } catch (error: any) {
       this.consecutiveFailures++;
 
       // Extract rate limit info from error headers if available
       if (error?.statusCode === 429) {
-        this.logWarn('⏱️ Rate limited! Health check will resume when limit resets.');
-        this.stop();
+        this.logWarn('⏱️ Rate limited! Health check will be paused temporarily.');
+        // Don't stop completely, just wait longer
+        const backoffTime = Math.min(this.config.interval * 3, 15 * 60 * 1000); // Max 15 minutes
+        this.scheduleNextPing(backoffTime);
         return false;
       }
 
       const isNetworkError = !error?.statusCode || error?.statusCode === 0;
       const errorType = isNetworkError ? 'NETWORK' : error?.code || 'UNKNOWN';
       const errorMsg = error?.message || 'Unknown error';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '(using Vite proxy)';
+      const isDevelopment = import.meta.env.DEV;
+
+      // Use exponential backoff for retries
+      const backoffMultiplier = Math.min(Math.pow(2, this.consecutiveFailures - 1), 8);
+      const backoffTime = this.config.interval * backoffMultiplier;
+
+      // Provide helpful diagnostic info
+      let diagnosticMsg = '';
+      if (isNetworkError) {
+        if (isDevelopment) {
+          diagnosticMsg = '\n💡 Tips for local development:\n' +
+            '  - Make sure backend is running: python run_server.py\n' +
+            '  - Check backend URL: ' + baseUrl + '\n' +
+            '  - Backend should be on http://localhost:8001\n' +
+            '  - Frontend dev server should be on http://localhost:3000';
+        } else {
+          diagnosticMsg = '\n💡 Production backend may be sleeping (cold start on free hosting). ' +
+            'It will wake up on the next request.';
+        }
+      }
 
       this.logWarn(
-        `❌ Health check failed (${this.consecutiveFailures}/${this.config.retries}): [${errorType}] ${errorMsg}`
+        `❌ Health check failed (${this.consecutiveFailures}/${this.config.retries}): [${errorType}] ${errorMsg}. ` +
+        `Next retry in ${(backoffTime / 1000 / 60).toFixed(1)} minutes` +
+        diagnosticMsg
       );
 
-      // If too many consecutive failures, disable the service
+      // If too many consecutive failures, use longer backoff but don't disable completely
       if (this.consecutiveFailures >= this.config.retries) {
-        this.logError(
-          `Health check disabled after ${this.config.retries} consecutive failures`
-        );
-        this.stop();
+        const warningMsg = isDevelopment
+          ? `⚠️ Cannot reach backend after ${this.config.retries} attempts. ` +
+            `Make sure your backend is running on ${baseUrl}. ` +
+            `Will keep trying with extended backoff.`
+          : `⚠️ Health check experiencing issues after ${this.config.retries} failures. ` +
+            `Backend may be sleeping on free hosting (normal). ` +
+            `Will continue with extended backoff (${(backoffTime / 1000 / 60).toFixed(1)} min).`;
+
+        this.logError(warningMsg);
+
+        // Schedule with longer backoff instead of stopping
+        this.scheduleNextPing(backoffTime);
         return false;
       }
 
+      // Schedule next ping with exponential backoff
+      this.scheduleNextPing(backoffTime);
       return false;
     }
   }
@@ -207,11 +284,11 @@ class HealthCheckService {
   }
 }
 
-// Create singleton instance
+// Create singleton instance with more forgiving configuration
 export const healthCheckService = new HealthCheckService({
-  interval: 4 * 60 * 1000, // 4 minutes
-  timeout: 5000,
-  retries: 3,
+  interval: 4 * 60 * 1000, // 4 minutes (keeps backend warm on free hosting)
+  timeout: 10000, // Increased to 10 seconds for cold starts
+  retries: 5, // More retries before backing off
   verbose: import.meta.env.DEV,
 });
 

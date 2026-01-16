@@ -22,7 +22,7 @@ from config import settings, validate_startup_environment
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications
 
 # Services
 from coingecko_service import coingecko_service
@@ -454,6 +454,7 @@ app.include_router(prices.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(wallet.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(transfers.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
@@ -476,59 +477,68 @@ async def root():
         "redoc": "/api/redoc",
         "openapi": "/api/openapi.json",
         "health": "/health",
+        "ping": "/ping",
         "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@app.get("/ping", tags=["health"])
+@app.get("/api/ping", tags=["health"])
+async def ping():
+    """Simple ping endpoint that doesn't require database connection. For health checks and keep-alive."""
+    return {
+        "status": "ok",
+        "message": "pong",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
     }
 
 
 @app.get("/health", tags=["health"])
 @app.get("/api/health", tags=["health"])
 async def health_check(request: Request):
-    """Health check endpoint for monitoring and load balancers."""
+    """
+    Health check endpoint for monitoring and load balancers.
+    Returns 200 if API is running, even if database is temporarily unavailable.
+    """
     request_id = getattr(request.state, "request_id", "unknown")
-    
+
+    # Basic health - API is running
+    health_status = {
+        "status": "healthy",
+        "api": "running",
+        "environment": settings.environment,
+        "version": "1.0.0",
+        "request_id": request_id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+    # Check database (non-critical for API health)
     try:
-        if not db_connection or not db_connection.is_connected:
-            logger.warning(
-                "Health check failed: database disconnected",
-                extra={"request_id": request_id, "type": "health_check"}
-            )
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "unhealthy",
-                    "database": "disconnected",
-                    "request_id": request_id,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            )
-        
-        # Perform actual health check
-        await db_connection.health_check()
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "environment": settings.environment,
-            "version": "1.0.0",
-            "request_id": request_id,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    
+        if db_connection and db_connection.is_connected:
+            # Try quick database ping with timeout
+            try:
+                await asyncio.wait_for(
+                    db_connection.health_check(),
+                    timeout=2.0  # Quick timeout
+                )
+                health_status["database"] = "connected"
+            except asyncio.TimeoutError:
+                health_status["database"] = "slow"
+                logger.warning("Database health check timed out")
+            except Exception as e:
+                health_status["database"] = "error"
+                logger.warning(f"Database health check error: {str(e)}")
+        else:
+            health_status["database"] = "initializing"
+            logger.info("Database connection not yet established")
     except Exception as e:
-        logger.error(
-            f"Health check failed: {str(e)}",
-            extra={"request_id": request_id, "type": "health_check_error"},
-            exc_info=True
-        )
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "error",
-                "error": "Health check failed",
-                "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
+        health_status["database"] = "unavailable"
+        logger.warning(f"Database check failed: {str(e)}")
+
+    # Return 200 OK as long as API is running
+    # This allows health checks to pass during database initialization
+    return health_status
 
 
 @app.get("/csrf", tags=["auth"])
