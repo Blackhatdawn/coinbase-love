@@ -52,11 +52,11 @@ class EmailService:
     """
     
     def __init__(self):
-        self.sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
-        self.from_email = os.environ.get('EMAIL_FROM', 'noreply@cryptovault.financial')
-        self.from_name = os.environ.get('EMAIL_FROM_NAME', 'CryptoVault Financial')
-        self.use_mock = os.environ.get('EMAIL_SERVICE', 'mock') == 'mock'
-        
+        self.sendgrid_api_key = settings.sendgrid_api_key
+        self.from_email = settings.email_from
+        self.from_name = settings.email_from_name
+        self.use_mock = settings.email_service == 'mock'
+
         if self.sendgrid_api_key and SENDGRID_AVAILABLE and not self.use_mock:
             self.client = SendGridAPIClient(self.sendgrid_api_key)
             self.mode = 'sendgrid'
@@ -64,6 +64,10 @@ class EmailService:
         else:
             self.client = None
             self.mode = 'mock'
+            if settings.email_service == 'sendgrid' and not self.sendgrid_api_key:
+                logger.warning("⚠️ SENDGRID_API_KEY missing - falling back to mock email mode")
+            elif settings.email_service == 'sendgrid' and not SENDGRID_AVAILABLE:
+                logger.warning("⚠️ sendgrid package not installed - falling back to mock email mode")
             logger.info("📧 Email service running in mock mode")
     
     def _get_email_header(self) -> str:
