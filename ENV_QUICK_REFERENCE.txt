@@ -21,10 +21,11 @@
 │ 🎨 FRONTEND ENVIRONMENT (/app/frontend/.env)                                │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-  Variable                | Current Value                              
+  Variable                | Current Value
   ────────────────────────┼────────────────────────────────────────────
-  REACT_APP_BACKEND_URL   | https://cleanup-maestro.preview.emerge... 
-  WDS_SOCKET_PORT         | 443                                        
+  VITE_API_BASE_URL       | https://cryptovault-api.onrender.com
+  REACT_APP_BACKEND_URL   | https://cleanup-maestro.preview.emerge...
+  WDS_SOCKET_PORT         | 443
   ENABLE_HEALTH_CHECK     | false                                      
 
   ⚠️  REACT_APP_BACKEND_URL is platform-managed - DO NOT MODIFY
