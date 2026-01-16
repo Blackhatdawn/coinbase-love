@@ -1,8 +1,11 @@
-"""Trading and order management endpoints."""
+"""Trading and order management endpoints with fee system and advanced order types."""
 
 from fastapi import APIRouter, HTTPException, Request, Depends
+from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Optional
 import logging
+import uuid
 
 from models import Order, OrderCreate, Transaction
 from dependencies import get_current_user_id, get_db, get_limiter
@@ -10,11 +13,34 @@ from dependencies import get_current_user_id, get_db, get_limiter
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["trading"])
 
+# Trading fee configuration
+TRADING_FEE_PERCENTAGE = 0.1  # 0.1% trading fee
+MIN_TRADING_FEE = 0.01  # Minimum $0.01 fee
+
+
+def calculate_trading_fee(amount: float, price: float, fee_percentage: float = TRADING_FEE_PERCENTAGE) -> float:
+    """Calculate trading fee with minimum fee threshold."""
+    total_value = amount * price
+    fee = total_value * (fee_percentage / 100)
+    return max(fee, MIN_TRADING_FEE)
+
+
+# Enhanced order models for advanced order types
+class AdvancedOrderCreate(BaseModel):
+    trading_pair: str
+    order_type: str  # market, limit, stop_loss, take_profit, stop_limit
+    side: str  # buy, sell
+    amount: float = Field(gt=0)
+    price: Optional[float] = Field(default=None, gt=0)
+    stop_price: Optional[float] = Field(default=None, gt=0)  # For stop orders
+    time_in_force: Optional[str] = Field(default="GTC")  # GTC, IOC, FOK, GTD
+    expire_time: Optional[datetime] = None  # For GTD orders
+
 
 async def log_audit(db, user_id, action, resource=None, ip_address=None, details=None, request_id=None):
     """Log audit event."""
     from models import AuditLog
-    
+
     logger.info(
         f"Audit log: {action}",
         extra={
@@ -26,7 +52,7 @@ async def log_audit(db, user_id, action, resource=None, ip_address=None, details
             "request_id": request_id
         }
     )
-    
+
     audit_log = AuditLog(
         user_id=user_id,
         action=action,
