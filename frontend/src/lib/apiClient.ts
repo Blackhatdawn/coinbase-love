@@ -184,43 +184,57 @@ class APIClient {
   }
 
   /**
-   * Transform Axios error to APIClientError
-   */
-  private transformError(error: AxiosError<APIError>): APIClientError {
-    if (error.response?.data?.error) {
-      const apiError = error.response.data.error;
-      return new APIClientError(
-        apiError.message,
-        apiError.code,
-        error.response.status,
-        apiError.request_id,
-        apiError.details
-      );
-    }
+ * Transform Axios error to APIClientError
+ */
+private transformError(error: AxiosError<APIError>): APIClientError {
+  const requestId = error.response?.headers['x-request-id'] as string || undefined;
 
-    // Network or other errors
-    if (error.code === 'ECONNABORTED') {
-      return new APIClientError(
-        'Request timeout',
-        'TIMEOUT_ERROR',
-        408
-      );
-    }
-
-    if (!error.response) {
-      return new APIClientError(
-        'Network error. Please check your internet connection.',
-        'NETWORK_ERROR',
-        0
-      );
-    }
-
+  if (error.response?.data?.error) {
+    const apiError = error.response.data.error;
     return new APIClientError(
-      error.message || 'An unexpected error occurred',
-      'UNKNOWN_ERROR',
-      error.response?.status || 500
+      apiError.message,
+      apiError.code,
+      error.response.status,
+      requestId,
+      apiError.details
     );
   }
+
+  // Handle rate limiting (429 Too Many Requests)
+  if (error.response?.status === 429) {
+    const rateLimitReset = error.response.headers['x-ratelimit-reset'] as string;
+    const message = rateLimitReset
+      ? `Rate limit exceeded. Try again after ${new Date(parseInt(rateLimitReset) * 1000).toLocaleTimeString()}`
+      : 'Rate limit exceeded (60 requests per minute). Please try again later.';
+
+    return new APIClientError(message, 'RATE_LIMIT_ERROR', 429, requestId);
+  }
+
+  // Network or other errors
+  if (error.code === 'ECONNABORTED') {
+    return new APIClientError(
+      'Request timeout (30 seconds). Backend may be slow or overloaded.',
+      'TIMEOUT_ERROR',
+      408,
+      requestId
+    );
+  }
+
+  if (!error.response) {
+    return new APIClientError(
+      'Network error. Please check your internet connection and ensure the backend is accessible.',
+      'NETWORK_ERROR',
+      0
+    );
+  }
+
+  return new APIClientError(
+    error.message || 'An unexpected error occurred',
+    'UNKNOWN_ERROR',
+    error.response?.status || 500,
+    requestId
+  );
+}
 
   /**
    * GET request
