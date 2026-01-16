@@ -215,16 +215,22 @@ const Dashboard = () => {
               Manage your portfolio and account settings
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchPortfolio(true)}
-            disabled={isRefreshing}
-            className="min-h-[44px] self-start sm:self-auto"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Price Stream Status */}
+            <PriceStreamStatus status={status} />
+
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPortfolio(true)}
+              disabled={isRefreshing}
+              className="min-h-[44px]"
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Error State */}
