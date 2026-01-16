@@ -108,13 +108,17 @@ class Settings(BaseSettings):
             # Stricter validations for production
             if self.cors_origins == '*':
                 logger.warning("⚠️ CORS is set to '*' in production - consider restricting to specific origins")
-            
+
             if not self.sentry_dsn:
                 logger.warning("⚠️ Sentry DSN not configured in production - error tracking will be disabled")
-            
+
             if self.use_mock_prices:
                 logger.warning("⚠️ Mock prices enabled in production - should use real data")
-        
+
+        # Development environment defaults
+        if self.environment == 'development' and self.cors_origins == '*':
+            logger.info("✅ CORS set to '*' for development - this allows all origins")
+
         return self
 
     def is_redis_available(self) -> bool:
