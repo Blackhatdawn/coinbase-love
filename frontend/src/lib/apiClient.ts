@@ -264,14 +264,16 @@ export const api = {
       apiClient.post('/api/auth/login', data),
     logout: () =>
       apiClient.post('/api/auth/logout'),
-    verifyEmail: (data: { token: string }) =>
-      apiClient.post('/api/auth/verify-email', data),
-    resendVerification: (data: { email: string }) =>
-      apiClient.post('/api/auth/resend-verification', data),
-    forgotPassword: (data: { email: string }) =>
-      apiClient.post('/api/auth/forgot-password', data),
-    resetPassword: (data: { token: string; new_password: string }) =>
-      apiClient.post('/api/auth/reset-password', data),
+    verifyEmail: (token: string) =>
+      apiClient.post('/api/auth/verify-email', { token }),
+    resendVerification: (email: string) =>
+      apiClient.post('/api/auth/resend-verification', { email }),
+    forgotPassword: (email: string) =>
+      apiClient.post('/api/auth/forgot-password', { email }),
+    resetPassword: (token: string, newPassword: string) =>
+      apiClient.post('/api/auth/reset-password', { token, new_password: newPassword }),
+    validateResetToken: (token: string) =>
+      apiClient.get(`/api/auth/validate-reset-token/${token}`),
     getMe: () =>
       apiClient.get('/api/auth/me'),
     getProfile: () =>
