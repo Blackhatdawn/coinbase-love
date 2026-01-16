@@ -68,14 +68,18 @@ const AuditLogViewer = () => {
   // Export logs
   const handleExport = async () => {
     try {
-      const response = await api.auditLogs.exportLogs();
+      const blob = await api.auditLogs.exportLogs({
+        action: filter || undefined,
+        limit,
+      });
+      const url = window.URL.createObjectURL(blob);
       const element = document.createElement("a");
-      element.setAttribute("href", `data:text/csv;charset=utf-8,${encodeURIComponent(response)}`);
-      element.setAttribute("download", `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`);
-      element.style.display = "none";
+      element.href = url;
+      element.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
+      window.URL.revokeObjectURL(url);
       toast({
         title: "Exported",
         description: "Audit logs exported successfully",
