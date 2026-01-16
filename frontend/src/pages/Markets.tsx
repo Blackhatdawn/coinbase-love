@@ -250,7 +250,10 @@ const Markets = () => {
             </div>
           ) : sortedData.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
-              {sortedData.map((crypto, index) => (
+              {sortedData.map((crypto, index) => {
+                const wsPrice = prices[crypto.symbol.toLowerCase()];
+                const displayPrice = wsPrice ? parseFloat(wsPrice) : crypto.price;
+                return (
                 <div
                   key={crypto.id}
                   className="glass-card p-4 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/5 cursor-pointer"
@@ -284,8 +287,11 @@ const Markets = () => {
                     
                     {/* Price & Change */}
                     <div className="text-right flex-shrink-0">
-                      <div className="font-mono font-semibold text-base sm:text-lg">
-                        {formatPrice(crypto.price)}
+                      <div className={cn(
+                        "font-mono font-semibold text-base sm:text-lg transition-colors duration-300",
+                        wsPrice && "text-gold-400"
+                      )}>
+                        {formatPrice(displayPrice)}
                       </div>
                       <div className={cn(
                         "flex items-center justify-end gap-1 text-sm sm:text-base font-medium",
@@ -314,14 +320,15 @@ const Markets = () => {
                       <div className="text-sm text-muted-foreground">Market Cap</div>
                       <div className="font-mono text-sm">{crypto.marketCap}</div>
                     </div>
-                    
+
                     <div className="hidden lg:block text-right min-w-[100px]">
                       <div className="text-sm text-muted-foreground">24h Volume</div>
                       <div className="font-mono text-sm">{crypto.volume24h}</div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 sm:py-16">
