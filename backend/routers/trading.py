@@ -239,8 +239,179 @@ async def get_order(
     """Get specific order by ID."""
     orders_collection = db.get_collection("orders")
     order = await orders_collection.find_one({"id": order_id, "user_id": user_id})
-    
+
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     return {"order": order}
+
+
+@router.post("/advanced")
+async def create_advanced_order(
+    order_data: AdvancedOrderCreate,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db),
+    limiter = Depends(get_limiter)
+):
+    """
+    Create advanced order types: stop_loss, take_profit, stop_limit with time-in-force options.
+
+    Order Types:
+    - market: Execute immediately at current market price
+    - limit: Execute when price reaches specified limit
+    - stop_loss: Trigger sell when price drops to stop_price
+    - take_profit: Trigger sell when price reaches target
+    - stop_limit: Convert to limit order when stop_price is reached
+
+    Time in Force:
+    - GTC (Good Till Cancelled): Order stays active until filled or cancelled
+    - IOC (Immediate or Cancel): Fill immediately or cancel
+    - FOK (Fill or Kill): Fill entire order immediately or cancel
+    - GTD (Good Till Date): Active until specified expire_time
+    """
+
+
+    orders_collection = db.get_collection("orders")
+    wallets_collection = db.get_collection("wallets")
+
+    # Validate order type and required fields
+    if order_data.order_type not in ["market", "limit", "stop_loss", "take_profit", "stop_limit"]:
+        raise HTTPException(status_code=400, detail="Invalid order type")
+
+    if order_data.order_type in ["limit", "stop_limit"] and not order_data.price:
+        raise HTTPException(status_code=400, detail="Limit orders require a price")
+
+    if order_data.order_type in ["stop_loss", "take_profit", "stop_limit"] and not order_data.stop_price:
+        raise HTTPException(status_code=400, detail="Stop orders require a stop_price")
+
+    if order_data.time_in_force == "GTD" and not order_data.expire_time:
+        raise HTTPException(status_code=400, detail="GTD orders require an expire_time")
+
+    # For market orders, execute immediately
+    if order_data.order_type == "market":
+        if not order_data.price:
+            raise HTTPException(status_code=400, detail="Market orders require current price")
+
+        # Use the existing create_order logic for market orders
+        simple_order = OrderCreate(
+            trading_pair=order_data.trading_pair,
+            order_type="market",
+            side=order_data.side,
+            amount=order_data.amount,
+            price=order_data.price
+        )
+        return await create_order(simple_order, request, user_id, db, limiter)
+
+    # For other order types, create pending order
+    order_id = str(uuid.uuid4())
+    order_doc = {
+        "id": order_id,
+        "user_id": user_id,
+        "trading_pair": order_data.trading_pair,
+        "order_type": order_data.order_type,
+        "side": order_data.side,
+        "amount": order_data.amount,
+        "price": order_data.price,
+        "stop_price": order_data.stop_price,
+        "time_in_force": order_data.time_in_force,
+        "expire_time": order_data.expire_time,
+        "status": "pending",  # Will be triggered when conditions are met
+        "created_at": datetime.utcnow(),
+        "filled_at": None
+    }
+
+    # For stop and limit orders, reserve funds if buying
+    if order_data.side.lower() == "buy" and order_data.price:
+        trading_fee = calculate_trading_fee(order_data.amount, order_data.price)
+        required_amount = (order_data.amount * order_data.price) + trading_fee
+
+        wallet = await wallets_collection.find_one({"user_id": user_id})
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+
+        current_balance = wallet.get("balances", {}).get("USD", 0)
+        if current_balance < required_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient balance. Required: ${required_amount:.2f}, Available: ${current_balance:.2f}"
+            )
+
+        # Reserve funds (deduct from available balance)
+        order_doc["reserved_amount"] = required_amount
+
+    await orders_collection.insert_one(order_doc)
+
+    await log_audit(
+        db, user_id, "ADVANCED_ORDER_CREATED",
+        resource=order_id,
+        ip_address=request.client.host,
+        details={
+            "order_type": order_data.order_type,
+            "trading_pair": order_data.trading_pair,
+            "amount": order_data.amount,
+            "price": order_data.price,
+            "stop_price": order_data.stop_price,
+            "time_in_force": order_data.time_in_force
+        }
+    )
+
+    logger.info(f"✅ Advanced order created: {order_id} - {order_data.order_type.upper()} {order_data.amount} {order_data.trading_pair}")
+
+    return {
+        "message": f"{order_data.order_type.replace('_', ' ').title()} order created successfully",
+        "order": order_doc,
+        "note": "Order will be executed when conditions are met"
+    }
+
+
+@router.delete("/{order_id}")
+async def cancel_order(
+    order_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """Cancel a pending order and release reserved funds."""
+    orders_collection = db.get_collection("orders")
+    wallets_collection = db.get_collection("wallets")
+
+    order = await orders_collection.find_one({"id": order_id, "user_id": user_id})
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Only pending orders can be cancelled")
+
+    # Release reserved funds if applicable
+    if order.get("reserved_amount") and order.get("side", "").lower() == "buy":
+        wallet = await wallets_collection.find_one({"user_id": user_id})
+        if wallet:
+            current_balance = wallet.get("balances", {}).get("USD", 0)
+            await wallets_collection.update_one(
+                {"user_id": user_id},
+                {
+                    "$set": {
+                        "balances.USD": current_balance + order["reserved_amount"],
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+    # Update order status
+    await orders_collection.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": "cancelled",
+                "cancelled_at": datetime.utcnow()
+            }
+        }
+    )
+
+    await log_audit(
+        db, user_id, "ORDER_CANCELLED",
+        resource=order_id
+    )
+
+    return {"message": "Order cancelled successfully", "order_id": order_id}
