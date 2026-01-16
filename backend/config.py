@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     cors_origins: str = "*"
+    # Enable cross-site cookies (needed when frontend and API are different origins)
+    use_cross_site_cookies: bool = False
 
     # Server Configuration
     host: str = "0.0.0.0"
