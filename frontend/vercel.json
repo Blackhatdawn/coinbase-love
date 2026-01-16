@@ -13,68 +13,58 @@
   },
   
   "rewrites": [
-    // API Root - serves API info
+    // ========== API ROUTES - FIRST ==========
+    // API Root (/api → backend root /)
     {
       "source": "/api",
-      "destination": "https://cryptovault-api.onrender.com/",
-      "has": [
-        {
-          "type": "header",
-          "key": "accept",
-          "value": "application/json"
-        }
-      ]
+      "destination": "https://cryptovault-api.onrender.com/"
     },
+    
     // API Documentation endpoints
     {
       "source": "/api/docs",
       "destination": "https://cryptovault-api.onrender.com/docs"
     },
     {
+      "source": "/api/docs/:path*",
+      "destination": "https://cryptovault-api.onrender.com/docs/:path*"
+    },
+    
+    // ReDoc documentation
+    {
       "source": "/api/redoc",
       "destination": "https://cryptovault-api.onrender.com/redoc"
     },
-    {
-      "source": "/api/openapi.json",
-      "destination": "https://cryptovault-api.onrender.com/openapi.json"
-    },
-    // Health check with caching
+    
+    // Health check (fast cached endpoint)
     {
       "source": "/api/health",
       "destination": "https://cryptovault-api.onrender.com/health",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=30"
+          "value": "public, max-age=30, stale-while-revalidate=60"
         }
       ]
     },
-    // API catch-all with smart routing
+    
+    // OpenAPI JSON schema
     {
-      "source": "/api/:path*",
-      "destination": "https://cryptovault-api.onrender.com/:path*",
-      "has": [
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "(application/json|multipart/form-data|application/x-www-form-urlencoded)"
-        }
-      ]
+      "source": "/api/openapi.json",
+      "destination": "https://cryptovault-api.onrender.com/openapi.json"
     },
-    // Static assets and SPA routing
+    
+    // CRITICAL: All other API endpoints
+    // Maps: /api/users → backend /users
+    // Maps: /api/auth/login → backend /auth/login
     {
-      "source": "/_next/static/:path*",
-      "destination": "/_next/static/:path*",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "source": "/api/:path+",
+      "destination": "https://cryptovault-api.onrender.com/:path+"
     },
+    
+    // ========== STATIC ASSETS ==========
     {
       "source": "/assets/:path*",
-      "destination": "/assets/:path*",
       "headers": [
         {
           "key": "Cache-Control",
@@ -82,7 +72,8 @@
         }
       ]
     },
-    // SPA fallback - MUST BE LAST
+    
+    // ========== SPA FALLBACK - MUST BE LAST ==========
     {
       "source": "/(.*)",
       "destination": "/index.html"
@@ -90,7 +81,6 @@
   ],
   
   "redirects": [
-    // Clean redirects
     {
       "source": "/home",
       "destination": "/",
@@ -99,6 +89,11 @@
     {
       "source": "/index",
       "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/api/v:version",
+      "destination": "/api",
       "permanent": true
     }
   ],
@@ -143,10 +138,15 @@
         {
           "key": "X-Download-Options",
           "value": "noopen"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
         }
       ]
     },
-    // API Proxy Headers
+    
+    // API Proxy Headers - Forward client info
     {
       "source": "/api/:path*",
       "headers": [
@@ -176,40 +176,11 @@
         },
         {
           "key": "X-Forwarded-Path",
-          "value": "/api/:path*"
+          "value": "/:path*"
         }
       ]
     },
-    // CORS Headers for API
-    {
-      "source": "/api/:path*",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "{{host}}"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, X-Requested-With, X-API-Key, X-Client-Version, X-Request-ID"
-        },
-        {
-          "key": "Access-Control-Allow-Credentials",
-          "value": "true"
-        },
-        {
-          "key": "Access-Control-Max-Age",
-          "value": "86400"
-        },
-        {
-          "key": "Access-Control-Expose-Headers",
-          "value": "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-Request-ID"
-        }
-      ]
-    },
+    
     // Static Assets Optimization
     {
       "source": "/assets/:path*",
@@ -224,8 +195,9 @@
         }
       ]
     },
+    
     {
-      "source": "/(.*\\.(js|css|woff2|woff|ttf|eot))",
+      "source": "/(.*\\.(js|css))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -233,9 +205,24 @@
         }
       ]
     },
+    
+    {
+      "source": "/(.*\\.(woff2|woff|ttf|eot))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    
     // No cache for HTML and critical pages
     {
-      "source": "/(.*\\.html|/|/index.html)",
+      "source": "/(.*\\.html|/|/index\\.html)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -244,16 +231,13 @@
         {
           "key": "Pragma",
           "value": "no-cache"
-        },
-        {
-          "key": "Expires",
-          "value": "0"
         }
       ]
     },
+    
     // Service Worker
     {
-      "source": "/sw.js",
+      "source": "/sw\\.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -269,9 +253,10 @@
         }
       ]
     },
+    
     // Web App Manifest
     {
-      "source": "/manifest.json",
+      "source": "/manifest\\.json",
       "headers": [
         {
           "key": "Content-Type",
@@ -282,13 +267,24 @@
           "value": "public, max-age=3600"
         }
       ]
+    },
+    
+    // Icon files
+    {
+      "source": "/(.*\\.(ico|png|jpg|jpeg|gif|svg|webp))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
     }
   ],
   
   "functions": {
     "api/*.js": {
-      "maxDuration": 15,
-      "memory": 1024,
+      "maxDuration": 10,
+      "memory": 512,
       "runtime": "nodejs18.x"
     }
   },
@@ -300,11 +296,10 @@
     }
   ],
   
-  "regions": ["iad1", "cdg1", "sin1"],
+  "regions": ["iad1"],
   
   "analytics": {
-    "enable": true,
-    "eventCollection": true
+    "enable": true
   },
   
   "speedInsights": {
@@ -320,15 +315,11 @@
   },
   
   "env": {
-    "NEXT_PUBLIC_API_BASE": "/api",
-    "NEXT_PUBLIC_APP_VERSION": "1.0.0",
-    "NEXT_PUBLIC_ENVIRONMENT": "production"
+    "NEXT_PUBLIC_API_BASE": "/api"
   },
   
   "observability": {
-    "enabled": true,
-    "metrics": true,
-    "logs": true
+    "enabled": true
   },
   
   "protectionBypass": {
