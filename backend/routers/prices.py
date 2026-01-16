@@ -128,30 +128,73 @@ async def health_check() -> Dict[str, Any]:
 async def get_bulk_prices(symbols: str) -> Dict[str, Any]:
     """
     Get prices for multiple symbols at once.
-    
+
     Example: GET /api/prices/bulk/bitcoin,ethereum,solana
     Returns: {"prices": {"bitcoin": "45000.50", "ethereum": "2500.25", "solana": "180.50"}}
     """
     try:
         symbol_list = [s.strip().lower() for s in symbols.split(",")]
         prices = {}
-        
+
         for symbol in symbol_list:
             # Try cache first
             cache_key = f"crypto:price:{symbol}"
             cached_price = await redis_cache.get(cache_key)
-            
+
             if cached_price:
                 prices[symbol] = str(cached_price)
+                price_stream_metrics.record_cache_hit()
             elif symbol in price_stream_service.prices:
                 prices[symbol] = str(price_stream_service.prices[symbol])
-        
+            else:
+                price_stream_metrics.record_cache_miss()
+
         return {
             "prices": prices,
             "requested": len(symbol_list),
             "found": len(prices)
         }
-    
+
     except Exception as e:
         logger.error(f"❌ Error getting bulk prices: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve prices")
+
+
+@router.get("/metrics")
+async def get_metrics() -> Dict[str, Any]:
+    """
+    Get real-time metrics for the price stream service.
+
+    Returns comprehensive statistics including:
+    - Updates per second
+    - Connection state and reconnect attempts
+    - Recent errors
+    - Cache hit rate
+    - Message processing performance
+    """
+    try:
+        metrics = price_stream_metrics.get_summary()
+
+        return {
+            "metrics": metrics,
+            "service_status": price_stream_service.get_status(),
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error getting metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve metrics")
+
+
+@router.post("/metrics/reset")
+async def reset_metrics() -> Dict[str, str]:
+    """
+    Reset all metrics counters.
+    Requires admin authentication in production.
+    """
+    try:
+        price_stream_metrics.reset()
+        return {"status": "success", "message": "Metrics reset"}
+    except Exception as e:
+        logger.error(f"❌ Error resetting metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset metrics")
