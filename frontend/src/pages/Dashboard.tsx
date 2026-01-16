@@ -388,39 +388,49 @@ const Dashboard = () => {
                   </div>
                 ) : holdings.length > 0 ? (
                   <div className="divide-y divide-border/50">
-                    {holdings.map((holding) => (
-                      <div 
-                        key={holding.symbol} 
-                        className="p-4 hover:bg-gold-500/5 transition-colors"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
-                              {holding.symbol.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
-                              <div className="text-xs sm:text-sm text-muted-foreground">
-                                {holding.amount.toFixed(4)} {holding.symbol}
+                    {holdings.map((holding) => {
+                      const wsPrice = prices[holding.symbol.toLowerCase()];
+                      const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
+                      return (
+                        <div
+                          key={holding.symbol}
+                          className={cn(
+                            "p-4 hover:bg-gold-500/5 transition-colors",
+                            wsPrice && "bg-gold-500/5"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
+                                {holding.symbol.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
+                                <div className="text-xs sm:text-sm text-muted-foreground">
+                                  {holding.amount.toFixed(4)} {holding.symbol}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="font-semibold text-sm sm:text-base">
-                              ${holding.value.toLocaleString()}
-                            </div>
-                            {holding.change !== undefined && (
+                            <div className="text-right flex-shrink-0">
                               <div className={cn(
-                                "text-xs sm:text-sm font-medium",
-                                holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                                "font-semibold text-sm sm:text-base transition-colors duration-300",
+                                wsPrice && "text-gold-400"
                               )}>
-                                {holding.change >= 0 ? '+' : ''}{holding.change}%
+                                ${currentValue.toLocaleString()}
                               </div>
-                            )}
+                              {holding.change !== undefined && (
+                                <div className={cn(
+                                  "text-xs sm:text-sm font-medium",
+                                  holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                                )}>
+                                  {holding.change >= 0 ? '+' : ''}{holding.change}%
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-6 sm:p-8 text-center text-muted-foreground">
