@@ -75,22 +75,45 @@ const PageLoader = () => (
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [apiAvailable, setApiAvailable] = useState(true);
 
   useRedirectSpinner((visible) => setIsLoading(visible));
 
+  // Initialize health check and warmup API
   useEffect(() => {
-    const warmUp = async () => {
+    const initializeApp = async () => {
       try {
-        await Promise.all([
-          fetch('/api/crypto').catch(() => {}),
-        ]);
+        // Warmup: Make initial API request to activate backend
+        console.log('[App] Warming up backend API...');
+        try {
+          await api.crypto.getAll();
+          console.log('[App] ✅ Backend API is active and responding');
+          setApiAvailable(true);
+        } catch (error: any) {
+          console.warn(
+            '[App] ⚠️ Backend API warmup failed:',
+            error?.message || error
+          );
+          // Still allow app to load even if initial call fails
+          setApiAvailable(false);
+        }
+
+        // Start health check service to keep backend alive
+        healthCheckService.start();
       } finally {
         setTimeout(() => setIsInitializing(false), 2000);
       }
     };
-    warmUp();
+
+    initializeApp();
+
+    // Cleanup: Stop health check on unmount
+    return () => {
+      healthCheckService.stop();
+    };
   }, []);
 
+  // Handle navigation loading states
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
     const handleNavigationEnd = () => setTimeout(() => setIsLoading(false), 300);
