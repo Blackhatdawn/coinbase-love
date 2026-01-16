@@ -9,6 +9,7 @@ from models import Portfolio, Holding, HoldingCreate
 from dependencies import get_current_user_id, get_db
 from redis_cache import redis_cache
 from services import price_stream_service
+from coingecko_service import coingecko_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -151,21 +152,29 @@ async def add_holding(
     if not crypto:
         raise HTTPException(status_code=404, detail="Cryptocurrency not found")
 
+    # Safely extract price from crypto data
+    price = crypto.get("price")
+    if price is None or price <= 0:
+        raise HTTPException(status_code=500, detail="Cryptocurrency price unavailable or invalid")
+
     new_holding = {
         "symbol": holding_data.symbol.upper(),
         "name": holding_data.name,
         "amount": holding_data.amount,
-        "value": holding_data.amount * crypto["current_price"],
-        "allocation": 0
+        "value": round(holding_data.amount * price, 2),
+        "allocation": 0,
+        "created_at": datetime.utcnow().isoformat()
     }
 
     existing_idx = next((i for i, h in enumerate(holdings) if h["symbol"] == holding_data.symbol.upper()), None)
 
     if existing_idx is not None:
         holdings[existing_idx]["amount"] += holding_data.amount
-        holdings[existing_idx]["value"] = holdings[existing_idx]["amount"] * crypto["current_price"]
+        holdings[existing_idx]["value"] = round(holdings[existing_idx]["amount"] * price, 2)
     else:
         holdings.append(new_holding)
+
+    logger.info(f"✅ Holding added for {holding_data.symbol}: {holding_data.amount} @ ${price}")
 
     await portfolios_collection.update_one(
         {"user_id": user_id},

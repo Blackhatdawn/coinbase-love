@@ -189,6 +189,7 @@ class APIClient {
 private transformError(error: AxiosError<APIError>): APIClientError {
   const requestId = error.response?.headers['x-request-id'] as string || undefined;
 
+  // Try structured error format first (backend custom error handler)
   if (error.response?.data?.error) {
     const apiError = error.response.data.error;
     return new APIClientError(
@@ -200,12 +201,64 @@ private transformError(error: AxiosError<APIError>): APIClientError {
     );
   }
 
+  // Handle FastAPI default error format {"detail": "..."}
+  if (error.response?.data) {
+    const data = error.response.data as any;
+
+    // Check for "detail" field (FastAPI default validation errors and HTTPException)
+    if (data.detail) {
+      const message = typeof data.detail === 'string'
+        ? data.detail
+        : typeof data.detail === 'object' && data.detail.msg
+        ? data.detail.msg
+        : 'An error occurred';
+
+      return new APIClientError(
+        message,
+        'BACKEND_ERROR',
+        error.response.status,
+        requestId,
+        data
+      );
+    }
+
+    // Handle validation error format ({"loc": [...], "msg": "...", "type": "..."}[])
+    if (Array.isArray(data)) {
+      const messages = data
+        .map((err: any) => err.msg || err.detail || 'Unknown error')
+        .join('; ');
+
+      return new APIClientError(
+        messages || 'Validation error',
+        'VALIDATION_ERROR',
+        error.response.status,
+        requestId,
+        data
+      );
+    }
+
+    // Fallback: stringify the response
+    const message = typeof data === 'string' ? data : JSON.stringify(data);
+    return new APIClientError(
+      message || 'An error occurred',
+      'BACKEND_ERROR',
+      error.response.status,
+      requestId,
+      data
+    );
+  }
+
   // Handle rate limiting (429 Too Many Requests)
   if (error.response?.status === 429) {
     const rateLimitReset = error.response.headers['x-ratelimit-reset'] as string;
-    const message = rateLimitReset
-      ? `Rate limit exceeded. Try again after ${new Date(parseInt(rateLimitReset) * 1000).toLocaleTimeString()}`
-      : 'Rate limit exceeded (60 requests per minute). Please try again later.';
+    const retryAfter = error.response.headers['retry-after'] as string;
+
+    let message = 'Rate limit exceeded (60 requests per minute). Please try again later.';
+    if (rateLimitReset) {
+      message = `Rate limit exceeded. Try again after ${new Date(parseInt(rateLimitReset) * 1000).toLocaleTimeString()}`;
+    } else if (retryAfter) {
+      message = `Rate limit exceeded. Retry after ${retryAfter} seconds`;
+    }
 
     return new APIClientError(message, 'RATE_LIMIT_ERROR', 429, requestId);
   }
