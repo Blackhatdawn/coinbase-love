@@ -170,9 +170,11 @@ async def add_holding(
 
     if existing_idx is not None:
         holdings[existing_idx]["amount"] += holding_data.amount
-        holdings[existing_idx]["value"] = holdings[existing_idx]["amount"] * crypto["current_price"]
+        holdings[existing_idx]["value"] = round(holdings[existing_idx]["amount"] * price, 2)
     else:
         holdings.append(new_holding)
+
+    logger.info(f"✅ Holding added for {holding_data.symbol}: {holding_data.amount} @ ${price}")
 
     await portfolios_collection.update_one(
         {"user_id": user_id},
