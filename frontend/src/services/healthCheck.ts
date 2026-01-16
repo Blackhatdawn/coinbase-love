@@ -19,6 +19,8 @@ class HealthCheckService {
   private consecutiveFailures: number = 0;
   private isEnabled: boolean = false;
   private config: Required<HealthCheckConfig>;
+  private rateLimitRemaining: number = 60;
+  private rateLimitReset: number = 0;
 
   constructor(config: HealthCheckConfig = {}) {
     this.config = {
