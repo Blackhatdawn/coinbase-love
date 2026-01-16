@@ -1,18 +1,110 @@
 {
-  "version": 2,
-  "framework": "vite",
+  "version": 3,
+  "framework": null,
   "buildCommand": "yarn build",
-  "outputDirectory": "dist",
   "installCommand": "yarn install",
+  "devCommand": "yarn dev",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
+  "github": {
+    "silent": true,
+    "autoJobCancelation": true
+  },
+  
   "rewrites": [
+    // API Root - serves API info
+    {
+      "source": "/api",
+      "destination": "https://cryptovault-api.onrender.com/",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "application/json"
+        }
+      ]
+    },
+    // API Documentation endpoints
+    {
+      "source": "/api/docs",
+      "destination": "https://cryptovault-api.onrender.com/docs"
+    },
+    {
+      "source": "/api/redoc",
+      "destination": "https://cryptovault-api.onrender.com/redoc"
+    },
+    {
+      "source": "/api/openapi.json",
+      "destination": "https://cryptovault-api.onrender.com/openapi.json"
+    },
+    // Health check with caching
+    {
+      "source": "/api/health",
+      "destination": "https://cryptovault-api.onrender.com/health",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=30"
+        }
+      ]
+    },
+    // API catch-all with smart routing
     {
       "source": "/api/:path*",
-      "destination": "https://cryptovault-api.onrender.com/api/:path*"
+      "destination": "https://cryptovault-api.onrender.com/:path*",
+      "has": [
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "(application/json|multipart/form-data|application/x-www-form-urlencoded)"
+        }
+      ]
+    },
+    // Static assets and SPA routing
+    {
+      "source": "/_next/static/:path*",
+      "destination": "/_next/static/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    // SPA fallback - MUST BE LAST
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
+  
+  "redirects": [
+    // Clean redirects
+    {
+      "source": "/home",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/index",
+      "destination": "/",
+      "permanent": true
+    }
+  ],
+  
   "headers": [
+    // Global security headers for frontend
     {
       "source": "/(.*)",
       "headers": [
@@ -34,51 +126,221 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
+          "value": "geolocation=(), microphone=(), camera=(), payment=()"
         },
         {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://js.sentry-cdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://cryptovault-api.onrender.com https://api.coingecko.com wss://cryptovault-api.onrender.com https://www.google-analytics.com https://o1009284.ingest.sentry.io; frame-ancestors 'none';"
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "on"
+        },
+        {
+          "key": "X-Permitted-Cross-Domain-Policies",
+          "value": "none"
+        },
+        {
+          "key": "X-Download-Options",
+          "value": "noopen"
         }
       ]
     },
+    // API Proxy Headers
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "X-Forwarded-Host",
+          "value": "{{host}}"
+        },
+        {
+          "key": "X-Forwarded-Proto",
+          "value": "https"
+        },
+        {
+          "key": "X-Forwarded-For",
+          "value": "{{client_ip}}"
+        },
+        {
+          "key": "X-Real-IP",
+          "value": "{{client_ip}}"
+        },
+        {
+          "key": "X-Vercel-Proxy",
+          "value": "true"
+        },
+        {
+          "key": "X-Vercel-Forwarded-For",
+          "value": "{{client_ip}}"
+        },
+        {
+          "key": "X-Forwarded-Path",
+          "value": "/api/:path*"
+        }
+      ]
+    },
+    // CORS Headers for API
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "{{host}}"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With, X-API-Key, X-Client-Version, X-Request-ID"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
+        },
+        {
+          "key": "Access-Control-Expose-Headers",
+          "value": "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-Request-ID"
+        }
+      ]
+    },
+    // Static Assets Optimization
     {
       "source": "/assets/:path*",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept-Encoding"
         }
       ]
     },
     {
-      "source": "/logo.svg",
+      "source": "/(.*\\.(js|css|woff2|woff|ttf|eot))",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=86400"
+          "value": "public, max-age=604800, stale-while-revalidate=86400"
         }
       ]
     },
+    // No cache for HTML and critical pages
     {
-      "source": "/favicon.ico",
+      "source": "/(.*\\.html|/|/index.html)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=86400"
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    },
+    // Service Worker
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        }
+      ]
+    },
+    // Web App Manifest
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
         }
       ]
     }
   ],
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+  
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 15,
+      "memory": 1024,
+      "runtime": "nodejs18.x"
     }
-  ]
+  },
+  
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  
+  "regions": ["iad1", "cdg1", "sin1"],
+  
+  "analytics": {
+    "enable": true,
+    "eventCollection": true
+  },
+  
+  "speedInsights": {
+    "enable": true
+  },
+  
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "preview": true
+    },
+    "autoAlias": true
+  },
+  
+  "env": {
+    "NEXT_PUBLIC_API_BASE": "/api",
+    "NEXT_PUBLIC_APP_VERSION": "1.0.0",
+    "NEXT_PUBLIC_ENVIRONMENT": "production"
+  },
+  
+  "observability": {
+    "enabled": true,
+    "metrics": true,
+    "logs": true
+  },
+  
+  "protectionBypass": {
+    "main": ["team-admin"],
+    "preview": ["all"]
+  },
+  
+  "errorTracking": {
+    "enabled": true
+  },
+  
+  "logDrain": {
+    "enabled": true
+  }
 }
