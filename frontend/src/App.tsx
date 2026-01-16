@@ -90,10 +90,11 @@ const AppContent = () => {
           await api.crypto.getAll();
           console.log('[App] ✅ Backend API is active and responding');
           setApiAvailable(true);
-        } catch (error: any) {
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           console.warn(
             '[App] ⚠️ Backend API warmup failed:',
-            error?.message || error
+            errorMessage
           );
           // Still allow app to load even if initial call fails
           setApiAvailable(false);
