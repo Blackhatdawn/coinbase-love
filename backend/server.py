@@ -342,6 +342,9 @@ app.include_router(wallet.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 
+# WebSocket routers (no prefix, direct path)
+app.include_router(websocket.router)
+
 # ============================================
 # ROOT & HEALTH ENDPOINTS
 # ============================================
