@@ -326,19 +326,19 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Get CORS origins from settings
 cors_origins = settings.get_cors_origins_list()
 
-# Important: When using allow_credentials=True, cannot use ["*"]
-# If wildcard is set, we must either:
-# 1. Remove credentials support, OR
-# 2. Use specific origins instead
-if cors_origins == ["*"] and settings.environment == 'production':
-    logger.warning(
-        "⚠️ CRITICAL: CORS_ORIGINS is '*' but allow_credentials=True is set. "
-        "Browsers will reject credentialed requests with wildcard CORS. "
-        "Please set CORS_ORIGINS to specific frontend origins in production."
-    )
-    # For development, allow wildcard but note the limitation
-    if settings.environment != 'development':
-        logger.error("🛑 In production, CORS_ORIGINS must be specific origins, not '*'")
+# Important: When using allow_credentials=True with cross-site auth, cannot use ["*"]
+# Browsers will reject credentialed requests with wildcard CORS
+# The config validation will raise an error in production if this is misconfigured
+if cors_origins == ["*"]:
+    if settings.environment == 'development':
+        logger.warning(
+            "⚠️ DEVELOPMENT: CORS_ORIGINS is set to '*' - cookie-based authentication may not work "
+            "with cross-origin requests. For production, set CORS_ORIGINS to specific origins."
+        )
+    else:
+        logger.warning(
+            "⚠️ Wildcard CORS detected - authentication may fail in cross-origin scenarios"
+        )
 
 # Apply CORS middleware with credentials for authenticated endpoints
 app.add_middleware(
