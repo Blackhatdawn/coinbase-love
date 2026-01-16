@@ -42,6 +42,7 @@ const Dashboard = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -49,6 +50,7 @@ const Dashboard = () => {
     try {
       if (!isBackground) {
         setIsLoading(true);
+        setError(null);
       } else {
         setIsRefreshing(true);
       }
@@ -57,8 +59,10 @@ const Dashboard = () => {
 
       setTotalValue(portfolio.totalBalance);
       setHoldings(portfolio.holdings || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch portfolio:", error);
+      const errorMessage = error?.message || 'Failed to load portfolio data';
+      setError(errorMessage);
       setTotalValue(0);
       setHoldings([]);
     } finally {
