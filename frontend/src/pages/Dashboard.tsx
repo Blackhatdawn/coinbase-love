@@ -62,12 +62,14 @@ const Dashboard = () => {
       const portfolio = response.portfolio;
 
       setTotalValue(portfolio.totalBalance);
+      setOriginalTotalValue(portfolio.totalBalance);
       setHoldings(portfolio.holdings || []);
     } catch (error: any) {
       console.error("Failed to fetch portfolio:", error);
       const errorMessage = error?.message || 'Failed to load portfolio data';
       setError(errorMessage);
       setTotalValue(0);
+      setOriginalTotalValue(0);
       setHoldings([]);
     } finally {
       setIsLoading(false);
