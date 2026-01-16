@@ -13,6 +13,8 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster as HotToaster } from 'react-hot-toast';
+import { healthCheckService } from "@/services/healthCheck";
+import { api } from "@/lib/apiClient";
 
 // Eager loaded pages (critical path)
 import Index from "./pages/Index";
