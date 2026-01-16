@@ -554,3 +554,92 @@ export const api = {
   health: () =>
     apiClient.get('/health'),
 };
+
+// ============================================
+// CONNECTION STATE MANAGEMENT
+// ============================================
+
+interface ConnectionState {
+  isConnected: boolean;
+  isConnecting: boolean;
+  connectionError: string | null;
+  retryCount: number;
+  setConnected: (connected: boolean) => void;
+  setConnecting: (connecting: boolean) => void;
+  setError: (error: string | null) => void;
+  incrementRetry: () => void;
+  resetRetry: () => void;
+}
+
+export const useConnectionStore = create<ConnectionState>((set) => ({
+  isConnected: false,
+  isConnecting: true,
+  connectionError: null,
+  retryCount: 0,
+  setConnected: (connected) => set({ isConnected: connected, connectionError: null }),
+  setConnecting: (connecting) => set({ isConnecting: connecting }),
+  setError: (error) => set({ connectionError: error, isConnected: false }),
+  incrementRetry: () => set((state) => ({ retryCount: state.retryCount + 1 })),
+  resetRetry: () => set({ retryCount: 0 }),
+}));
+
+// ============================================
+// BACKEND HEALTH CHECK
+// ============================================
+
+const HEALTH_CHECK_RETRY_CONFIG = {
+  maxRetries: 3,
+  delays: [1000, 2000, 4000],
+};
+
+/**
+ * Check backend health with automatic retry and connection state management
+ */
+export async function checkBackendHealth(): Promise<boolean> {
+  const store = useConnectionStore.getState();
+
+  if (store.isConnecting) {
+    return false; // Already checking
+  }
+
+  store.setConnecting(true);
+  store.resetRetry();
+
+  for (let attempt = 0; attempt < HEALTH_CHECK_RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      await api.health();
+      store.setConnected(true);
+      store.setConnecting(false);
+      return true;
+    } catch (error: any) {
+      store.incrementRetry();
+
+      // Check if it's a "cold start" error (503 Service Unavailable or network error)
+      const isColdStart = error?.statusCode === 503 || error?.code === 'ECONNREFUSED' || !error?.statusCode;
+
+      if (attempt < HEALTH_CHECK_RETRY_CONFIG.maxRetries - 1) {
+        const delay = HEALTH_CHECK_RETRY_CONFIG.delays[attempt] || 4000;
+
+        if (isColdStart) {
+          store.setError('Server is starting up (cold start). Retrying...');
+        } else {
+          store.setError(`Connection failed. Retry ${store.retryCount}/${HEALTH_CHECK_RETRY_CONFIG.maxRetries}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        // Final attempt failed
+        store.setError(
+          isColdStart
+            ? 'Server is starting up (cold start). This may take up to 60 seconds on free hosting.'
+            : 'Unable to connect to backend. Please check your connection and try again.'
+        );
+        store.setConnecting(false);
+        return false;
+      }
+    }
+  }
+
+  store.setConnecting(false);
+  return false;
+}
