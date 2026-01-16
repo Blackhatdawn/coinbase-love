@@ -152,12 +152,18 @@ async def add_holding(
     if not crypto:
         raise HTTPException(status_code=404, detail="Cryptocurrency not found")
 
+    # Safely extract price from crypto data
+    price = crypto.get("price")
+    if price is None or price <= 0:
+        raise HTTPException(status_code=500, detail="Cryptocurrency price unavailable or invalid")
+
     new_holding = {
         "symbol": holding_data.symbol.upper(),
         "name": holding_data.name,
         "amount": holding_data.amount,
-        "value": holding_data.amount * crypto["current_price"],
-        "allocation": 0
+        "value": round(holding_data.amount * price, 2),
+        "allocation": 0,
+        "created_at": datetime.utcnow().isoformat()
     }
 
     existing_idx = next((i for i, h in enumerate(holdings) if h["symbol"] == holding_data.symbol.upper()), None)
