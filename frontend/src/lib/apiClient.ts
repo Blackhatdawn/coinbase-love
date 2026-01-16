@@ -4,6 +4,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { create } from 'zustand';
 
 // Get base URL from environment or use proxy in development
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
