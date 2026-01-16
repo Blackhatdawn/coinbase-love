@@ -8,6 +8,19 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } f
 // Get base URL from environment or use proxy in development
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+// Log API configuration in development
+if (import.meta.env.DEV) {
+  console.log(
+    `[API Client] Initialized with BASE_URL: ${BASE_URL || '(empty - using relative paths)'}`
+  );
+  if (!BASE_URL) {
+    console.warn(
+      '[API Client] VITE_API_BASE_URL is not configured. Using relative paths. ' +
+      'Make sure your backend is running and accessible.'
+    );
+  }
+}
+
 /**
  * Error response structure from backend
  */
