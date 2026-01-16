@@ -538,13 +538,16 @@ async def get_csrf_token(request: Request):
     if not csrf_token:
         csrf_token = str(uuid.uuid4())
         response = JSONResponse({"csrf_token": csrf_token})
+        same_site = "none" if settings.use_cross_site_cookies else "lax"
+        secure = (settings.environment == "production") or settings.use_cross_site_cookies
         response.set_cookie(
             key="csrf_token",
             value=csrf_token,
             httponly=True,
-            secure=(settings.environment == "production"),
-            samesite="lax",
-            max_age=3600
+            secure=secure,
+            samesite=same_site,
+            max_age=3600,
+            path="/"
         )
         return response
     return {"csrf_token": csrf_token}
