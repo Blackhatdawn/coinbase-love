@@ -9,6 +9,7 @@ from models import Portfolio, Holding, HoldingCreate
 from dependencies import get_current_user_id, get_db
 from redis_cache import redis_cache
 from services import price_stream_service
+from coingecko_service import coingecko_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
