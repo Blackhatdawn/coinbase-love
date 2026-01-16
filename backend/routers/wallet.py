@@ -601,15 +601,15 @@ async def get_withdrawal_status(
 ):
     """Get status of a specific withdrawal."""
     withdrawals_collection = db.get_collection("withdrawals")
-    
+
     withdrawal = await withdrawals_collection.find_one({
         "id": withdrawal_id,
         "user_id": user_id
     })
-    
+
     if not withdrawal:
         raise HTTPException(status_code=404, detail="Withdrawal not found")
-    
+
     return {
         "withdrawal": {
             "id": withdrawal["id"],
@@ -625,4 +625,258 @@ async def get_withdrawal_status(
             "completedAt": withdrawal.get("completed_at").isoformat() if withdrawal.get("completed_at") else None,
             "notes": withdrawal.get("notes")
         }
+    }
+
+
+# ============================================
+# P2P TRANSFER ENDPOINTS
+# ============================================
+
+class TransferRequest(BaseModel):
+    recipient_email: str
+    amount: float
+    currency: str = "USD"
+    note: Optional[str] = None
+
+
+@router.post("/transfer")
+async def create_p2p_transfer(
+    data: TransferRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db),
+    limiter = Depends(get_limiter)
+):
+    """
+    Create a peer-to-peer transfer to another user.
+    Transfers are instant and free within the platform.
+    """
+
+
+    # Validate amount
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Transfer amount must be greater than 0")
+
+    if data.amount < 1:
+        raise HTTPException(status_code=400, detail="Minimum transfer amount is $1")
+
+    if data.amount > 50000:
+        raise HTTPException(status_code=400, detail="Maximum transfer amount is $50,000 per transaction")
+
+    # Validate currency
+    valid_currencies = ["USD", "BTC", "ETH", "USDT", "USDC"]
+    if data.currency.upper() not in valid_currencies:
+        raise HTTPException(status_code=400, detail=f"Invalid currency. Supported: {', '.join(valid_currencies)}")
+
+    # Get sender's wallet
+    users_collection = db.get_collection("users")
+    wallets_collection = db.get_collection("wallets")
+    transfers_collection = db.get_collection("transfers")
+    transactions_collection = db.get_collection("transactions")
+
+    sender = await users_collection.find_one({"id": user_id})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+
+    # Check if sender is trying to send to themselves
+    if sender["email"].lower() == data.recipient_email.lower():
+        raise HTTPException(status_code=400, detail="Cannot transfer to yourself")
+
+    # Find recipient by email
+    recipient = await users_collection.find_one({"email": data.recipient_email.lower()})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Recipient not found. User must have an account.")
+
+    if not recipient.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Recipient's email is not verified. Ask them to verify their account first.")
+
+    # Check sender's balance
+    sender_wallet = await wallets_collection.find_one({"user_id": user_id})
+    if not sender_wallet:
+        raise HTTPException(status_code=404, detail="Sender wallet not found")
+
+    sender_balance = sender_wallet.get("balances", {}).get(data.currency.upper(), 0)
+
+    # P2P transfers are free (no fee)
+    transfer_fee = 0.0
+    total_amount = data.amount
+
+    if sender_balance < total_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance. Required: {total_amount} {data.currency}, Available: {sender_balance} {data.currency}"
+        )
+
+    # Create transfer record
+    transfer_id = str(uuid.uuid4())
+    transfer_record = {
+        "id": transfer_id,
+        "sender_id": user_id,
+        "sender_email": sender["email"],
+        "sender_name": sender["name"],
+        "recipient_id": recipient["id"],
+        "recipient_email": recipient["email"],
+        "recipient_name": recipient["name"],
+        "amount": data.amount,
+        "currency": data.currency.upper(),
+        "fee": transfer_fee,
+        "note": data.note,
+        "status": "completed",  # P2P transfers are instant
+        "created_at": datetime.utcnow(),
+        "completed_at": datetime.utcnow()
+    }
+
+    await transfers_collection.insert_one(transfer_record)
+
+    # Deduct from sender's wallet
+    await wallets_collection.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                f"balances.{data.currency.upper()}": sender_balance - total_amount,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    # Add to recipient's wallet (create if doesn't exist)
+    recipient_wallet = await wallets_collection.find_one({"user_id": recipient["id"]})
+    if recipient_wallet:
+        recipient_balance = recipient_wallet.get("balances", {}).get(data.currency.upper(), 0)
+        await wallets_collection.update_one(
+            {"user_id": recipient["id"]},
+            {
+                "$set": {
+                    f"balances.{data.currency.upper()}": recipient_balance + data.amount,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+    else:
+        # Create wallet for recipient
+        await wallets_collection.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": recipient["id"],
+            "balances": {data.currency.upper(): data.amount},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        })
+
+    # Create transaction records for both users
+    # Sender transaction
+    await transactions_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": "transfer_out",
+        "amount": -data.amount,
+        "currency": data.currency.upper(),
+        "status": "completed",
+        "reference": transfer_id,
+        "description": f"Transfer to {recipient['name']} ({recipient['email']})",
+        "created_at": datetime.utcnow()
+    })
+
+    # Recipient transaction
+    await transactions_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": recipient["id"],
+        "type": "transfer_in",
+        "amount": data.amount,
+        "currency": data.currency.upper(),
+        "status": "completed",
+        "reference": transfer_id,
+        "description": f"Transfer from {sender['name']} ({sender['email']})",
+        "created_at": datetime.utcnow()
+    })
+
+    # Log audit events
+    await log_audit(
+        db, user_id, "P2P_TRANSFER_SENT",
+        resource=transfer_id,
+        ip_address=request.client.host,
+        details={
+            "recipient_email": recipient["email"],
+            "amount": data.amount,
+            "currency": data.currency
+        }
+    )
+
+    await log_audit(
+        db, recipient["id"], "P2P_TRANSFER_RECEIVED",
+        resource=transfer_id,
+        details={
+            "sender_email": sender["email"],
+            "amount": data.amount,
+            "currency": data.currency
+        }
+    )
+
+    logger.info(f"✅ P2P transfer completed: {transfer_id} - {data.amount} {data.currency} from {sender['email']} to {recipient['email']}")
+
+    # TODO: Send email notifications to both parties
+
+    return {
+        "success": True,
+        "transferId": transfer_id,
+        "amount": data.amount,
+        "currency": data.currency.upper(),
+        "recipient": {
+            "email": recipient["email"],
+            "name": recipient["name"]
+        },
+        "fee": transfer_fee,
+        "status": "completed",
+        "message": f"Successfully transferred {data.amount} {data.currency} to {recipient['name']}"
+    }
+
+
+@router.get("/transfers")
+async def get_transfer_history(
+    skip: int = 0,
+    limit: int = 50,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """Get user's P2P transfer history (both sent and received)."""
+    transfers_collection = db.get_collection("transfers")
+
+    # Find transfers where user is either sender or recipient
+    transfers = await transfers_collection.find({
+        "$or": [
+            {"sender_id": user_id},
+            {"recipient_id": user_id}
+        ]
+    }).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+
+    total = await transfers_collection.count_documents({
+        "$or": [
+            {"sender_id": user_id},
+            {"recipient_id": user_id}
+        ]
+    })
+
+    # Format transfers with direction indicator
+    formatted_transfers = []
+    for transfer in transfers:
+        is_sender = transfer["sender_id"] == user_id
+        formatted_transfers.append({
+            "id": transfer["id"],
+            "amount": transfer["amount"],
+            "currency": transfer["currency"],
+            "direction": "sent" if is_sender else "received",
+            "otherParty": {
+                "email": transfer["recipient_email"] if is_sender else transfer["sender_email"],
+                "name": transfer["recipient_name"] if is_sender else transfer["sender_name"]
+            },
+            "note": transfer.get("note"),
+            "status": transfer["status"],
+            "createdAt": transfer["created_at"].isoformat(),
+            "completedAt": transfer.get("completed_at").isoformat() if transfer.get("completed_at") else None
+        })
+
+    return {
+        "transfers": formatted_transfers,
+        "total": total,
+        "skip": skip,
+        "limit": limit
     }
