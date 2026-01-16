@@ -143,9 +143,11 @@ class Settings(BaseSettings):
 
     def get_cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list."""
+        if not self.cors_origins:
+            return []
         if self.cors_origins == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     def validate_critical_settings(self) -> List[str]:
         """
