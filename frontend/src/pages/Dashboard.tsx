@@ -283,22 +283,31 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="mb-4 sm:mb-6">
-                  <div className="font-display text-3xl sm:text-4xl font-bold mb-2">
+                  <div className={cn(
+                    "font-display text-3xl sm:text-4xl font-bold mb-2 transition-colors duration-300",
+                    status.isConnected && totalValue !== originalTotalValue && "text-gold-400"
+                  )}>
                     ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                   <div className={cn(
                     "flex items-center gap-2 text-sm",
-                    totalChange >= 0 ? "text-emerald-500" : "text-red-500"
+                    portfolioChange >= 0 ? "text-emerald-500" : "text-red-500"
                   )}>
-                    {totalChange >= 0 ? (
+                    {portfolioChange >= 0 ? (
                       <TrendingUp className="h-4 w-4" />
                     ) : (
                       <TrendingDown className="h-4 w-4" />
                     )}
                     <span className="font-medium">
-                      {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}% today
+                      {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}% from initial value
                     </span>
                   </div>
+                  {status.isConnected && totalValue !== originalTotalValue && (
+                    <div className="mt-2 text-xs text-gold-400 flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-400 animate-pulse" />
+                      Real-time prices updating
+                    </div>
+                  )}
                 </div>
 
                 {/* Allocation Chart */}
