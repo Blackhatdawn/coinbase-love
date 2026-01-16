@@ -143,11 +143,11 @@ const AppContent = () => {
           <Route path="/earn" element={<Earn />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/contact" element={<Contact />} />
-          
+
           {/* Password Reset */}
           <Route path="/reset-password" element={<ResetRequest />} />
           <Route path="/reset" element={<ResetConfirm />} />
-          
+
           {/* Company Pages */}
           <Route path="/about" element={<About />} />
           <Route path="/services" element={<Services />} />
@@ -155,31 +155,34 @@ const AppContent = () => {
           <Route path="/careers" element={<Careers />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/fees" element={<Fees />} />
-          
+
           {/* Resources */}
           <Route path="/faq" element={<FAQ />} />
           <Route path="/help" element={<HelpCenter />} />
-          
+
           {/* Legal Pages */}
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/cookies" element={<CookiePolicy />} />
           <Route path="/aml" element={<AMLPolicy />} />
           <Route path="/risk-disclosure" element={<RiskDisclosure />} />
-          
+
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
           <Route path="/wallet/deposit" element={<ProtectedRoute><WalletDeposit /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
-          
+
           {/* Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          
+
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+
+      {/* Debug API Status - Development Only */}
+      <DebugApiStatus />
     </>
   );
 };
