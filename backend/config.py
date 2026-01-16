@@ -1,22 +1,27 @@
-from dotenv import load_dotenv
+import logging
+import logging
+import sys
 from pathlib import Path
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file in backend directory
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=".env", override=True)
+env_path = Path(__file__).parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    logger.debug("No backend .env file found at %s - relying on environment variables", env_path)
 
 """
 Configuration module with environment variable validation and structured settings.
 Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, model_validator
-from typing import Optional, List
-import logging
-import sys
-
-logger = logging.getLogger(__name__)
 
 
 class EnvironmentValidationError(Exception):
@@ -62,6 +67,7 @@ class Settings(BaseSettings):
 
     # Email Configuration
     email_service: str = "mock"
+    sendgrid_api_key: Optional[str] = None
     email_from: str = "noreply@cryptovault.com"
     email_from_name: str = "CryptoVault"
     app_url: str = "http://localhost:3000"
@@ -81,7 +87,7 @@ class Settings(BaseSettings):
     sentry_profiles_sample_rate: float = 0.1
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(env_path),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",  # Ignore unknown env vars
@@ -122,6 +128,30 @@ class Settings(BaseSettings):
             if self.use_mock_prices:
                 logger.warning("⚠️ Mock prices enabled in production - should use real data")
 
+            if self.email_service == 'mock':
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: EMAIL_SERVICE cannot be 'mock'. Configure SendGrid or disable email workflows."
+                )
+
+            if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: SENDGRID_API_KEY must be set when EMAIL_SERVICE=sendgrid."
+                )
+
+            if self.use_redis and not self.is_redis_available():
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: Redis caching is enabled but UPSTASH credentials are missing. "
+                    "Set USE_REDIS=false or provide UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN."
+                )
+
+            if not self.app_url.startswith("https://"):
+                logger.warning("⚠️ APP_URL should use https:// in production environments")
+
+        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+            logger.warning(
+                "⚠️ EMAIL_SERVICE is set to sendgrid but SENDGRID_API_KEY is missing - defaulting to mock mode"
+            )
+
         # Development environment defaults
         if self.environment == 'development' and self.cors_origins == '*':
             logger.info("✅ CORS set to '*' for development - this allows all origins")
@@ -138,9 +168,11 @@ class Settings(BaseSettings):
 
     def get_cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list."""
+        if not self.cors_origins:
+            return []
         if self.cors_origins == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     def validate_critical_settings(self) -> List[str]:
         """
@@ -159,10 +191,18 @@ class Settings(BaseSettings):
         elif len(self.jwt_secret) < 32:
             issues.append("WARNING: JWT_SECRET should be at least 32 characters")
         
+        # Email configuration
+        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+            issues.append("CRITICAL: SENDGRID_API_KEY is required when EMAIL_SERVICE=sendgrid")
+
+        # Redis configuration
+        if self.use_redis and not self.is_redis_available():
+            issues.append("WARNING: Redis is enabled but UPSTASH credentials are missing")
+
         # Check environment
         if self.environment not in ['development', 'staging', 'production']:
             issues.append(f"WARNING: Unknown environment '{self.environment}'")
-        
+
         return issues
 
 
