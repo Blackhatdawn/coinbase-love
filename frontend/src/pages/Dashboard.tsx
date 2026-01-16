@@ -201,6 +201,42 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 p-4 sm:p-6 rounded-xl border border-red-500/30 bg-red-500/10">
+            <div className="flex items-start gap-3">
+              <div className="text-red-500 text-lg">⚠</div>
+              <div className="flex-1">
+                <p className="font-semibold text-red-400 text-base sm:text-lg">{error}</p>
+                <button
+                  onClick={() => fetchPortfolio()}
+                  className="mt-2 text-red-400 hover:text-red-300 hover:underline text-sm min-h-[44px]"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="space-y-4 sm:space-y-6 mb-6">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i} className="glass-card border-gold-500/10">
+                <CardHeader>
+                  <CardTitle className="h-6 bg-gold-500/10 rounded w-1/3 animate-pulse" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="h-10 bg-gold-500/10 rounded animate-pulse" />
+                  <div className="h-20 bg-gold-500/10 rounded animate-pulse" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && (
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Portfolio Section */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -453,6 +489,7 @@ const Dashboard = () => {
             </Card>
           </div>
         </div>
+        )}
       </main>
     </div>
   );
