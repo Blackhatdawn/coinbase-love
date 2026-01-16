@@ -66,6 +66,7 @@ class Settings(BaseSettings):
 
     # Email Configuration
     email_service: str = "mock"
+    sendgrid_api_key: Optional[str] = None
     email_from: str = "noreply@cryptovault.com"
     email_from_name: str = "CryptoVault"
     app_url: str = "http://localhost:3000"
