@@ -605,65 +605,82 @@ async def startup_event():
                 
                 # Index on users email
                 collection = db_connection.get_collection("users")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("email", unique=True)
                 await collection.create_index("last_login")
                 logger.info("✅ Created indexes on users collection")
-                
+
                 # Index on portfolios
                 collection = db_connection.get_collection("portfolios")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id", unique=True)
                 logger.info("✅ Created index on portfolios")
-                
+
                 # Index on orders
                 collection = db_connection.get_collection("orders")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("created_at")
                 logger.info("✅ Created indexes on orders")
-                
+
                 # Index on audit_logs
                 collection = db_connection.get_collection("audit_logs")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("action")
                 await collection.create_index("timestamp")
                 logger.info("✅ Created indexes on audit_logs")
-                
+
                 # Index on price_alerts
                 collection = db_connection.get_collection("price_alerts")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("symbol")
                 await collection.create_index([("symbol", 1), ("is_active", 1)])
                 await collection.create_index("created_at")
                 logger.info("✅ Created indexes on price_alerts")
-                
+
                 # Index on deposits
                 collection = db_connection.get_collection("deposits")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("order_id", unique=True)
                 await collection.create_index("payment_id")
                 await collection.create_index("status")
                 await collection.create_index("created_at")
                 logger.info("✅ Created indexes on deposits")
-                
+
                 # Index on transactions
                 collection = db_connection.get_collection("transactions")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("type")
                 await collection.create_index("created_at")
                 await collection.create_index([("user_id", 1), ("type", 1)])
                 logger.info("✅ Created indexes on transactions")
-                
+
                 # Index on wallets
                 collection = db_connection.get_collection("wallets")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id", unique=True)
                 logger.info("✅ Created indexes on wallets")
-                
+
                 # Index on withdrawals
                 collection = db_connection.get_collection("withdrawals")
+                await collection.create_index("id", unique=True)
                 await collection.create_index("user_id")
                 await collection.create_index("status")
                 await collection.create_index("created_at")
                 await collection.create_index([("user_id", 1), ("status", 1)])
                 logger.info("✅ Created indexes on withdrawals")
+
+                # Index on sessions (auto-expire)
+                collection = db_connection.get_collection("sessions")
+                await collection.create_index("id", unique=True)
+                await collection.create_index("session_id", unique=True)
+                await collection.create_index("user_id")
+                await collection.create_index("expires_at", expireAfterSeconds=0)
+                logger.info("✅ Created indexes on sessions")
                 
         except Exception as e:
             logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
