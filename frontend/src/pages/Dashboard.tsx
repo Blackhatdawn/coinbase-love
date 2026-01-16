@@ -347,11 +347,24 @@ const Dashboard = () => {
                   </div>
                 )}
 
-                <Button 
-                  className="w-full mt-4 sm:mt-6 h-11 sm:h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
-                >
-                  Deposit Funds
-                </Button>
+                <div className="grid grid-cols-2 gap-3 mt-4 sm:mt-6">
+                  <Link to="/wallet/deposit" className="flex-1">
+                    <Button className="w-full h-11 sm:h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold">
+                      Deposit
+                    </Button>
+                  </Link>
+                  <Link to="/wallet/withdraw" className="flex-1">
+                    <Button variant="outline" className="w-full h-11 sm:h-12 border-gold-500/30 hover:bg-gold-500/10">
+                      Withdraw
+                    </Button>
+                  </Link>
+                </div>
+                <Link to="/wallet/transfer" className="block mt-3">
+                  <Button variant="ghost" className="w-full h-11 hover:bg-purple-500/10 text-purple-400">
+                    <Users className="h-4 w-4 mr-2" />
+                    Send to User (P2P)
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
