@@ -21,11 +21,12 @@ from config import settings, validate_startup_environment
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket
 
 # Services
 from coingecko_service import coingecko_service
 from websocket_feed import price_feed
+from services import price_stream_service
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -335,10 +336,14 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(portfolio.router, prefix="/api")
 app.include_router(trading.router, prefix="/api")
 app.include_router(crypto.router, prefix="/api")
+app.include_router(prices.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(wallet.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
+
+# WebSocket routers (no prefix, direct path)
+app.include_router(websocket.router)
 
 # ============================================
 # ROOT & HEALTH ENDPOINTS
@@ -763,10 +768,17 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
 
-        # Start WebSocket price feed
+        # Start real-time price stream service (PRIMARY)
+        try:
+            await price_stream_service.start()
+            logger.info("✅ Real-time price stream service started (CoinCap WebSocket)")
+        except Exception as e:
+            logger.warning(f"⚠️ Price stream service failed to start: {str(e)}")
+
+        # Start WebSocket price feed (FALLBACK)
         try:
             asyncio.create_task(price_feed.start())
-            logger.info("✅ WebSocket price feed started")
+            logger.info("✅ WebSocket price feed started (fallback)")
         except Exception as e:
             logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
 
@@ -791,6 +803,13 @@ async def shutdown_event():
     logger.info("="*70)
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)
+
+    # Stop real-time price stream service
+    try:
+        await price_stream_service.stop()
+        logger.info("✅ Real-time price stream service stopped")
+    except Exception as e:
+        logger.warning(f"⚠️ Price stream service stop error: {str(e)}")
 
     # Stop WebSocket price feed
     try:

@@ -8,6 +8,19 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } f
 // Get base URL from environment or use proxy in development
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+// Log API configuration in development
+if (import.meta.env.DEV) {
+  console.log(
+    `[API Client] Initialized with BASE_URL: ${BASE_URL || '(empty - using relative paths)'}`
+  );
+  if (!BASE_URL) {
+    console.warn(
+      '[API Client] VITE_API_BASE_URL is not configured. Using relative paths. ' +
+      'Make sure your backend is running and accessible.'
+    );
+  }
+}
+
 /**
  * Error response structure from backend
  */
@@ -171,43 +184,57 @@ class APIClient {
   }
 
   /**
-   * Transform Axios error to APIClientError
-   */
-  private transformError(error: AxiosError<APIError>): APIClientError {
-    if (error.response?.data?.error) {
-      const apiError = error.response.data.error;
-      return new APIClientError(
-        apiError.message,
-        apiError.code,
-        error.response.status,
-        apiError.request_id,
-        apiError.details
-      );
-    }
+ * Transform Axios error to APIClientError
+ */
+private transformError(error: AxiosError<APIError>): APIClientError {
+  const requestId = error.response?.headers['x-request-id'] as string || undefined;
 
-    // Network or other errors
-    if (error.code === 'ECONNABORTED') {
-      return new APIClientError(
-        'Request timeout',
-        'TIMEOUT_ERROR',
-        408
-      );
-    }
-
-    if (!error.response) {
-      return new APIClientError(
-        'Network error. Please check your internet connection.',
-        'NETWORK_ERROR',
-        0
-      );
-    }
-
+  if (error.response?.data?.error) {
+    const apiError = error.response.data.error;
     return new APIClientError(
-      error.message || 'An unexpected error occurred',
-      'UNKNOWN_ERROR',
-      error.response?.status || 500
+      apiError.message,
+      apiError.code,
+      error.response.status,
+      requestId,
+      apiError.details
     );
   }
+
+  // Handle rate limiting (429 Too Many Requests)
+  if (error.response?.status === 429) {
+    const rateLimitReset = error.response.headers['x-ratelimit-reset'] as string;
+    const message = rateLimitReset
+      ? `Rate limit exceeded. Try again after ${new Date(parseInt(rateLimitReset) * 1000).toLocaleTimeString()}`
+      : 'Rate limit exceeded (60 requests per minute). Please try again later.';
+
+    return new APIClientError(message, 'RATE_LIMIT_ERROR', 429, requestId);
+  }
+
+  // Network or other errors
+  if (error.code === 'ECONNABORTED') {
+    return new APIClientError(
+      'Request timeout (30 seconds). Backend may be slow or overloaded.',
+      'TIMEOUT_ERROR',
+      408,
+      requestId
+    );
+  }
+
+  if (!error.response) {
+    return new APIClientError(
+      'Network error. Please check your internet connection and ensure the backend is accessible.',
+      'NETWORK_ERROR',
+      0
+    );
+  }
+
+  return new APIClientError(
+    error.message || 'An unexpected error occurred',
+    'UNKNOWN_ERROR',
+    error.response?.status || 500,
+    requestId
+  );
+}
 
   /**
    * GET request
@@ -264,14 +291,16 @@ export const api = {
       apiClient.post('/api/auth/login', data),
     logout: () =>
       apiClient.post('/api/auth/logout'),
-    verifyEmail: (data: { token: string }) =>
-      apiClient.post('/api/auth/verify-email', data),
-    resendVerification: (data: { email: string }) =>
-      apiClient.post('/api/auth/resend-verification', data),
-    forgotPassword: (data: { email: string }) =>
-      apiClient.post('/api/auth/forgot-password', data),
-    resetPassword: (data: { token: string; new_password: string }) =>
-      apiClient.post('/api/auth/reset-password', data),
+    verifyEmail: (token: string) =>
+      apiClient.post('/api/auth/verify-email', { token }),
+    resendVerification: (email: string) =>
+      apiClient.post('/api/auth/resend-verification', { email }),
+    forgotPassword: (email: string) =>
+      apiClient.post('/api/auth/forgot-password', { email }),
+    resetPassword: (token: string, newPassword: string) =>
+      apiClient.post('/api/auth/reset-password', { token, new_password: newPassword }),
+    validateResetToken: (token: string) =>
+      apiClient.get(`/api/auth/validate-reset-token/${token}`),
     getMe: () =>
       apiClient.get('/api/auth/me'),
     getProfile: () =>
@@ -293,8 +322,6 @@ export const api = {
       apiClient.post('/api/auth/2fa/disable', {}),
     getBackupCodes: () =>
       apiClient.post('/api/auth/2fa/backup-codes'),
-    validateResetToken: (token: string) =>
-      apiClient.get(`/api/auth/validate-reset-token/${token}`),
   },
 
   // Portfolio

@@ -1,38 +1,66 @@
 /**
  * Enhanced Live Price Ticker Component
- * Features: Real-time updates, flash animations, mobile-optimized swipe
+ * Features: Real-time WebSocket updates, flash animations, mobile-optimized swipe
+ * Now uses usePriceWebSocket for zero-latency price updates
  */
 import { useEffect, useState, memo } from 'react';
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
-import { useCryptoData, formatPrice, formatPercentage } from '@/hooks/useCryptoData';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { usePriceWebSocket } from '@/hooks/usePriceWebSocket';
 import { cn } from '@/lib/utils';
 
 interface CryptoItem {
-  id: string;
   symbol: string;
   name: string;
   price: number;
-  change_24h: number;
   image?: string;
 }
 
 interface PriceItemProps {
   crypto: CryptoItem;
-  prevPrice?: number;
+  currentPrice: string | number;
+  prevPrice?: string | number;
 }
 
 // Memoized price item to prevent unnecessary re-renders
-const PriceItem = memo(({ crypto, prevPrice }: PriceItemProps) => {
+const PriceItem = memo(({ crypto, currentPrice, prevPrice }: PriceItemProps) => {
   const [flash, setFlash] = useState<'up' | 'down' | null>(null);
-  
+
   useEffect(() => {
-    if (prevPrice !== undefined && prevPrice !== crypto.price) {
-      const direction = crypto.price > prevPrice ? 'up' : 'down';
+    if (prevPrice !== undefined && prevPrice !== currentPrice) {
+      const curr = parseFloat(String(currentPrice));
+      const prev = parseFloat(String(prevPrice));
+      const direction = curr > prev ? 'up' : 'down';
       setFlash(direction);
       const timer = setTimeout(() => setFlash(null), 500);
       return () => clearTimeout(timer);
     }
-  }, [crypto.price, prevPrice]);
+  }, [currentPrice, prevPrice]);
+
+  const formatPrice = (price: string | number): string => {
+    const num = parseFloat(String(price));
+    if (num >= 1000) {
+      return num.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    } else if (num >= 1) {
+      return num.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      });
+    } else {
+      return num.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 8
+      });
+    }
+  };
 
   return (
     <div
@@ -47,19 +75,19 @@ const PriceItem = memo(({ crypto, prevPrice }: PriceItemProps) => {
     >
       {/* Coin Icon */}
       {crypto.image && (
-        <img 
-          src={crypto.image} 
+        <img
+          src={crypto.image}
           alt={crypto.name}
           className="h-5 w-5 sm:h-6 sm:w-6 rounded-full"
           loading="lazy"
         />
       )}
-      
+
       {/* Symbol */}
       <span className="font-semibold text-gold-400 text-sm sm:text-base">
         {crypto.symbol}
       </span>
-      
+
       {/* Price with flash effect */}
       <span className={cn(
         'text-xs sm:text-sm font-mono transition-colors duration-300',
@@ -67,79 +95,65 @@ const PriceItem = memo(({ crypto, prevPrice }: PriceItemProps) => {
         flash === 'down' && 'text-red-400',
         !flash && 'text-muted-foreground'
       )}>
-        {formatPrice(crypto.price)}
+        {formatPrice(currentPrice)}
       </span>
-      
-      {/* Change percentage with arrow */}
-      <span className={cn(
-        'flex items-center gap-0.5 text-xs sm:text-sm font-medium',
-        crypto.change_24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-      )}>
-        {crypto.change_24h >= 0 ? (
-          <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-        ) : (
-          <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-        )}
-        <span className={cn(
-          'px-1 py-0.5 rounded text-[10px] sm:text-xs',
-          crypto.change_24h >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10'
+
+      {/* Live indicator */}
+      {flash && (
+        <div className={cn(
+          'flex items-center gap-0.5 text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded',
+          flash === 'up'
+            ? 'text-emerald-400 bg-emerald-500/20'
+            : 'text-red-400 bg-red-500/20'
         )}>
-          {formatPercentage(crypto.change_24h)}
-        </span>
-      </span>
+          {flash === 'up' ? (
+            <>
+              <TrendingUp className="h-3 w-3" />
+              <span>↑</span>
+            </>
+          ) : (
+            <>
+              <TrendingDown className="h-3 w-3" />
+              <span>↓</span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 });
 
 PriceItem.displayName = 'PriceItem';
 
+interface TopCryptoData {
+  symbol: string;
+  name: string;
+  image?: string;
+}
+
+const TOP_CRYPTOS: TopCryptoData[] = [
+  { symbol: 'bitcoin', name: 'Bitcoin', image: '/assets/placeholder.svg' },
+  { symbol: 'ethereum', name: 'Ethereum', image: '/assets/placeholder.svg' },
+  { symbol: 'cardano', name: 'Cardano', image: '/assets/placeholder.svg' },
+  { symbol: 'dogecoin', name: 'Dogecoin', image: '/assets/placeholder.svg' },
+  { symbol: 'ripple', name: 'Ripple', image: '/assets/placeholder.svg' },
+  { symbol: 'litecoin', name: 'Litecoin', image: '/assets/placeholder.svg' },
+];
+
 const LivePriceTicker = () => {
-  const { data, isLoading, error, isRefreshing } = useCryptoData({
-    refreshInterval: 15000, // 15 seconds for real-time feel
-    autoRefresh: true,
-  });
+  const { prices, status } = usePriceWebSocket();
+  const [prevPrices, setPrevPrices] = useState<Record<string, string | number>>({});
 
-  const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
-
-  // Track previous prices for flash effect
-  useEffect(() => {
-    if (data.length > 0) {
-      const newPrevPrices: Record<string, number> = {};
-      data.forEach(crypto => {
-        newPrevPrices[crypto.symbol] = crypto.price;
-      });
-      
-      // Only update after first render
-      if (Object.keys(prevPrices).length > 0) {
-        setPrevPrices(prev => {
-          const updated = { ...prev };
-          data.forEach(crypto => {
-            updated[crypto.symbol] = prev[crypto.symbol] || crypto.price;
-          });
-          return updated;
-        });
-      } else {
-        setPrevPrices(newPrevPrices);
-      }
-    }
-  }, [data]);
-
-  // Update previous prices after animation
+  // Track previous prices for animation effect
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (data.length > 0) {
-        const newPrevPrices: Record<string, number> = {};
-        data.forEach(crypto => {
-          newPrevPrices[crypto.symbol] = crypto.price;
-        });
-        setPrevPrices(newPrevPrices);
-      }
+      setPrevPrices(prices);
     }, 600);
     return () => clearTimeout(timer);
-  }, [data]);
+  }, [prices]);
 
   // Loading skeleton
-  if (isLoading && data.length === 0) {
+  if (!status.isConnected && Object.keys(prices).length === 0) {
     return (
       <div className="bg-background/90 border-y border-gold-500/10 backdrop-blur-sm overflow-hidden">
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
@@ -148,7 +162,6 @@ const LivePriceTicker = () => {
               <div className="h-6 w-6 rounded-full bg-gold-500/10" />
               <div className="h-4 w-12 bg-gold-500/10 rounded" />
               <div className="h-4 w-20 bg-gold-500/10 rounded" />
-              <div className="h-4 w-14 bg-gold-500/10 rounded" />
             </div>
           ))}
         </div>
@@ -156,30 +169,13 @@ const LivePriceTicker = () => {
     );
   }
 
-  // Error state
-  if (error && data.length === 0) {
-    return (
-      <div className="bg-red-500/10 border-y border-red-500/20 py-2.5">
-        <div className="container mx-auto px-4 flex items-center justify-center gap-3 text-sm">
-          <span className="text-red-400">Failed to load prices</span>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-gold-400 hover:text-gold-300 flex items-center gap-1"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-background/90 border-y border-gold-500/10 backdrop-blur-sm overflow-hidden relative">
-      {/* Refresh indicator */}
-      {isRefreshing && (
-        <div className="absolute top-1 right-2 z-20">
-          <RefreshCw className="h-3 w-3 animate-spin text-gold-400" />
+      {/* Live indicator badge */}
+      {status.isConnected && (
+        <div className="absolute top-1 right-3 z-20 flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs font-bold text-green-400 uppercase">Live</span>
         </div>
       )}
 
@@ -189,24 +185,34 @@ const LivePriceTicker = () => {
 
       {/* Mobile: Horizontal swipeable */}
       <div className="md:hidden flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth">
-        {data.slice(0, 6).map((crypto) => (
-          <PriceItem 
-            key={crypto.symbol}
-            crypto={crypto}
-            prevPrice={prevPrices[crypto.symbol]}
-          />
-        ))}
+        {TOP_CRYPTOS.slice(0, 6).map((crypto) => {
+          const currentPrice = prices[crypto.symbol] || '0';
+          const prevPrice = prevPrices[crypto.symbol];
+          return (
+            <PriceItem
+              key={crypto.symbol}
+              crypto={crypto}
+              currentPrice={currentPrice}
+              prevPrice={prevPrice}
+            />
+          );
+        })}
       </div>
 
       {/* Desktop: Scrolling animation */}
       <div className="hidden md:flex animate-ticker">
-        {[...data, ...data].map((crypto, index) => (
-          <PriceItem 
-            key={`${crypto.symbol}-${index}`}
-            crypto={crypto}
-            prevPrice={prevPrices[crypto.symbol]}
-          />
-        ))}
+        {[...TOP_CRYPTOS, ...TOP_CRYPTOS].map((crypto, index) => {
+          const currentPrice = prices[crypto.symbol] || '0';
+          const prevPrice = prevPrices[crypto.symbol];
+          return (
+            <PriceItem
+              key={`${crypto.symbol}-${index}`}
+              crypto={crypto}
+              currentPrice={currentPrice}
+              prevPrice={prevPrice}
+            />
+          );
+        })}
       </div>
 
       <style>{`

@@ -23,6 +23,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
+import { PriceStreamStatus } from "@/components/PriceStreamStatus";
 
 interface Holding {
   symbol: string;
@@ -38,17 +40,21 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const user = auth?.user;
   const signOut = auth?.signOut ?? (() => {});
+  const { prices, status } = usePriceWebSocket();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [originalTotalValue, setOriginalTotalValue] = useState(0);
 
   const fetchPortfolio = async (isBackground = false) => {
     try {
       if (!isBackground) {
         setIsLoading(true);
+        setError(null);
       } else {
         setIsRefreshing(true);
       }
@@ -56,10 +62,14 @@ const Dashboard = () => {
       const portfolio = response.portfolio;
 
       setTotalValue(portfolio.totalBalance);
+      setOriginalTotalValue(portfolio.totalBalance);
       setHoldings(portfolio.holdings || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch portfolio:", error);
+      const errorMessage = error?.message || 'Failed to load portfolio data';
+      setError(errorMessage);
       setTotalValue(0);
+      setOriginalTotalValue(0);
       setHoldings([]);
     } finally {
       setIsLoading(false);
@@ -80,12 +90,32 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Update portfolio value in real-time based on WebSocket prices
+  useEffect(() => {
+    if (holdings.length === 0 || Object.keys(prices).length === 0) return;
+
+    const updatedValue = holdings.reduce((sum, holding) => {
+      const wsPrice = prices[holding.symbol.toLowerCase()];
+      if (wsPrice) {
+        return sum + (parseFloat(wsPrice) * holding.amount);
+      }
+      return sum + holding.value;
+    }, 0);
+
+    setTotalValue(updatedValue);
+  }, [prices, holdings]);
+
   const handleSignOut = () => {
     signOut();
     navigate("/");
   };
 
-  // Calculate total change
+  // Calculate total change based on original value
+  const portfolioChange = originalTotalValue > 0
+    ? ((totalValue - originalTotalValue) / originalTotalValue) * 100
+    : 0;
+
+  // Calculate total change using holding allocation
   const totalChange = holdings.reduce((acc, h) => acc + (h.change || 0) * (h.allocation / 100), 0);
 
   return (
@@ -185,18 +215,60 @@ const Dashboard = () => {
               Manage your portfolio and account settings
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchPortfolio(true)}
-            disabled={isRefreshing}
-            className="min-h-[44px] self-start sm:self-auto"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Price Stream Status */}
+            <PriceStreamStatus status={status} />
+
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPortfolio(true)}
+              disabled={isRefreshing}
+              className="min-h-[44px]"
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 p-4 sm:p-6 rounded-xl border border-red-500/30 bg-red-500/10">
+            <div className="flex items-start gap-3">
+              <div className="text-red-500 text-lg">⚠</div>
+              <div className="flex-1">
+                <p className="font-semibold text-red-400 text-base sm:text-lg">{error}</p>
+                <button
+                  onClick={() => fetchPortfolio()}
+                  className="mt-2 text-red-400 hover:text-red-300 hover:underline text-sm min-h-[44px]"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="space-y-4 sm:space-y-6 mb-6">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i} className="glass-card border-gold-500/10">
+                <CardHeader>
+                  <CardTitle className="h-6 bg-gold-500/10 rounded w-1/3 animate-pulse" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="h-10 bg-gold-500/10 rounded animate-pulse" />
+                  <div className="h-20 bg-gold-500/10 rounded animate-pulse" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && (
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Portfolio Section */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -211,22 +283,31 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="mb-4 sm:mb-6">
-                  <div className="font-display text-3xl sm:text-4xl font-bold mb-2">
+                  <div className={cn(
+                    "font-display text-3xl sm:text-4xl font-bold mb-2 transition-colors duration-300",
+                    status.isConnected && totalValue !== originalTotalValue && "text-gold-400"
+                  )}>
                     ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                   <div className={cn(
                     "flex items-center gap-2 text-sm",
-                    totalChange >= 0 ? "text-emerald-500" : "text-red-500"
+                    portfolioChange >= 0 ? "text-emerald-500" : "text-red-500"
                   )}>
-                    {totalChange >= 0 ? (
+                    {portfolioChange >= 0 ? (
                       <TrendingUp className="h-4 w-4" />
                     ) : (
                       <TrendingDown className="h-4 w-4" />
                     )}
                     <span className="font-medium">
-                      {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}% today
+                      {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}% from initial value
                     </span>
                   </div>
+                  {status.isConnected && totalValue !== originalTotalValue && (
+                    <div className="mt-2 text-xs text-gold-400 flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-400 animate-pulse" />
+                      Real-time prices updating
+                    </div>
+                  )}
                 </div>
 
                 {/* Allocation Chart */}
@@ -307,39 +388,49 @@ const Dashboard = () => {
                   </div>
                 ) : holdings.length > 0 ? (
                   <div className="divide-y divide-border/50">
-                    {holdings.map((holding) => (
-                      <div 
-                        key={holding.symbol} 
-                        className="p-4 hover:bg-gold-500/5 transition-colors"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
-                              {holding.symbol.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
-                              <div className="text-xs sm:text-sm text-muted-foreground">
-                                {holding.amount.toFixed(4)} {holding.symbol}
+                    {holdings.map((holding) => {
+                      const wsPrice = prices[holding.symbol.toLowerCase()];
+                      const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
+                      return (
+                        <div
+                          key={holding.symbol}
+                          className={cn(
+                            "p-4 hover:bg-gold-500/5 transition-colors",
+                            wsPrice && "bg-gold-500/5"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
+                                {holding.symbol.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
+                                <div className="text-xs sm:text-sm text-muted-foreground">
+                                  {holding.amount.toFixed(4)} {holding.symbol}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="font-semibold text-sm sm:text-base">
-                              ${holding.value.toLocaleString()}
-                            </div>
-                            {holding.change !== undefined && (
+                            <div className="text-right flex-shrink-0">
                               <div className={cn(
-                                "text-xs sm:text-sm font-medium",
-                                holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                                "font-semibold text-sm sm:text-base transition-colors duration-300",
+                                wsPrice && "text-gold-400"
                               )}>
-                                {holding.change >= 0 ? '+' : ''}{holding.change}%
+                                ${currentValue.toLocaleString()}
                               </div>
-                            )}
+                              {holding.change !== undefined && (
+                                <div className={cn(
+                                  "text-xs sm:text-sm font-medium",
+                                  holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                                )}>
+                                  {holding.change >= 0 ? '+' : ''}{holding.change}%
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-6 sm:p-8 text-center text-muted-foreground">
@@ -449,6 +540,7 @@ const Dashboard = () => {
             </Card>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

@@ -7,6 +7,8 @@ import CryptoCard from "@/components/CryptoCard";
 import { Search, TrendingUp, TrendingDown, RefreshCw, ArrowUpDown } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
+import { PriceStreamStatus } from "@/components/PriceStreamStatus";
 
 interface CryptoData {
   id: string;
@@ -24,34 +26,32 @@ const Markets = () => {
   const [marketData, setMarketData] = useState<CryptoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"price" | "change" | "marketCap">("marketCap");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { prices, status } = usePriceWebSocket();
 
   const fetchMarketData = useCallback(async (isBackground = false) => {
     try {
       if (!isBackground) {
         setIsLoading(true);
+        setError(null);
       } else {
         setIsRefreshing(true);
       }
-      
+
       const response = await api.crypto.getAll();
-      
-      let cryptos: any[] = [];
-      
-      if (response?.cryptocurrencies?.value) {
-        try {
-          cryptos = JSON.parse(response.cryptocurrencies.value);
-        } catch {
-          cryptos = response.cryptocurrencies.value;
-        }
-      } else if (Array.isArray(response?.cryptocurrencies)) {
-        cryptos = response.cryptocurrencies;
-      } else if (Array.isArray(response)) {
-        cryptos = response;
+
+      // Backend returns { cryptocurrencies: [...] }
+      const cryptos = Array.isArray(response?.cryptocurrencies)
+        ? response.cryptocurrencies
+        : [];
+
+      if (cryptos.length === 0) {
+        throw new Error('No cryptocurrency data available');
       }
-      
+
       const transformedData = cryptos.map((crypto: any) => ({
         id: crypto.id || crypto.symbol?.toLowerCase() || '',
         symbol: crypto.symbol?.toUpperCase() || crypto.id?.toUpperCase() || '',
@@ -63,11 +63,14 @@ const Markets = () => {
         volume24h: formatMarketCap(crypto.volume_24h || 0),
         image: crypto.image || ''
       }));
-      
+
       setMarketData(transformedData);
       setLastUpdated(new Date());
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to fetch cryptocurrency data. Please try again.';
       console.error("Failed to fetch market data:", error);
+      setError(errorMessage);
+      setMarketData([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -133,12 +136,13 @@ const Markets = () => {
               <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
                 Cryptocurrency <span className="text-gradient">Markets</span>
               </h1>
-              
-              {/* Last Updated & Refresh */}
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                {lastUpdated && (
-                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                )}
+
+              {/* Status & Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-xs sm:text-sm">
+                {/* Price Stream Status */}
+                <PriceStreamStatus status={status} />
+
+                {/* Refresh Button */}
                 <button
                   onClick={() => fetchMarketData(true)}
                   disabled={isRefreshing}
@@ -204,8 +208,26 @@ const Markets = () => {
             </div>
           </div>
 
+          {/* Error State */}
+          {error && (
+            <div className="mb-6 p-4 sm:p-6 rounded-xl border border-red-500/30 bg-red-500/10">
+              <div className="flex items-start gap-3">
+                <div className="text-red-500 text-lg">⚠</div>
+                <div>
+                  <p className="font-semibold text-red-400 text-base sm:text-lg">{error}</p>
+                  <button
+                    onClick={() => fetchMarketData()}
+                    className="mt-2 text-red-400 hover:text-red-300 hover:underline text-sm min-h-[44px]"
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Markets Table/Cards */}
-          {isLoading ? (
+          {isLoading && !error ? (
             <div className="space-y-4">
               {Array.from({ length: 6 }).map((_, index) => (
                 <div 
@@ -228,7 +250,10 @@ const Markets = () => {
             </div>
           ) : sortedData.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
-              {sortedData.map((crypto, index) => (
+              {sortedData.map((crypto, index) => {
+                const wsPrice = prices[crypto.symbol.toLowerCase()];
+                const displayPrice = wsPrice ? parseFloat(wsPrice) : crypto.price;
+                return (
                 <div
                   key={crypto.id}
                   className="glass-card p-4 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/5 cursor-pointer"
@@ -262,8 +287,11 @@ const Markets = () => {
                     
                     {/* Price & Change */}
                     <div className="text-right flex-shrink-0">
-                      <div className="font-mono font-semibold text-base sm:text-lg">
-                        {formatPrice(crypto.price)}
+                      <div className={cn(
+                        "font-mono font-semibold text-base sm:text-lg transition-colors duration-300",
+                        wsPrice && "text-gold-400"
+                      )}>
+                        {formatPrice(displayPrice)}
                       </div>
                       <div className={cn(
                         "flex items-center justify-end gap-1 text-sm sm:text-base font-medium",
@@ -292,14 +320,15 @@ const Markets = () => {
                       <div className="text-sm text-muted-foreground">Market Cap</div>
                       <div className="font-mono text-sm">{crypto.marketCap}</div>
                     </div>
-                    
+
                     <div className="hidden lg:block text-right min-w-[100px]">
                       <div className="text-sm text-muted-foreground">24h Volume</div>
                       <div className="font-mono text-sm">{crypto.volume24h}</div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 sm:py-16">

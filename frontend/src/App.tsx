@@ -13,6 +13,9 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster as HotToaster } from 'react-hot-toast';
+import { healthCheckService } from "@/services/healthCheck";
+import { api } from "@/lib/apiClient";
+import DebugApiStatus from "@/components/DebugApiStatus";
 
 // Eager loaded pages (critical path)
 import Index from "./pages/Index";
@@ -73,22 +76,46 @@ const PageLoader = () => (
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [apiAvailable, setApiAvailable] = useState(true);
 
   useRedirectSpinner((visible) => setIsLoading(visible));
 
+  // Initialize health check and warmup API
   useEffect(() => {
-    const warmUp = async () => {
+    const initializeApp = async () => {
       try {
-        await Promise.all([
-          fetch('/api/crypto').catch(() => {}),
-        ]);
+        // Warmup: Make initial API request to activate backend
+        console.log('[App] Warming up backend API...');
+        try {
+          await api.crypto.getAll();
+          console.log('[App] ✅ Backend API is active and responding');
+          setApiAvailable(true);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.warn(
+            '[App] ⚠️ Backend API warmup failed:',
+            errorMessage
+          );
+          // Still allow app to load even if initial call fails
+          setApiAvailable(false);
+        }
+
+        // Start health check service to keep backend alive
+        healthCheckService.start();
       } finally {
         setTimeout(() => setIsInitializing(false), 2000);
       }
     };
-    warmUp();
+
+    initializeApp();
+
+    // Cleanup: Stop health check on unmount
+    return () => {
+      healthCheckService.stop();
+    };
   }, []);
 
+  // Handle navigation loading states
   useEffect(() => {
     const handleNavigationStart = () => setIsLoading(true);
     const handleNavigationEnd = () => setTimeout(() => setIsLoading(false), 300);
@@ -117,11 +144,11 @@ const AppContent = () => {
           <Route path="/earn" element={<Earn />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/contact" element={<Contact />} />
-          
+
           {/* Password Reset */}
           <Route path="/reset-password" element={<ResetRequest />} />
           <Route path="/reset" element={<ResetConfirm />} />
-          
+
           {/* Company Pages */}
           <Route path="/about" element={<About />} />
           <Route path="/services" element={<Services />} />
@@ -129,31 +156,34 @@ const AppContent = () => {
           <Route path="/careers" element={<Careers />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/fees" element={<Fees />} />
-          
+
           {/* Resources */}
           <Route path="/faq" element={<FAQ />} />
           <Route path="/help" element={<HelpCenter />} />
-          
+
           {/* Legal Pages */}
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/cookies" element={<CookiePolicy />} />
           <Route path="/aml" element={<AMLPolicy />} />
           <Route path="/risk-disclosure" element={<RiskDisclosure />} />
-          
+
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
           <Route path="/wallet/deposit" element={<ProtectedRoute><WalletDeposit /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
-          
+
           {/* Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          
+
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+
+      {/* Debug API Status - Development Only */}
+      <DebugApiStatus />
     </>
   );
 };

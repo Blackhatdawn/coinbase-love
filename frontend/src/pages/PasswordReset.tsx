@@ -23,7 +23,7 @@ export const ResetRequest = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email) {
       toast.error('Please enter your email address');
       return;
@@ -32,7 +32,7 @@ export const ResetRequest = () => {
     setIsLoading(true);
 
     try {
-      await api.auth.requestPasswordReset(email);
+      await api.auth.forgotPassword(email);
       setIsSuccess(true);
       toast.success('Reset link sent! Check your email.');
     } catch (error: any) {
@@ -185,10 +185,10 @@ export const ResetConfirm = () => {
     setIsLoading(true);
 
     try {
-      await api.auth.confirmPasswordReset(token, password);
+      await api.auth.resetPassword(token, password);
       setIsSuccess(true);
       toast.success('Password updated successfully!');
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => navigate('/auth'), 2000);
     } catch (error: any) {

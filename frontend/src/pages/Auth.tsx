@@ -71,7 +71,7 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      await api.auth.verifyEmail(verificationCode, pendingEmail);
+      await api.auth.verifyEmail(verificationCode);
 
       toast({
         title: "Email verified!",
@@ -400,7 +400,7 @@ const Auth = () => {
         email={pendingEmail}
         onVerify={async (code: string) => {
           try {
-            await api.auth.verifyEmail(code, pendingEmail);
+            await api.auth.verifyEmail(code);
             return true;
           } catch (error) {
             return false;
