@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     sentry_profiles_sample_rate: float = 0.1
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(env_path),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",  # Ignore unknown env vars
