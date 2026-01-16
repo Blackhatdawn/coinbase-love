@@ -399,13 +399,17 @@ async def refresh_token(request: Request):
     access_token = create_access_token(data={"sub": user_id})
 
     response = JSONResponse(content={"message": "Token refreshed"})
+    # Determine SameSite policy based on configuration
+    same_site = "none" if settings.use_cross_site_cookies else "lax"
+    secure = settings.environment == 'production' or settings.use_cross_site_cookies
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60
+        secure=secure,
+        samesite=same_site,
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/"
     )
     return response
 
