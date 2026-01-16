@@ -35,6 +35,45 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """
+    Set authentication cookies with proper SameSite and Secure attributes.
+
+    When frontend and API are on different origins (cross-site), use SameSite=None with Secure=True.
+    When on same origin, use SameSite=Lax for better security.
+
+    Configuration:
+    - Set USE_CROSS_SITE_COOKIES=true in environment if frontend and API are on different origins
+    - For production cross-site auth: requires CORS_ORIGINS to be specific (not '*') and HTTPS
+    """
+    # Determine SameSite policy based on configuration
+    same_site = "none" if settings.use_cross_site_cookies else "lax"
+    # For SameSite=None, Secure must be True (only over HTTPS)
+    secure = settings.environment == 'production' or settings.use_cross_site_cookies
+
+    # Set access token cookie
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=secure,
+        samesite=same_site,
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/"
+    )
+
+    # Set refresh token cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=secure,
+        samesite=same_site,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path="/"
+    )
+
+
 async def log_audit(
     db, user_id: str, action: str, 
     resource: Optional[str] = None,
