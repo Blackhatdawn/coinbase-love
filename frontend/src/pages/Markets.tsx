@@ -136,12 +136,13 @@ const Markets = () => {
               <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
                 Cryptocurrency <span className="text-gradient">Markets</span>
               </h1>
-              
-              {/* Last Updated & Refresh */}
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                {lastUpdated && (
-                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                )}
+
+              {/* Status & Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-xs sm:text-sm">
+                {/* Price Stream Status */}
+                <PriceStreamStatus status={status} />
+
+                {/* Refresh Button */}
                 <button
                   onClick={() => fetchMarketData(true)}
                   disabled={isRefreshing}
