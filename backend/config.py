@@ -190,10 +190,18 @@ class Settings(BaseSettings):
         elif len(self.jwt_secret) < 32:
             issues.append("WARNING: JWT_SECRET should be at least 32 characters")
         
+        # Email configuration
+        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+            issues.append("CRITICAL: SENDGRID_API_KEY is required when EMAIL_SERVICE=sendgrid")
+
+        # Redis configuration
+        if self.use_redis and not self.is_redis_available():
+            issues.append("WARNING: Redis is enabled but UPSTASH credentials are missing")
+
         # Check environment
         if self.environment not in ['development', 'staging', 'production']:
             issues.append(f"WARNING: Unknown environment '{self.environment}'")
-        
+
         return issues
 
 
