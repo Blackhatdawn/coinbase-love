@@ -254,11 +254,11 @@ class HealthCheckService {
   }
 }
 
-// Create singleton instance
+// Create singleton instance with more forgiving configuration
 export const healthCheckService = new HealthCheckService({
-  interval: 4 * 60 * 1000, // 4 minutes
-  timeout: 5000,
-  retries: 3,
+  interval: 4 * 60 * 1000, // 4 minutes (keeps backend warm on free hosting)
+  timeout: 10000, // Increased to 10 seconds for cold starts
+  retries: 5, // More retries before backing off
   verbose: import.meta.env.DEV,
 });
 
