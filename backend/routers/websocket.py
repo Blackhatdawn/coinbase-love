@@ -87,8 +87,8 @@ class PriceStreamManager:
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error sending status to client: {e}")
     
     async def start_broadcast_loop(self):
         """Start continuous broadcasting of price updates"""
