@@ -13,30 +13,30 @@
   },
   
   "rewrites": [
-    // ========== API ROUTES - FIRST ==========
-    // API Root (/api → backend root /)
+    
+    
     {
       "source": "/api",
       "destination": "https://cryptovault-api.onrender.com/"
     },
     
-    // API Documentation endpoints
+    
     {
       "source": "/api/docs",
-      "destination": "https://cryptovault-api.onrender.com/docs"
+      "destination": "https://cryptovault-api.onrender.com/api/docs"
     },
     {
       "source": "/api/docs/:path*",
-      "destination": "https://cryptovault-api.onrender.com/docs/:path*"
+      "destination": "https://cryptovault-api.onrender.com/api/docs/:path*"
     },
+
     
-    // ReDoc documentation
     {
       "source": "/api/redoc",
-      "destination": "https://cryptovault-api.onrender.com/redoc"
+      "destination": "https://cryptovault-api.onrender.com/api/redoc"
     },
+
     
-    // Health check (fast cached endpoint)
     {
       "source": "/api/health",
       "destination": "https://cryptovault-api.onrender.com/health",
@@ -47,22 +47,22 @@
         }
       ]
     },
+
     
-    // OpenAPI JSON schema
     {
       "source": "/api/openapi.json",
-      "destination": "https://cryptovault-api.onrender.com/openapi.json"
+      "destination": "https://cryptovault-api.onrender.com/api/openapi.json"
     },
     
-    // CRITICAL: All other API endpoints
-    // Maps: /api/users → backend /users
-    // Maps: /api/auth/login → backend /auth/login
+    
+    
+    
     {
       "source": "/api/:path+",
       "destination": "https://cryptovault-api.onrender.com/:path+"
     },
     
-    // ========== STATIC ASSETS ==========
+    
     {
       "source": "/assets/:path*",
       "headers": [
@@ -73,7 +73,7 @@
       ]
     },
     
-    // ========== SPA FALLBACK - MUST BE LAST ==========
+    
     {
       "source": "/(.*)",
       "destination": "/index.html"
@@ -99,7 +99,7 @@
   ],
   
   "headers": [
-    // Global security headers for frontend
+    
     {
       "source": "/(.*)",
       "headers": [
@@ -146,7 +146,7 @@
       ]
     },
     
-    // API Proxy Headers - Forward client info
+    
     {
       "source": "/api/:path*",
       "headers": [
@@ -181,7 +181,7 @@
       ]
     },
     
-    // Static Assets Optimization
+    
     {
       "source": "/assets/:path*",
       "headers": [
@@ -220,7 +220,7 @@
       ]
     },
     
-    // No cache for HTML and critical pages
+    
     {
       "source": "/(.*\\.html|/|/index\\.html)",
       "headers": [
@@ -235,7 +235,7 @@
       ]
     },
     
-    // Service Worker
+    
     {
       "source": "/sw\\.js",
       "headers": [
@@ -254,7 +254,7 @@
       ]
     },
     
-    // Web App Manifest
+    
     {
       "source": "/manifest\\.json",
       "headers": [
@@ -269,7 +269,7 @@
       ]
     },
     
-    // Icon files
+    
     {
       "source": "/(.*\\.(ico|png|jpg|jpeg|gif|svg|webp))",
       "headers": [
