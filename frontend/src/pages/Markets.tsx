@@ -204,8 +204,26 @@ const Markets = () => {
             </div>
           </div>
 
+          {/* Error State */}
+          {error && (
+            <div className="mb-6 p-4 sm:p-6 rounded-xl border border-red-500/30 bg-red-500/10">
+              <div className="flex items-start gap-3">
+                <div className="text-red-500 text-lg">⚠</div>
+                <div>
+                  <p className="font-semibold text-red-400 text-base sm:text-lg">{error}</p>
+                  <button
+                    onClick={() => fetchMarketData()}
+                    className="mt-2 text-red-400 hover:text-red-300 hover:underline text-sm min-h-[44px]"
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Markets Table/Cards */}
-          {isLoading ? (
+          {isLoading && !error ? (
             <div className="space-y-4">
               {Array.from({ length: 6 }).map((_, index) => (
                 <div 
