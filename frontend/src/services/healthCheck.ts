@@ -72,6 +72,22 @@ class HealthCheckService {
    */
   private async ping(): Promise<boolean> {
     try {
+      // Check if we're rate limited
+      if (this.rateLimitRemaining <= 10) {
+        const now = Date.now();
+        const timeUntilReset = Math.max(0, this.rateLimitReset - now);
+
+        if (timeUntilReset > 0) {
+          this.logWarn(
+            `⏳ Approaching rate limit (${this.rateLimitRemaining} remaining). ` +
+            `Delaying health check for ${(timeUntilReset / 1000).toFixed(0)}s`
+          );
+          // Reschedule for when rate limit resets
+          this.scheduleNextPing(Math.max(this.config.interval, timeUntilReset + 1000));
+          return true;
+        }
+      }
+
       const startTime = performance.now();
 
       // Try health endpoint first, fallback to crypto endpoint
@@ -86,10 +102,17 @@ class HealthCheckService {
       this.lastPingTime = Date.now();
       this.consecutiveFailures = 0;
 
-      this.logInfo(`✅ Health check passed (${duration.toFixed(0)}ms)`);
+      this.logInfo(`✅ Health check passed (${duration.toFixed(0)}ms) | Rate limit: ${this.rateLimitRemaining}/60`);
       return true;
     } catch (error: any) {
       this.consecutiveFailures++;
+
+      // Extract rate limit info from error headers if available
+      if (error?.statusCode === 429) {
+        this.logWarn('⏱️ Rate limited! Health check will resume when limit resets.');
+        this.stop();
+        return false;
+      }
 
       const isNetworkError = !error?.statusCode || error?.statusCode === 0;
       const errorType = isNetworkError ? 'NETWORK' : error?.code || 'UNKNOWN';
