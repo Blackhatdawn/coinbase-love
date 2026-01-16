@@ -10,7 +10,8 @@
   ──────────────────┼──────────────────────────────┼──────────────────────────
   MONGO_URL         | mongodb://localhost:27017    | MongoDB connection URL
   DB_NAME           | cryptovault_db               | Database name
-  CORS_ORIGINS      | *                            | Allowed CORS origins
+  CORS_ORIGINS      | *                            | Allowed CORS origins (set to https://your-frontend.example in prod)
+  USE_CROSS_SITE_COOKIES | false                  | Enable SameSite=None cookies when frontend/API are on different domains
   JWT_SECRET        | (auto-generated)             | JWT signing secret
 
   📝 Example file location: /app/backend/.env.example
@@ -20,10 +21,11 @@
 │ 🎨 FRONTEND ENVIRONMENT (/app/frontend/.env)                                │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-  Variable                | Current Value                              
+  Variable                | Current Value
   ────────────────────────┼────────────────────────────────────────────
-  REACT_APP_BACKEND_URL   | https://cleanup-maestro.preview.emerge... 
-  WDS_SOCKET_PORT         | 443                                        
+  VITE_API_BASE_URL       | https://cryptovault-api.onrender.com
+  REACT_APP_BACKEND_URL   | https://cleanup-maestro.preview.emerge...
+  WDS_SOCKET_PORT         | 443
   ENABLE_HEALTH_CHECK     | false                                      
 
   ⚠️  REACT_APP_BACKEND_URL is platform-managed - DO NOT MODIFY
@@ -38,7 +40,8 @@
   ✅ .env.example files created for reference
   ✅ JWT secret auto-generated securely
   ✅ MongoDB running locally (no auth for dev)
-  ⚠️  CORS set to "*" (fine for dev, restrict in production)
+  ⚠️  CORS set to "*" (fine for dev, restrict in production with exact https origins)
+  ⚠️  Enable USE_CROSS_SITE_COOKIES=true when deploying frontend + API on different hosts
   ⚠️  Using SHA256 password hashing (bcrypt recommended for prod)
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -61,12 +64,21 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
   Current:     🔵 Development/Preview (Emergent Platform)
-  
+
   Database:    🟢 Local MongoDB (localhost:27017)
   Backend:     🟢 Running on port 8001
   Frontend:    🟢 Running on port 3000
-  
+
   All services operational ✅
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📡 PRODUCTION MONITORING HOOKS                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  • HTTP health checks: /health and /api/health (API + DB status)
+  • Price stream watchdog: /api/prices/status/health
+  • WebSocket uptime: wss://<api-host>/ws/prices (expects heartbeat every 10s)
+  • Alert if any endpoint returns 503 or no status message for >30s
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 📚 DOCUMENTATION                                                             │

@@ -597,8 +597,16 @@ export const api = {
       if (filter) url += `&action=${filter}`;
       return apiClient.get(url);
     },
-    exportLogs: (filters?: any) =>
-      apiClient.get('/api/admin/audit-logs?export=true'),
+    exportLogs: (options?: { action?: string; userId?: string; limit?: number }) => {
+      const params = new URLSearchParams({ export: 'true' });
+      if (options?.limit) params.set('limit', String(options.limit));
+      if (options?.action) params.set('action', options.action);
+      if (options?.userId) params.set('user_id', options.userId);
+      const query = params.toString();
+      return apiClient.get(`/api/admin/audit-logs?${query}`, {
+        responseType: 'blob',
+      });
+    },
   },
 
   // Health check
