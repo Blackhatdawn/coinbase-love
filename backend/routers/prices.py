@@ -11,6 +11,7 @@ from monitoring import price_stream_metrics
 from typing import Dict, Any, Optional
 from datetime import datetime
 import logging
+from dependencies import get_current_user_id, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/prices", tags=["prices"])
