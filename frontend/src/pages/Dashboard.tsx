@@ -40,6 +40,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const user = auth?.user;
   const signOut = auth?.signOut ?? (() => {});
+  const { prices, status } = usePriceWebSocket();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalValue, setTotalValue] = useState(0);
@@ -47,6 +48,7 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [originalTotalValue, setOriginalTotalValue] = useState(0);
 
   const fetchPortfolio = async (isBackground = false) => {
     try {
