@@ -11,6 +11,7 @@ from monitoring import price_stream_metrics
 from typing import Dict, Any, Optional
 from datetime import datetime
 import logging
+from dependencies import get_current_user_id, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/prices", tags=["prices"])
@@ -188,14 +189,33 @@ async def get_metrics() -> Dict[str, Any]:
 
 
 @router.post("/metrics/reset")
-async def reset_metrics() -> Dict[str, str]:
+async def reset_metrics(
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+) -> Dict[str, str]:
     """
     Reset all metrics counters.
-    Requires admin authentication in production.
+
+    ⚠️ Admin-only endpoint: Used for internal monitoring purposes.
+    Resets price stream metrics including cache hit rates, update frequencies, etc.
+
+    Note: Not called by frontend UI - used for server-side monitoring/debugging.
     """
+    # Check if user is admin
+    users_collection = db.get_collection("users")
+    user = await users_collection.find_one({"id": user_id})
+
+    if not user or not user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
     try:
         price_stream_metrics.reset()
-        return {"status": "success", "message": "Metrics reset"}
+        logger.info(f"🔄 Metrics reset by admin user: {user_id}")
+        return {
+            "status": "success",
+            "message": "Metrics counters have been reset",
+            "timestamp": datetime.now().isoformat()
+        }
     except Exception as e:
         logger.error(f"❌ Error resetting metrics: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to reset metrics")

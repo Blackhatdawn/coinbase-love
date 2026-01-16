@@ -76,6 +76,7 @@ const createAxiosInstance = (): AxiosInstance => {
 class APIClient {
   private client: AxiosInstance;
   private isRefreshing = false;
+  private csrfToken: string | null = null;
   private failedQueue: Array<{
     resolve: (value?: any) => void;
     reject: (reason?: any) => void;
@@ -84,6 +85,47 @@ class APIClient {
   constructor() {
     this.client = createAxiosInstance();
     this.setupInterceptors();
+    this.initializeCSRFToken();
+  }
+
+  /**
+   * Initialize CSRF token on app load
+   * Fetches from /csrf endpoint which sets it as a cookie
+   */
+  private async initializeCSRFToken(): Promise<void> {
+    try {
+      await this.client.get('/csrf');
+      if (import.meta.env.DEV) {
+        console.log('[API Client] CSRF token initialized');
+      }
+    } catch (error) {
+      // CSRF protection is optional; don't block app initialization
+      if (import.meta.env.DEV) {
+        console.warn('[API Client] Failed to initialize CSRF token:', error);
+      }
+    }
+  }
+
+  /**
+   * Get CSRF token from browser cookies
+   */
+  private getCSRFTokenFromCookie(): string | null {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+
+    const name = 'csrf_token=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookieArray = decodedCookie.split(';');
+
+    for (let cookie of cookieArray) {
+      cookie = cookie.trim();
+      if (cookie.indexOf(name) === 0) {
+        return cookie.substring(name.length, cookie.length);
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -93,7 +135,16 @@ class APIClient {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        // Add any request-level logic here
+        // Add CSRF token header for mutating requests (POST, PUT, PATCH, DELETE)
+        const mutatingMethods = ['post', 'put', 'patch', 'delete'];
+        if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {
+          // Get CSRF token from cookie
+          const csrfToken = this.getCSRFTokenFromCookie();
+          if (csrfToken) {
+            config.headers['X-CSRF-Token'] = csrfToken;
+          }
+        }
+
         // Cookies are automatically sent with withCredentials: true
         return config;
       },

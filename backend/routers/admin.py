@@ -1,9 +1,12 @@
 """Admin dashboard and management endpoints."""
 
 from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta
 from typing import Optional
 import uuid
+import csv
+from io import StringIO
 
 from dependencies import get_current_user_id, get_db
 
@@ -171,21 +174,86 @@ async def get_audit_logs(
     limit: int = 100,
     user_id: Optional[str] = None,
     action: Optional[str] = None,
+    export: bool = False,
     admin_check: bool = Depends(is_admin),
     db = Depends(get_db)
 ):
-    """Get audit logs with optional filters."""
+    """
+    Get audit logs with optional filters.
+
+    Query Parameters:
+    - skip: Number of records to skip (pagination)
+    - limit: Number of records to return (max 1000 for export)
+    - user_id: Filter by user ID
+    - action: Filter by action type
+    - export: If true, return as CSV file download instead of JSON
+    """
     audit_collection = db.get_collection("audit_logs")
-    
+
     query = {}
     if user_id:
         query["user_id"] = user_id
     if action:
         query["action"] = action
-    
+
+    # For export, fetch all matching records (or up to 10000 for safety)
+    if export:
+        export_limit = min(limit, 10000) if limit else 10000
+        logs = await audit_collection.find(query).sort("timestamp", -1).to_list(export_limit)
+
+        # Generate CSV
+        if not logs:
+            # Return empty CSV with headers
+            output = StringIO()
+            writer = csv.DictWriter(output, fieldnames=["timestamp", "user_id", "action", "resource", "ip_address", "details"])
+            writer.writeheader()
+            return StreamingResponse(
+                iter([output.getvalue()]),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=audit_logs.csv"}
+            )
+
+        # Write CSV to string buffer
+        output = StringIO()
+
+        # Get all unique field names from logs
+        fieldnames = set()
+        for log in logs:
+            fieldnames.update(log.keys() if isinstance(log, dict) else [])
+        fieldnames = sorted(list(fieldnames))
+
+        # Prioritize important fields first
+        important_fields = ["timestamp", "user_id", "action", "resource", "ip_address", "details", "request_id"]
+        ordered_fields = [f for f in important_fields if f in fieldnames]
+        other_fields = [f for f in fieldnames if f not in ordered_fields]
+        all_fields = ordered_fields + other_fields
+
+        writer = csv.DictWriter(output, fieldnames=all_fields, restval="")
+        writer.writeheader()
+
+        for log in logs:
+            # Convert ObjectId and datetime to strings
+            cleaned_log = {}
+            for field in all_fields:
+                value = log.get(field, "")
+                if isinstance(value, datetime):
+                    value = value.isoformat()
+                elif hasattr(value, '__dict__'):
+                    value = str(value)
+                cleaned_log[field] = value
+            writer.writerow(cleaned_log)
+
+        csv_content = output.getvalue()
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=audit_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"}
+        )
+
+    # Standard JSON response
     logs = await audit_collection.find(query).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     total = await audit_collection.count_documents(query)
-    
+
     return {
         "logs": logs,
         "total": total,

@@ -4,9 +4,10 @@ Modular, well-organized FastAPI application with comprehensive error handling,
 monitoring, and production-grade features.
 """
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Optional, Set
 from datetime import datetime
 import logging
@@ -320,25 +321,100 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ============================================
+# GLOBAL EXCEPTION HANDLERS (Error Standardization)
+# ============================================
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Standardize HTTP exception responses to match frontend error interface.
+    Converts FastAPI HTTPException to consistent error format.
+    """
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    # Map HTTP status codes to error codes
+    error_code_map = {
+        400: "BAD_REQUEST",
+        401: "UNAUTHORIZED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        409: "CONFLICT",
+        422: "VALIDATION_ERROR",
+        429: "RATE_LIMITED",
+        500: "INTERNAL_ERROR",
+        503: "SERVICE_UNAVAILABLE",
+    }
+
+    error_code = error_code_map.get(exc.status_code, f"HTTP_{exc.status_code}")
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": error_code,
+                "message": str(exc.detail) if exc.detail else "An error occurred",
+                "request_id": request_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        }
+    )
+
+
+async def general_exception_handler(request: Request, exc: Exception):
+    """
+    Handle unexpected exceptions and return standardized error format.
+    Logs the full exception for debugging.
+    """
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    logger.error(
+        f"🔴 Unhandled exception: {str(exc)}",
+        extra={
+            "type": "error",
+            "error_type": type(exc).__name__,
+            "request_id": request_id,
+            "path": request.url.path,
+            "method": request.method,
+        }
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An internal server error occurred",
+                "request_id": request_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        }
+    )
+
+
+# Register global exception handlers
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+# ============================================
 # CORS CONFIGURATION
 # ============================================
 
 # Get CORS origins from settings
 cors_origins = settings.get_cors_origins_list()
 
-# Important: When using allow_credentials=True, cannot use ["*"]
-# If wildcard is set, we must either:
-# 1. Remove credentials support, OR
-# 2. Use specific origins instead
-if cors_origins == ["*"] and settings.environment == 'production':
-    logger.warning(
-        "⚠️ CRITICAL: CORS_ORIGINS is '*' but allow_credentials=True is set. "
-        "Browsers will reject credentialed requests with wildcard CORS. "
-        "Please set CORS_ORIGINS to specific frontend origins in production."
-    )
-    # For development, allow wildcard but note the limitation
-    if settings.environment != 'development':
-        logger.error("🛑 In production, CORS_ORIGINS must be specific origins, not '*'")
+# Important: When using allow_credentials=True with cross-site auth, cannot use ["*"]
+# Browsers will reject credentialed requests with wildcard CORS
+# The config validation will raise an error in production if this is misconfigured
+if cors_origins == ["*"]:
+    if settings.environment == 'development':
+        logger.warning(
+            "⚠️ DEVELOPMENT: CORS_ORIGINS is set to '*' - cookie-based authentication may not work "
+            "with cross-origin requests. For production, set CORS_ORIGINS to specific origins."
+        )
+    else:
+        logger.warning(
+            "⚠️ Wildcard CORS detected - authentication may fail in cross-origin scenarios"
+        )
 
 # Apply CORS middleware with credentials for authenticated endpoints
 app.add_middleware(

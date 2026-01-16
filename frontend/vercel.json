@@ -297,15 +297,7 @@
   ],
   
   "regions": ["iad1"],
-  
-  "analytics": {
-    "enable": true
-  },
-  
-  "speedInsights": {
-    "enable": true
-  },
-  
+
   "git": {
     "deploymentEnabled": {
       "main": true,
@@ -313,25 +305,8 @@
     },
     "autoAlias": true
   },
-  
+
   "env": {
     "NEXT_PUBLIC_API_BASE": "/api"
-  },
-  
-  "observability": {
-    "enabled": true
-  },
-  
-  "protectionBypass": {
-    "main": ["team-admin"],
-    "preview": ["all"]
-  },
-  
-  "errorTracking": {
-    "enabled": true
-  },
-  
-  "logDrain": {
-    "enabled": true
   }
 }
