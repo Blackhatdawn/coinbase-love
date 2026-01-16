@@ -7,6 +7,8 @@ import CryptoCard from "@/components/CryptoCard";
 import { Search, TrendingUp, TrendingDown, RefreshCw, ArrowUpDown } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
+import { PriceStreamStatus } from "@/components/PriceStreamStatus";
 
 interface CryptoData {
   id: string;
