@@ -107,9 +107,14 @@ class Settings(BaseSettings):
     def validate_environment_configuration(self):
         """Validate environment-specific configurations."""
         if self.environment == 'production':
-            # Stricter validations for production
+            # CRITICAL: Prevent wildcard CORS with credential-based auth
             if self.cors_origins == '*':
-                logger.warning("⚠️ CORS is set to '*' in production - consider restricting to specific origins")
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: CORS_ORIGINS cannot be '*' when using credential-based authentication. "
+                    "Browsers will reject credentialed requests with wildcard CORS. "
+                    "Set CORS_ORIGINS to specific frontend origin(s) in production. "
+                    "Example: CORS_ORIGINS=https://app.my-domain.com,https://app-staging.my-domain.com"
+                )
 
             if not self.sentry_dsn:
                 logger.warning("⚠️ Sentry DSN not configured in production - error tracking will be disabled")
