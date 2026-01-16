@@ -151,6 +151,18 @@ class HealthCheckService {
   }
 
   /**
+   * Update rate limit information from response headers
+   */
+  updateRateLimit(remaining: number, reset: number): void {
+    this.rateLimitRemaining = Math.max(0, remaining);
+    this.rateLimitReset = reset;
+
+    if (import.meta.env.DEV && remaining < 20) {
+      this.logInfo(`Rate limit: ${remaining}/60 requests remaining`);
+    }
+  }
+
+  /**
    * Get health status
    */
   getStatus(): {
@@ -159,6 +171,8 @@ class HealthCheckService {
     timeSinceLastPing: number;
     consecutiveFailures: number;
     isHealthy: boolean;
+    rateLimitRemaining: number;
+    rateLimitReset: number;
   } {
     const timeSinceLastPing = this.lastPingTime ? Date.now() - this.lastPingTime : -1;
 
@@ -168,6 +182,8 @@ class HealthCheckService {
       timeSinceLastPing,
       consecutiveFailures: this.consecutiveFailures,
       isHealthy: this.consecutiveFailures < this.config.retries,
+      rateLimitRemaining: this.rateLimitRemaining,
+      rateLimitReset: this.rateLimitReset,
     };
   }
 
