@@ -24,6 +24,7 @@ const Markets = () => {
   const [marketData, setMarketData] = useState<CryptoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"price" | "change" | "marketCap">("marketCap");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -32,26 +33,22 @@ const Markets = () => {
     try {
       if (!isBackground) {
         setIsLoading(true);
+        setError(null);
       } else {
         setIsRefreshing(true);
       }
-      
+
       const response = await api.crypto.getAll();
-      
-      let cryptos: any[] = [];
-      
-      if (response?.cryptocurrencies?.value) {
-        try {
-          cryptos = JSON.parse(response.cryptocurrencies.value);
-        } catch {
-          cryptos = response.cryptocurrencies.value;
-        }
-      } else if (Array.isArray(response?.cryptocurrencies)) {
-        cryptos = response.cryptocurrencies;
-      } else if (Array.isArray(response)) {
-        cryptos = response;
+
+      // Backend returns { cryptocurrencies: [...] }
+      const cryptos = Array.isArray(response?.cryptocurrencies)
+        ? response.cryptocurrencies
+        : [];
+
+      if (cryptos.length === 0) {
+        throw new Error('No cryptocurrency data available');
       }
-      
+
       const transformedData = cryptos.map((crypto: any) => ({
         id: crypto.id || crypto.symbol?.toLowerCase() || '',
         symbol: crypto.symbol?.toUpperCase() || crypto.id?.toUpperCase() || '',
@@ -63,11 +60,14 @@ const Markets = () => {
         volume24h: formatMarketCap(crypto.volume_24h || 0),
         image: crypto.image || ''
       }));
-      
+
       setMarketData(transformedData);
       setLastUpdated(new Date());
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to fetch cryptocurrency data. Please try again.';
       console.error("Failed to fetch market data:", error);
+      setError(errorMessage);
+      setMarketData([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
