@@ -322,12 +322,32 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS CONFIGURATION
 # ============================================
 
+# Get CORS origins from settings
+cors_origins = settings.get_cors_origins_list()
+
+# Important: When using allow_credentials=True, cannot use ["*"]
+# If wildcard is set, we must either:
+# 1. Remove credentials support, OR
+# 2. Use specific origins instead
+if cors_origins == ["*"] and settings.environment == 'production':
+    logger.warning(
+        "⚠️ CRITICAL: CORS_ORIGINS is '*' but allow_credentials=True is set. "
+        "Browsers will reject credentialed requests with wildcard CORS. "
+        "Please set CORS_ORIGINS to specific frontend origins in production."
+    )
+    # For development, allow wildcard but note the limitation
+    if settings.environment != 'development':
+        logger.error("🛑 In production, CORS_ORIGINS must be specific origins, not '*'")
+
+# Apply CORS middleware with credentials for authenticated endpoints
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.get_cors_origins_list(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=True,  # Required for session/cookie auth
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token", "Accept", "Accept-Language"],
+    expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # ============================================
