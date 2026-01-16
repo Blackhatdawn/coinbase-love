@@ -26,6 +26,7 @@ from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, tra
 # Services
 from coingecko_service import coingecko_service
 from websocket_feed import price_feed
+from services import price_stream_service
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
