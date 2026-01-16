@@ -477,7 +477,20 @@ async def root():
         "redoc": "/api/redoc",
         "openapi": "/api/openapi.json",
         "health": "/health",
+        "ping": "/ping",
         "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@app.get("/ping", tags=["health"])
+@app.get("/api/ping", tags=["health"])
+async def ping():
+    """Simple ping endpoint that doesn't require database connection. For health checks and keep-alive."""
+    return {
+        "status": "ok",
+        "message": "pong",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
     }
 
 
