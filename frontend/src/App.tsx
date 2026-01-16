@@ -15,6 +15,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { healthCheckService } from "@/services/healthCheck";
 import { api } from "@/lib/apiClient";
+import DebugApiStatus from "@/components/DebugApiStatus";
 
 // Eager loaded pages (critical path)
 import Index from "./pages/Index";
