@@ -46,6 +46,8 @@ const AMLPolicy = lazy(() => import("./pages/AMLPolicy"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
 const WalletDeposit = lazy(() => import("./pages/WalletDeposit"));
+const WalletWithdraw = lazy(() => import("./pages/WalletWithdraw"));
+const P2PTransfer = lazy(() => import("./pages/P2PTransfer"));
 const PriceAlerts = lazy(() => import("./pages/PriceAlerts"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
@@ -172,6 +174,8 @@ const AppContent = () => {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
           <Route path="/wallet/deposit" element={<ProtectedRoute><WalletDeposit /></ProtectedRoute>} />
+          <Route path="/wallet/withdraw" element={<ProtectedRoute><WalletWithdraw /></ProtectedRoute>} />
+          <Route path="/wallet/transfer" element={<ProtectedRoute><P2PTransfer /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
 
           {/* Admin Routes */}
