@@ -1,22 +1,26 @@
-from dotenv import load_dotenv
+import logging
+import sys
 from pathlib import Path
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file in backend directory
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=".env", override=True)
+env_path = Path(__file__).parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    logger.debug("No backend .env file found at %s - relying on environment variables", env_path)
 
 """
 Configuration module with environment variable validation and structured settings.
 Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, model_validator
-from typing import Optional, List
-import logging
-import sys
-
-logger = logging.getLogger(__name__)
 
 
 class EnvironmentValidationError(Exception):
