@@ -379,6 +379,8 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(wallet.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
+app.include_router(transfers.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 
 # WebSocket routers (no prefix, direct path)
 app.include_router(websocket.router)
