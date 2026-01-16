@@ -266,22 +266,39 @@ class RateLimitHeadersMiddleware:
 # ============================================
 
 def get_rate_limit_key(request: Request) -> str:
-    """Get rate limit key based on IP and user."""
+    """Get rate limit key based on IP and user (from Authorization header or cookies)."""
     client_ip = get_remote_address(request)
-    
+
     try:
         from auth import decode_token
+
+        # Try Authorization header first
         auth_header = request.headers.get("authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             payload = decode_token(token)
             if payload and payload.get("sub"):
+                logger.debug(f"Rate limit key from Authorization header for user {payload.get('sub')}")
                 return f"{payload.get('sub')}:{client_ip}"
-    except Exception:
-        pass
-    
+
+        # Fall back to access_token cookie (cookie-based auth)
+        access_token_cookie = request.cookies.get("access_token")
+        if access_token_cookie:
+            try:
+                payload = decode_token(access_token_cookie)
+                if payload and payload.get("sub"):
+                    logger.debug(f"Rate limit key from cookie for user {payload.get('sub')}")
+                    return f"{payload.get('sub')}:{client_ip}"
+            except Exception as e:
+                logger.debug(f"Failed to decode token from cookie: {e}")
+    except Exception as e:
+        logger.debug(f"Error deriving rate limit key from auth: {e}")
+
+    # Fallback: use IP and user-agent hash
     user_agent = request.headers.get("user-agent", "")
-    return f"{client_ip}:{hash(user_agent) % 1000}"
+    fallback_key = f"{client_ip}:{hash(user_agent) % 1000}"
+    logger.debug(f"Rate limit key from fallback (IP+UA): {fallback_key}")
+    return fallback_key
 
 
 limiter = Limiter(key_func=get_rate_limit_key)
