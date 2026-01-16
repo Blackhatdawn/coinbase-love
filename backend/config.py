@@ -127,6 +127,30 @@ class Settings(BaseSettings):
             if self.use_mock_prices:
                 logger.warning("⚠️ Mock prices enabled in production - should use real data")
 
+            if self.email_service == 'mock':
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: EMAIL_SERVICE cannot be 'mock'. Configure SendGrid or disable email workflows."
+                )
+
+            if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: SENDGRID_API_KEY must be set when EMAIL_SERVICE=sendgrid."
+                )
+
+            if self.use_redis and not self.is_redis_available():
+                raise ValueError(
+                    "🛑 PRODUCTION ERROR: Redis caching is enabled but UPSTASH credentials are missing. "
+                    "Set USE_REDIS=false or provide UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN."
+                )
+
+            if not self.app_url.startswith("https://"):
+                logger.warning("⚠️ APP_URL should use https:// in production environments")
+
+        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
+            logger.warning(
+                "⚠️ EMAIL_SERVICE is set to sendgrid but SENDGRID_API_KEY is missing - defaulting to mock mode"
+            )
+
         # Development environment defaults
         if self.environment == 'development' and self.cors_origins == '*':
             logger.info("✅ CORS set to '*' for development - this allows all origins")
