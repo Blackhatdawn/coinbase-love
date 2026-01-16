@@ -29,9 +29,13 @@ class PriceStreamManager:
         """Accept and register a new WebSocket connection"""
         await websocket.accept()
         self.active_connections.add(websocket)
-        
+
         logger.info(f"📡 WebSocket connected (total: {len(self.active_connections)})")
-        
+
+        # Start broadcast loop if not already running
+        if not self.broadcast_task or self.broadcast_task.done():
+            self.broadcast_task = asyncio.create_task(self.start_broadcast_loop())
+
         # Send initial status
         await websocket.send_json({
             "type": "connection",
