@@ -261,27 +261,8 @@ async def login(
         ).dict()
     })
     
-    # Set access token first
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60,
-        path="/"
-    )
-    
-    # Set refresh token second
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=settings.environment == 'production',
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
-        path="/"
-    )
+    # Set auth cookies with proper SameSite and Secure attributes
+    set_auth_cookies(response, access_token, refresh_token)
     
     logger.info(f"Response headers: {dict(response.headers)}")
     return response
