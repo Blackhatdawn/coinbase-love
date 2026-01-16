@@ -499,6 +499,10 @@ export const api = {
       apiClient.get(`/api/wallet/withdrawals?skip=${skip}&limit=${limit}`),
     getWithdrawal: (withdrawalId: string) =>
       apiClient.get(`/api/wallet/withdraw/${withdrawalId}`),
+    transfer: (data: { recipient_email: string; amount: number; currency: string; note?: string }) =>
+      apiClient.post('/api/wallet/transfer', data),
+    getTransfers: (skip: number = 0, limit: number = 50) =>
+      apiClient.get(`/api/wallet/transfers?skip=${skip}&limit=${limit}`),
   },
 
   // Price alerts
