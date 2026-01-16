@@ -28,12 +28,13 @@ const EnhancedTrade = () => {
   // Auth is optional - trading page works without login
   const auth = useAuth();
   const user = auth?.user ?? null;
-  
+
   const { isConnected, account } = useWeb3();
-  
+
   const [cryptoList, setCryptoList] = useState<CryptoData[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<CryptoData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
 
@@ -42,22 +43,32 @@ const EnhancedTrade = () => {
     const fetchCryptos = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const response = await api.crypto.getAll();
         // Backend returns { cryptocurrencies: [...] }
-        const cryptos = response.cryptocurrencies || [];
+        const cryptos = Array.isArray(response?.cryptocurrencies)
+          ? response.cryptocurrencies
+          : [];
+
+        if (cryptos.length === 0) {
+          throw new Error('No cryptocurrency data available');
+        }
+
         setCryptoList(cryptos);
-        
+
         // Select Bitcoin by default
         if (cryptos.length > 0) {
           setSelectedCoin(cryptos[0]);
         }
       } catch (error: any) {
         console.error("Failed to fetch cryptocurrencies:", error);
+        const errorMessage = error?.message || 'Failed to load market data. Please try again.';
+        setError(errorMessage);
+
         // Don't show error toast for 401 - it's expected when not logged in
-        if (error.status !== 401) {
-          toast.error("Failed to load market data");
+        if (error.statusCode !== 401) {
+          toast.error(errorMessage);
         }
-        // Use empty array to prevent crash
         setCryptoList([]);
       } finally {
         setIsLoading(false);
