@@ -800,6 +800,13 @@ async def shutdown_event():
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)
 
+    # Stop real-time price stream service
+    try:
+        await price_stream_service.stop()
+        logger.info("✅ Real-time price stream service stopped")
+    except Exception as e:
+        logger.warning(f"⚠️ Price stream service stop error: {str(e)}")
+
     # Stop WebSocket price feed
     try:
         await price_feed.stop()
