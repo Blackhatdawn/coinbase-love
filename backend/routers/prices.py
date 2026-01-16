@@ -1,11 +1,13 @@
 """
 Cryptocurrency Prices API Endpoints
 Real-time prices from Redis cache (updated by WebSocket streams)
+Includes monitoring and metrics endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from services import price_stream_service
 from redis_cache import redis_cache
+from monitoring import price_stream_metrics
 from typing import Dict, Any, Optional
 import logging
 
