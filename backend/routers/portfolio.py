@@ -2,12 +2,15 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Optional
+import logging
 
 from models import Portfolio, Holding, HoldingCreate
 from dependencies import get_current_user_id, get_db
-from coingecko_service import coingecko_service
+from redis_cache import redis_cache
+from services import price_stream_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
