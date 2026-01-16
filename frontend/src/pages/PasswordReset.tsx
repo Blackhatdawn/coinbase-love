@@ -185,10 +185,10 @@ export const ResetConfirm = () => {
     setIsLoading(true);
 
     try {
-      await api.auth.confirmPasswordReset(token, password);
+      await api.auth.resetPassword(token, password);
       setIsSuccess(true);
       toast.success('Password updated successfully!');
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => navigate('/auth'), 2000);
     } catch (error: any) {
