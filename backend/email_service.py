@@ -3,13 +3,14 @@ CryptoVault Email Service with SendGrid Integration
 Supports 6-digit OTP verification with 5-minute expiry
 Production-ready with SOC 2 compliance logging
 """
-import os
 import random
-import string
 import secrets
+import string
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
 import logging
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
