@@ -394,8 +394,9 @@ async def root():
         "message": "🚀 CryptoVault API is live and running!",
         "version": "1.0.0",
         "environment": settings.environment,
-        "docs": "/docs",
-        "redoc": "/redoc",
+        "docs": "/api/docs",
+        "redoc": "/api/redoc",
+        "openapi": "/api/openapi.json",
         "health": "/health",
         "timestamp": datetime.utcnow().isoformat()
     }
