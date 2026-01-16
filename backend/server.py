@@ -764,10 +764,17 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
 
-        # Start WebSocket price feed
+        # Start real-time price stream service (PRIMARY)
+        try:
+            await price_stream_service.start()
+            logger.info("✅ Real-time price stream service started (CoinCap WebSocket)")
+        except Exception as e:
+            logger.warning(f"⚠️ Price stream service failed to start: {str(e)}")
+
+        # Start WebSocket price feed (FALLBACK)
         try:
             asyncio.create_task(price_feed.start())
-            logger.info("✅ WebSocket price feed started")
+            logger.info("✅ WebSocket price feed started (fallback)")
         except Exception as e:
             logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
 
