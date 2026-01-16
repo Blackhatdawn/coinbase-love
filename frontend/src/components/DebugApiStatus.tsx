@@ -75,7 +75,7 @@ export function DebugApiStatus() {
         <div
           className={`
             w-full px-3 py-3 rounded-lg rounded-t-none border border-t-0
-            space-y-2 bg-background/95 backdrop-blur-sm
+            space-y-2 bg-background/95 backdrop-blur-sm overflow-auto max-h-80
             ${healthColor}
           `}
         >
