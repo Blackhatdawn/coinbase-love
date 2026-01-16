@@ -517,6 +517,38 @@ export const api = {
       apiClient.post(`/api/admin/withdrawals/${withdrawalId}/reject`, { reason }),
   },
 
+  // User Search
+  users: {
+    search: (email: string) =>
+      apiClient.get(`/api/users/search?email=${encodeURIComponent(email)}`),
+    getProfile: (userId: string) =>
+      apiClient.get(`/api/users/${userId}`),
+  },
+
+  // P2P Transfers
+  transfers: {
+    p2p: (data: {
+      recipient_email: string;
+      amount: number;
+      currency: string;
+      note?: string;
+    }) =>
+      apiClient.post('/api/transfers/p2p', data),
+    getHistory: (skip: number = 0, limit: number = 50) =>
+      apiClient.get(`/api/transfers/p2p/history?skip=${skip}&limit=${limit}`),
+  },
+
+  // Audit Logs (alias for admin.getAuditLogs for backward compatibility)
+  auditLogs: {
+    getLogs: (limit: number, offset: number, filter?: string) => {
+      let url = `/api/admin/audit-logs?skip=${offset}&limit=${limit}`;
+      if (filter) url += `&action=${filter}`;
+      return apiClient.get(url);
+    },
+    exportLogs: (filters?: any) =>
+      apiClient.get('/api/admin/audit-logs?export=true'),
+  },
+
   // Health check
   health: () =>
     apiClient.get('/health'),
