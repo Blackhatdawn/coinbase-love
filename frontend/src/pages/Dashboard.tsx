@@ -23,6 +23,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
+import { PriceStreamStatus } from "@/components/PriceStreamStatus";
 
 interface Holding {
   symbol: string;
