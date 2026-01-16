@@ -121,6 +121,38 @@ export function DebugApiStatus() {
                 </span>
               </div>
             </div>
+
+            {/* Rate Limit Info */}
+            <div className="space-y-1">
+              <div className="text-muted-foreground">Rate Limit:</div>
+              <div className="space-y-1 bg-background/50 p-2 rounded border border-border/50">
+                <div className="flex justify-between">
+                  <span>Remaining:</span>
+                  <span className={
+                    status.rateLimitRemaining < 10 ? 'text-red-400' :
+                    status.rateLimitRemaining < 20 ? 'text-yellow-400' :
+                    'text-emerald-400'
+                  }>
+                    {status.rateLimitRemaining}/60
+                  </span>
+                </div>
+                <div className="w-full bg-background/50 rounded h-1.5">
+                  <div
+                    className={`h-full rounded transition-all ${
+                      status.rateLimitRemaining < 10 ? 'bg-red-500' :
+                      status.rateLimitRemaining < 20 ? 'bg-yellow-500' :
+                      'bg-emerald-500'
+                    }`}
+                    style={{ width: `${(status.rateLimitRemaining / 60) * 100}%` }}
+                  />
+                </div>
+                {status.rateLimitRemaining < 20 && (
+                  <div className="text-[10px] text-yellow-300 mt-1">
+                    ⚠️ Approaching rate limit
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Warning if not healthy */}
