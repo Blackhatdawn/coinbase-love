@@ -311,8 +311,9 @@ app = FastAPI(
     title="CryptoVault API",
     version="1.0.0",
     description="Production-ready cryptocurrency trading platform with institutional-grade security",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 app.state.limiter = limiter
