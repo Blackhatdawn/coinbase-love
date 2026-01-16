@@ -90,12 +90,32 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Update portfolio value in real-time based on WebSocket prices
+  useEffect(() => {
+    if (holdings.length === 0 || Object.keys(prices).length === 0) return;
+
+    const updatedValue = holdings.reduce((sum, holding) => {
+      const wsPrice = prices[holding.symbol.toLowerCase()];
+      if (wsPrice) {
+        return sum + (parseFloat(wsPrice) * holding.amount);
+      }
+      return sum + holding.value;
+    }, 0);
+
+    setTotalValue(updatedValue);
+  }, [prices, holdings]);
+
   const handleSignOut = () => {
     signOut();
     navigate("/");
   };
 
-  // Calculate total change
+  // Calculate total change based on original value
+  const portfolioChange = originalTotalValue > 0
+    ? ((totalValue - originalTotalValue) / originalTotalValue) * 100
+    : 0;
+
+  // Calculate total change using holding allocation
   const totalChange = holdings.reduce((acc, h) => acc + (h.change || 0) * (h.allocation / 100), 0);
 
   return (
