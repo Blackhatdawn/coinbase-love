@@ -25,6 +25,7 @@ const Index = () => {
         <SocialProofSection />
         <FeaturesSection />
         <CTASection />
+        <FAQSection />
       </main>
       <Footer />
     </div>
