@@ -147,29 +147,29 @@ const FAQSection = () => {
       <div className="container mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <div className="text-center mb-10 sm:mb-12">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gold-500/10 mb-4">
-            <HelpCircle className="h-6 w-6 text-gold-400" />
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-gold-500/10 mb-4">
+            <HelpCircle className="h-7 w-7 text-gold-400" />
           </div>
-          <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">
+          <h2 className="font-display text-3xl sm:text-4xl lg:text-4xl font-bold mb-3">
             Frequently Asked <span className="text-gradient">Questions</span>
           </h2>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-2xl mx-auto">
+          <p className="text-foreground/70 text-[15px] sm:text-base max-w-2xl mx-auto leading-relaxed">
             Everything you need to know about our custody services, security, and pricing. 
             Can't find an answer? <a href="/contact" className="text-gold-400 underline hover:text-gold-300">Contact our team</a>.
           </p>
         </div>
 
-        {/* Category Filter */}
+        {/* Category Filter - Mobile optimized */}
         <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 sm:mb-10">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-full transition-all duration-300",
+                "px-4 py-2.5 text-[15px] font-medium rounded-full transition-all duration-300 touch-target-sm",
                 activeCategory === category.id
                   ? "bg-gold-500 text-black"
-                  : "bg-card/50 text-muted-foreground hover:bg-gold-500/10 hover:text-gold-400 border border-gold-500/20"
+                  : "bg-card/50 text-foreground/80 hover:bg-gold-500/10 hover:text-gold-400 border border-gold-500/20"
               )}
             >
               {category.label}
