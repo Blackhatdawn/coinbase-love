@@ -19,24 +19,24 @@ const HeroSection = () => {
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gold-500/10 border border-gold-500/20 mb-6 sm:mb-8 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-4 sm:px-4 py-2 sm:py-2 rounded-full bg-gold-500/10 border border-gold-500/20 mb-6 sm:mb-8 backdrop-blur-sm touch-target-sm">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-500"></span>
             </span>
-            <span className="text-xs sm:text-sm text-gold-400/90">Trusted by 250+ Institutions Globally</span>
+            <span className="text-sm sm:text-sm text-gold-400 font-medium">Trusted by 250+ Institutions Globally</span>
           </div>
 
           {/* Headline - Gold gradient with mobile-first sizing */}
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2" data-testid="hero-headline">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2" data-testid="hero-headline">
             The Custody Solution
             <span className="block bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 bg-clip-text text-transparent">
               Institutions Trust With $10B+
             </span>
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-2xl mx-auto px-4" data-testid="hero-subheadline">
+          {/* Subheadline - Improved readability */}
+          <p className="text-base sm:text-lg md:text-xl text-foreground/80 mb-8 sm:mb-10 max-w-2xl mx-auto px-4 leading-relaxed" data-testid="hero-subheadline">
             Multi-jurisdiction cold storage, real-time proof of reserves, and zero security breaches since 2019. 
             Built for family offices, hedge funds, and enterprises who demand more than promises.
           </p>
