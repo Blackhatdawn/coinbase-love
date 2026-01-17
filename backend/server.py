@@ -29,6 +29,10 @@ from coingecko_service import coingecko_service
 from websocket_feed import price_feed
 from services import price_stream_service
 
+# Enhanced services
+from socketio_server import socketio_manager
+from redis_enhanced import redis_enhanced
+
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
