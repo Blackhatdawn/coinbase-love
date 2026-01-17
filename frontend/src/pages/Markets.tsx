@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import CryptoCard from "@/components/CryptoCard";
-import { Search, TrendingUp, TrendingDown, RefreshCw, ArrowUpDown } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
 import { PriceStreamStatus } from "@/components/PriceStreamStatus";
+import { Link } from "react-router-dom";
 
 interface CryptoData {
   id: string;
@@ -20,6 +20,9 @@ interface CryptoData {
   marketCapRaw: number;
   volume24h: string;
   image?: string;
+  previousPrice?: number;
+  priceDirection?: 'up' | 'down' | 'neutral';
+  flashClass?: string;
 }
 
 const Markets = () => {
@@ -31,6 +34,7 @@ const Markets = () => {
   const [sortBy, setSortBy] = useState<"price" | "change" | "marketCap">("marketCap");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { prices, status } = usePriceWebSocket();
+  const previousPricesRef = useRef<Record<string, number>>({});
 
   const fetchMarketData = useCallback(async (isBackground = false) => {
     try {
@@ -42,27 +46,40 @@ const Markets = () => {
       }
 
       const response = await api.crypto.getAll();
-
-      // Backend returns { cryptocurrencies: [...] }
-      const cryptos = Array.isArray(response?.cryptocurrencies)
-        ? response.cryptocurrencies
-        : [];
+      const cryptos = Array.isArray(response?.cryptocurrencies) ? response.cryptocurrencies : [];
 
       if (cryptos.length === 0) {
         throw new Error('No cryptocurrency data available');
       }
 
-      const transformedData = cryptos.map((crypto: any) => ({
-        id: crypto.id || crypto.symbol?.toLowerCase() || '',
-        symbol: crypto.symbol?.toUpperCase() || crypto.id?.toUpperCase() || '',
-        name: crypto.name || '',
-        price: crypto.price || 0,
-        change24h: crypto.change_24h || 0,
-        marketCap: formatMarketCap(crypto.market_cap || 0),
-        marketCapRaw: crypto.market_cap || 0,
-        volume24h: formatMarketCap(crypto.volume_24h || 0),
-        image: crypto.image || ''
-      }));
+      const transformedData = cryptos.map((crypto: any) => {
+        const id = crypto.id || crypto.symbol?.toLowerCase() || '';
+        const currentPrice = crypto.price || 0;
+        const previousPrice = previousPricesRef.current[id];
+        
+        let priceDirection: 'up' | 'down' | 'neutral' = 'neutral';
+        if (previousPrice !== undefined && currentPrice !== previousPrice) {
+          priceDirection = currentPrice > previousPrice ? 'up' : 'down';
+        }
+        
+        // Store current price for next comparison
+        previousPricesRef.current[id] = currentPrice;
+
+        return {
+          id,
+          symbol: crypto.symbol?.toUpperCase() || crypto.id?.toUpperCase() || '',
+          name: crypto.name || '',
+          price: currentPrice,
+          change24h: crypto.change_24h || 0,
+          marketCap: formatMarketCap(crypto.market_cap || 0),
+          marketCapRaw: crypto.market_cap || 0,
+          volume24h: formatMarketCap(crypto.volume_24h || 0),
+          image: crypto.image || '',
+          previousPrice,
+          priceDirection,
+          flashClass: priceDirection === 'up' ? 'flash-green' : priceDirection === 'down' ? 'flash-red' : ''
+        };
+      });
 
       setMarketData(transformedData);
       setLastUpdated(new Date());
@@ -82,11 +99,11 @@ const Markets = () => {
     fetchMarketData();
   }, [fetchMarketData]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 3 seconds for live fluctuation
   useEffect(() => {
     const interval = setInterval(() => {
       fetchMarketData(true);
-    }, 30000);
+    }, 3000);
     
     return () => clearInterval(interval);
   }, [fetchMarketData]);
@@ -127,6 +144,29 @@ const Markets = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <style>{`
+        @keyframes flash-green {
+          0%, 100% { background-color: transparent; }
+          50% { background-color: rgba(34, 197, 94, 0.15); }
+        }
+        @keyframes flash-red {
+          0%, 100% { background-color: transparent; }
+          50% { background-color: rgba(239, 68, 68, 0.15); }
+        }
+        @keyframes price-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        .flash-green {
+          animation: flash-green 0.6s ease-in-out;
+        }
+        .flash-red {
+          animation: flash-red 0.6s ease-in-out;
+        }
+        .price-pulse {
+          animation: price-pulse 0.3s ease-in-out;
+        }
+      `}</style>
       <Header />
       <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
         <div className="container mx-auto px-4 sm:px-6">
@@ -142,6 +182,15 @@ const Markets = () => {
                 {/* Price Stream Status */}
                 <PriceStreamStatus status={status} />
 
+                {/* Live indicator */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span className="text-green-400 font-mono text-xs">LIVE</span>
+                </div>
+
                 {/* Refresh Button */}
                 <button
                   onClick={() => fetchMarketData(true)}
@@ -154,8 +203,13 @@ const Markets = () => {
               </div>
             </div>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
-              Track the latest prices, charts, and market data for 200+ cryptocurrencies in real-time.
+              Track the latest prices and market data for cryptocurrencies in real-time. Prices update every 3 seconds.
             </p>
+            {lastUpdated && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </p>
+            )}
           </div>
 
           {/* Search and Filter */}
@@ -171,7 +225,7 @@ const Markets = () => {
               />
             </div>
             
-            {/* Sort Buttons - Scrollable on mobile */}
+            {/* Sort Buttons */}
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
               <Button
                 variant={sortBy === "marketCap" ? "default" : "outline"}
@@ -248,100 +302,87 @@ const Markets = () => {
                 </div>
               ))}
             </div>
-          ) : sortedData.length > 0 ? (
-            <div className="space-y-3 sm:space-y-4">
-              {sortedData.map((crypto, index) => {
-                const wsPrice = prices[crypto.symbol.toLowerCase()];
-                const displayPrice = wsPrice ? parseFloat(wsPrice) : crypto.price;
-                return (
-                <div
+          ) : sortedData.length === 0 ? (
+            <div className="text-center py-12 sm:py-16">
+              <div className="text-5xl sm:text-6xl mb-4">🔍</div>
+              <h3 className="text-lg sm:text-xl font-semibold mb-2">No cryptocurrencies found</h3>
+              <p className="text-muted-foreground">Try adjusting your search query</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sortedData.map((crypto) => (
+                <Link
                   key={crypto.id}
-                  className="glass-card p-4 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/5 cursor-pointer"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                  data-testid={`market-card-${crypto.symbol}`}
+                  to={`/trade?coin=${crypto.id}`}
+                  className={cn(
+                    "glass-card p-4 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all hover:scale-[1.01] cursor-pointer block",
+                    crypto.flashClass
+                  )}
+                  data-testid={`crypto-card-${crypto.symbol.toLowerCase()}`}
                 >
                   <div className="flex items-center gap-3 sm:gap-4">
-                    {/* Rank */}
-                    <div className="hidden sm:flex h-8 w-8 items-center justify-center text-sm text-muted-foreground font-mono">
-                      #{index + 1}
-                    </div>
-                    
-                    {/* Coin Icon & Name */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {crypto.image ? (
-                        <img 
-                          src={crypto.image} 
-                          alt={crypto.name}
-                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gold-500/20 flex items-center justify-center text-gold-400 font-bold flex-shrink-0">
-                          {crypto.symbol.charAt(0)}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <div className="font-semibold text-base sm:text-lg truncate">{crypto.name}</div>
-                        <div className="text-sm text-muted-foreground">{crypto.symbol}</div>
-                      </div>
-                    </div>
-                    
-                    {/* Price & Change */}
-                    <div className="text-right flex-shrink-0">
-                      <div className={cn(
-                        "font-mono font-semibold text-base sm:text-lg transition-colors duration-300",
-                        wsPrice && "text-gold-400"
-                      )}>
-                        {formatPrice(displayPrice)}
-                      </div>
-                      <div className={cn(
-                        "flex items-center justify-end gap-1 text-sm sm:text-base font-medium",
-                        crypto.change24h >= 0 
-                          ? "text-emerald-500" 
-                          : "text-red-500"
-                      )}>
-                        {crypto.change24h >= 0 ? (
-                          <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        ) : (
-                          <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        )}
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded text-xs sm:text-sm",
-                          crypto.change24h >= 0 
-                            ? "bg-emerald-500/10" 
-                            : "bg-red-500/10"
-                        )}>
-                          {crypto.change24h >= 0 ? '+' : ''}{crypto.change24h.toFixed(2)}%
+                    {/* Icon/Logo */}
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-gold-400/20 to-gold-600/20 flex items-center justify-center border border-gold-500/20">
+                        <span className="text-base sm:text-lg font-bold text-gold-400">
+                          {crypto.symbol.substring(0, 2)}
                         </span>
                       </div>
                     </div>
-                    
-                    {/* Market Cap & Volume - Hidden on small screens */}
-                    <div className="hidden md:block text-right min-w-[100px]">
-                      <div className="text-sm text-muted-foreground">Market Cap</div>
-                      <div className="font-mono text-sm">{crypto.marketCap}</div>
+
+                    {/* Name & Symbol */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-base sm:text-lg truncate">{crypto.name}</h3>
+                        {crypto.priceDirection !== 'neutral' && (
+                          <span className="price-pulse">
+                            {crypto.priceDirection === 'up' ? (
+                              <ArrowUp className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4 text-red-500" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-muted-foreground font-mono">{crypto.symbol}</p>
                     </div>
 
-                    <div className="hidden lg:block text-right min-w-[100px]">
-                      <div className="text-sm text-muted-foreground">24h Volume</div>
-                      <div className="font-mono text-sm">{crypto.volume24h}</div>
+                    {/* Price & Change */}
+                    <div className="text-right">
+                      <p className={cn(
+                        "text-base sm:text-xl font-bold font-mono transition-all",
+                        crypto.priceDirection === 'up' && "text-green-500",
+                        crypto.priceDirection === 'down' && "text-red-500"
+                      )}>
+                        {formatPrice(crypto.price)}
+                      </p>
+                      <p className={cn(
+                        "text-xs sm:text-sm font-semibold flex items-center justify-end gap-1",
+                        crypto.change24h >= 0 ? "text-green-500" : "text-red-500"
+                      )}>
+                        {crypto.change24h >= 0 ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" />
+                        )}
+                        {crypto.change24h >= 0 ? "+" : ""}{crypto.change24h.toFixed(2)}%
+                      </p>
                     </div>
                   </div>
-                </div>
-              );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 sm:py-16">
-              <Search className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground text-base sm:text-lg">
-                No cryptocurrencies found matching "{searchQuery}"
-              </p>
-              <button 
-                onClick={() => setSearchQuery("")}
-                className="mt-4 text-gold-400 hover:text-gold-300 hover:underline min-h-[44px]"
-              >
-                Clear search
-              </button>
+
+                  {/* Additional Info */}
+                  <div className="mt-3 pt-3 border-t border-gold-500/10 grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Market Cap</p>
+                      <p className="font-semibold font-mono">{crypto.marketCap}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-muted-foreground">24h Volume</p>
+                      <p className="font-semibold font-mono">{crypto.volume24h}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>
