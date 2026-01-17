@@ -537,8 +537,7 @@ async def resend_verification(
 async def forgot_password(
     data: ForgotPasswordRequest, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Request password reset email."""
     # Temporarily disable rate limiting to fix the issue
