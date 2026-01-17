@@ -594,6 +594,41 @@ export const api = {
       apiClient.get(`/api/transfers/p2p/history?skip=${skip}&limit=${limit}`),
   },
 
+  // Notifications
+  notifications: {
+    getAll: (skip: number = 0, limit: number = 50) =>
+      apiClient.get(`/api/notifications?skip=${skip}&limit=${limit}`),
+    create: (data: {
+      title: string;
+      message: string;
+      type?: string;
+      link?: string;
+    }) =>
+      apiClient.post('/api/notifications', data),
+    markAsRead: (notificationId: string) =>
+      apiClient.patch(`/api/notifications/${notificationId}/read`),
+    markAllAsRead: () =>
+      apiClient.post('/api/notifications/mark-all-read'),
+    delete: (notificationId: string) =>
+      apiClient.delete(`/api/notifications/${notificationId}`),
+  },
+
+  // Prices (real-time price data)
+  prices: {
+    getAll: () =>
+      apiClient.get('/api/prices'),
+    get: (symbol: string) =>
+      apiClient.get(`/api/prices/${symbol}`),
+    getHealth: () =>
+      apiClient.get('/api/prices/status/health'),
+    getBulk: (symbols: string) =>
+      apiClient.get(`/api/prices/bulk/${symbols}`),
+    getMetrics: () =>
+      apiClient.get('/api/prices/metrics'),
+    resetMetrics: () =>
+      apiClient.post('/api/prices/metrics/reset'),
+  },
+
   // Audit Logs (alias for admin.getAuditLogs for backward compatibility)
   auditLogs: {
     getLogs: (limit: number, offset: number, filter?: string) => {
