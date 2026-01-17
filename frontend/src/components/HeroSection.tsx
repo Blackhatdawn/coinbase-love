@@ -47,69 +47,66 @@ const HeroSection = () => {
             </span>
           </p>
 
-          {/* CTAs - Gold themed with mobile-first sizing */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-12 sm:mb-16 px-4">
+          {/* CTAs - Enhanced with better styling and animations */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 px-4">
             <Button 
               size="lg" 
-              className="relative overflow-hidden bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold shadow-lg shadow-gold-500/25 hover:shadow-gold-500/40 transition-all duration-300 hover:scale-105 group h-12 sm:h-14 px-6 sm:px-8 text-base min-h-[48px]"
+              className="relative overflow-hidden bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 hover:from-gold-300 hover:via-gold-400 hover:to-gold-500 text-black font-bold shadow-xl shadow-gold-500/30 hover:shadow-gold-500/50 transition-all duration-300 hover:scale-105 group h-14 sm:h-16 px-8 sm:px-10 text-base sm:text-lg"
               asChild 
               data-testid="hero-cta-primary"
             >
               <Link to={user ? "/dashboard" : "/auth"}>
-                <span className="relative z-10 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-                  {user ? "Go to Dashboard" : "Get Started"}
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
+                <span className="relative z-10 flex items-center gap-2.5">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-12 transition-transform" />
+                  <span className="font-mono tracking-wide">{user ? "GO TO DASHBOARD" : "GET STARTED FREE"}</span>
+                  <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:translate-x-2" />
                 </span>
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700" />
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700" />
               </Link>
             </Button>
             <Button 
               variant="outline" 
               size="lg"
-              className="border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 transition-all duration-300 h-12 sm:h-14 px-6 sm:px-8 text-base min-h-[48px]"
+              className="border-2 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 transition-all duration-300 backdrop-blur-sm h-14 sm:h-16 px-8 sm:px-10 text-base sm:text-lg font-semibold hover:scale-105"
               asChild 
               data-testid="hero-cta-secondary"
             >
               <Link to="/services">
-                Explore Services
+                <span className="font-mono tracking-wide">EXPLORE SERVICES</span>
               </Link>
             </Button>
           </div>
 
-          {/* Trust Indicators - Gold accents with responsive grid and improved readability */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto px-4">
-            <div className="glass-card p-5 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.1s' }} data-testid="trust-indicator-1">
-              <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
-                <div className="w-14 h-14 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Shield className="h-7 w-7 sm:h-7 sm:w-7 text-gold-400" />
+          {/* Trust Indicators - Enhanced cards with better visual hierarchy */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto px-4">
+            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.1s' }} data-testid="trust-indicator-1">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Shield className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="text-left sm:text-center">
-                  <div className="font-display text-2xl sm:text-2xl font-bold text-gold-400">Zero Breaches</div>
-                  <div className="text-[15px] sm:text-sm text-foreground/70 mt-1">Since 2019</div>
-                </div>
+                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">ZERO</div>
+                <div className="text-sm sm:text-base text-foreground/80 font-medium">Security Breaches</div>
+                <div className="text-xs text-muted-foreground mt-1 font-mono">Since 2019</div>
               </div>
             </div>
-            <div className="glass-card p-5 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.2s' }} data-testid="trust-indicator-2">
-              <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
-                <div className="w-14 h-14 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Vault className="h-7 w-7 sm:h-7 sm:w-7 text-gold-400" />
+            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.2s' }} data-testid="trust-indicator-2">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Vault className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="text-left sm:text-center">
-                  <div className="font-display text-2xl sm:text-2xl font-bold text-gold-400">$10.2B</div>
-                  <div className="text-[15px] sm:text-sm text-foreground/70 mt-1">Assets Under Custody</div>
-                </div>
+                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">$10.2B+</div>
+                <div className="text-sm sm:text-base text-foreground/80 font-medium">Assets Under Custody</div>
+                <div className="text-xs text-muted-foreground mt-1 font-mono">Globally Secured</div>
               </div>
             </div>
-            <div className="glass-card p-5 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.3s' }} data-testid="trust-indicator-3">
-              <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
-                <div className="w-14 h-14 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Lock className="h-7 w-7 sm:h-7 sm:w-7 text-gold-400" />
+            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.3s' }} data-testid="trust-indicator-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Lock className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="text-left sm:text-center">
-                  <div className="font-display text-2xl sm:text-2xl font-bold text-gold-400">5 Jurisdictions</div>
-                  <div className="text-[15px] sm:text-sm text-foreground/70 mt-1">Multi-Location Storage</div>
-                </div>
+                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">5</div>
+                <div className="text-sm sm:text-base text-foreground/80 font-medium">Jurisdictions</div>
+                <div className="text-xs text-muted-foreground mt-1 font-mono">Multi-Location Storage</div>
               </div>
             </div>
           </div>
