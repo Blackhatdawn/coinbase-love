@@ -18,7 +18,8 @@ import {
   X,
   Home,
   LineChart,
-  RefreshCw
+  RefreshCw,
+  Users
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/apiClient";
