@@ -17,33 +17,33 @@ const testimonials: Testimonial[] = [
   {
     id: 1,
     name: "Michael Chen",
-    role: "Institutional Investor",
-    avatar: "MC",
-    content: "CryptoVault's cold storage solution gives us the security we need for our fund. Their multi-sig approach is exactly what institutional investors require.",
+    role: "Director of Digital Assets",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+    content: "Migrated $50M from a competitor to CryptoVault. The multi-jurisdiction storage and real-time proof of reserves gave our board the confidence they needed. Setup took 2 hours, not 2 weeks.",
     rating: 5
   },
   {
     id: 2,
     name: "Sarah Williams",
-    role: "Day Trader",
-    avatar: "SW",
-    content: "The trading interface is incredibly fast and responsive. I've tried many platforms, but CryptoVault's execution speed is unmatched.",
+    role: "CTO, Blockchain Capital",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+    content: "We evaluated 8 custody providers. CryptoVault's transparent fee structure and SOC 2 compliance made them stand out. Their support team actually understands institutional requirements.",
     rating: 5
   },
   {
     id: 3,
     name: "James Rodriguez",
-    role: "Crypto Entrepreneur",
-    avatar: "JR",
-    content: "Moving our company treasury to CryptoVault was the best decision. The customer support is available 24/7 and truly understands crypto.",
+    role: "CFO, Digital Ventures",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=James",
+    content: "The dedicated account manager and quarterly security audits justify the premium. We sleep better knowing our treasury is protected by multi-sig and cold storage across 5 jurisdictions.",
     rating: 5
   },
   {
     id: 4,
     name: "Emily Zhang",
-    role: "Portfolio Manager",
-    avatar: "EZ",
-    content: "The real-time portfolio tracking and detailed analytics help me make informed decisions quickly. Absolutely professional platform.",
+    role: "Head of Risk, Quantum Capital",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
+    content: "Their insurance coverage through Lloyd's of London and zero security breaches since launch were decisive factors. Real-time reporting integrates perfectly with our risk management systems.",
     rating: 5
   }
 ];
