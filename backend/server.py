@@ -432,6 +432,23 @@ app.add_middleware(
 )
 
 # ============================================
+# COMPRESSION MIDDLEWARE
+# ============================================
+
+# Add Brotli compression for better compression ratios
+try:
+    from fastapi.middleware.gzip import GZipMiddleware
+    import brotli
+    
+    # Note: Brotli is preferred over GZip for better compression
+    # Most modern browsers support Brotli (br encoding)
+    # GZip is kept as fallback
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    logger.info("✅ GZip compression middleware enabled (min size: 1000 bytes)")
+except ImportError:
+    logger.warning("⚠️ Compression middleware not available")
+
+# ============================================
 # CUSTOM MIDDLEWARE
 # ============================================
 
