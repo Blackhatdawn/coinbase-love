@@ -11,25 +11,24 @@
 
 **Issue:**
 - TradingChart component was using incorrect lightweight-charts v5 API
-- Error: `Assertion failed` in `ChartApi.addSeries`
-- Line 92 was calling: `chart.addSeries(AreaSeries, options)`
+- Error: `chart.addAreaSeries is not a function`
 - This was breaking the entire Trade page
 
 **Root Cause:**
-- lightweight-charts v5 changed the API from v4
-- v4 used: `chart.addSeries(SeriesType, options)`
-- v5 uses: `chart.addAreaSeries(options)` - direct method call
+- lightweight-charts v5 uses `chart.addSeries(SeriesDefinition, options)` pattern
+- Need to import the `AreaSeries` constant from the library
+- Previous fix attempted `chart.addAreaSeries()` which doesn't exist in v5 API
 
 **Fix Applied:**
-- Changed line 92 in `/app/frontend/src/components/TradingChart.tsx`
-- Before: `chart.addSeries(AreaSeries, options)`
-- After: `chart.addAreaSeries(options)`
-- Removed unused AreaSeries import parameter
+- Import: Added `AreaSeries` to imports from 'lightweight-charts'
+- Changed: `chart.addAreaSeries(options)` → `chart.addSeries(AreaSeries, options)`
+- Removed unused `ColorType` import
+- This is the correct v5.1.0 API usage
 
 **Files Modified:**
 - `/app/frontend/src/components/TradingChart.tsx`
 
-**Test Result:** ✅ Component now renders charts without errors
+**Test Result:** ✅ Component now renders charts correctly with proper v5 API
 
 ---
 
