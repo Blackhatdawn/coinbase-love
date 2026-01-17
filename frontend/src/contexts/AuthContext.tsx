@@ -90,8 +90,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      // HttpOnly cookies are set by the server, no need to store here
+      // Store user data in localStorage as backup for cross-site cookie issues
+      localStorage.setItem('cv_user', JSON.stringify(userData));
+      
       setUser(userData);
+      setIsLoading(false); // Ensure loading is false after successful login
       
       // Set user context in Sentry
       setSentryUser({
