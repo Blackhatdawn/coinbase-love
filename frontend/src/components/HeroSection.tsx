@@ -18,27 +18,33 @@ const HeroSection = () => {
 
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 sm:px-4 py-2 sm:py-2 rounded-full bg-gold-500/10 border border-gold-500/20 mb-6 sm:mb-8 backdrop-blur-sm touch-target-sm">
-            <span className="relative flex h-2 w-2">
+          {/* Badge with improved design */}
+          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-gold-500/10 via-gold-500/5 to-gold-500/10 border border-gold-500/30 mb-8 backdrop-blur-sm hover:border-gold-400/50 transition-all duration-300 group cursor-default">
+            <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold-500 shadow-[0_0_10px_rgba(251,191,36,0.5)]"></span>
             </span>
-            <span className="text-sm sm:text-sm text-gold-400 font-medium">Trusted by 250+ Institutions Globally</span>
+            <span className="text-sm font-semibold text-gold-400 font-mono tracking-wide">
+              TRUSTED BY 250+ INSTITUTIONS GLOBALLY
+            </span>
           </div>
 
-          {/* Headline - Gold gradient with mobile-first sizing */}
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2" data-testid="hero-headline">
-            The Custody Solution
-            <span className="block bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 bg-clip-text text-transparent">
-              Institutions Trust With $10B+
+          {/* Headline - Enhanced with better hierarchy */}
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-6 leading-[1.1] tracking-tight" data-testid="hero-headline">
+            <span className="block text-foreground mb-2">
+              Institutional-Grade
+            </span>
+            <span className="block bg-gradient-to-r from-gold-300 via-gold-400 to-gold-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(251,191,36,0.3)]">
+              Digital Asset Custody
             </span>
           </h1>
 
-          {/* Subheadline - Improved readability */}
-          <p className="text-base sm:text-lg md:text-xl text-foreground/80 mb-8 sm:mb-10 max-w-2xl mx-auto px-4 leading-relaxed" data-testid="hero-subheadline">
-            Multi-jurisdiction cold storage, real-time proof of reserves, and zero security breaches since 2019. 
-            Built for family offices, hedge funds, and enterprises who demand more than promises.
+          {/* Subheadline - More impactful */}
+          <p className="text-lg sm:text-xl md:text-2xl text-foreground/90 mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-light" data-testid="hero-subheadline">
+            Multi-jurisdiction cold storage • Real-time proof of reserves • Zero breaches since 2019
+            <span className="block mt-3 text-gold-400/80 text-base sm:text-lg font-medium">
+              $10.2B+ in assets secured for family offices, hedge funds, and enterprises worldwide
+            </span>
           </p>
 
           {/* CTAs - Gold themed with mobile-first sizing */}
