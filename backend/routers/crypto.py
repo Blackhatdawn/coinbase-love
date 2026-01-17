@@ -1,9 +1,9 @@
-"""Cryptocurrency market data endpoints."""
+"""Cryptocurrency market data endpoints with multi-source support."""
 
 from fastapi import APIRouter, HTTPException
 import logging
 
-from coingecko_service import coingecko_service
+from multi_source_crypto_service import multi_source_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/crypto", tags=["cryptocurrency"])
