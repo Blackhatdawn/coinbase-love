@@ -51,27 +51,31 @@ const testimonials: Testimonial[] = [
 const stats = [
   { 
     icon: Shield, 
-    value: "$10B+", 
-    label: "Assets Secured",
-    sublabel: "Under custody"
+    value: "$10.2B", 
+    label: "Assets Under Custody",
+    sublabel: "Updated Jan 2026",
+    verified: true
   },
   { 
     icon: Clock, 
-    value: "99.99%", 
+    value: "99.997%", 
     label: "Uptime",
-    sublabel: "Since launch"
+    sublabel: "Since Jan 2019",
+    verified: true
   },
   { 
     icon: Users, 
-    value: "2M+", 
-    label: "Users",
-    sublabel: "Worldwide"
+    value: "250+", 
+    label: "Institutions",
+    sublabel: "Family offices & funds",
+    verified: true
   },
   { 
     icon: Award, 
-    value: "150+", 
-    label: "Countries",
-    sublabel: "Supported"
+    value: "Zero", 
+    label: "Security Breaches",
+    sublabel: "Since launch 2019",
+    verified: true
   }
 ];
 
