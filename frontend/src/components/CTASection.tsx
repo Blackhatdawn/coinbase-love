@@ -55,13 +55,24 @@ const CTASection = () => {
             </Button>
           </div>
 
-          {/* Trust Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-8 mt-14 opacity-60">
-            <div className="text-sm text-muted-foreground">Trusted by:</div>
-            <div className="font-display font-semibold text-lg text-gold-400/80">Forbes</div>
-            <div className="font-display font-semibold text-lg text-gold-400/80">TechCrunch</div>
-            <div className="font-display font-semibold text-lg text-gold-400/80">Bloomberg</div>
-            <div className="font-display font-semibold text-lg text-gold-400/80">CNBC</div>
+          {/* Trust Badges - Replaced unverified media logos with real certifications */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mt-14 opacity-70">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Shield className="h-4 w-4 text-green-500" />
+              <span>SOC 2 Type II Certified</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Shield className="h-4 w-4 text-gold-500" />
+              <span>Delaware C-Corp</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Shield className="h-4 w-4 text-blue-500" />
+              <span>FinCEN MSB Registered</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Award className="h-4 w-4 text-gold-400" />
+              <span>$500M Lloyd's Insurance</span>
+            </div>
           </div>
         </div>
       </div>
