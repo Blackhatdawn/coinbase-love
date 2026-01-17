@@ -1,388 +1,334 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/lib/apiClient";
-import { toast } from "sonner";
-import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, Wallet, Shield } from "lucide-react";
-import { cn } from "@/lib/utils";
+/**
+ * Wallet Withdraw Page - Dashboard Version
+ * Premium Bybit-style withdrawal interface
+ */
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  ArrowLeft, 
+  Loader2, 
+  Shield, 
+  AlertTriangle,
+  CheckCircle2,
+  Wallet,
+  Send,
+  Info
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { api } from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
+import DashboardCard from '@/components/dashboard/DashboardCard';
 
-interface WithdrawalHistory {
-  id: string;
-  amount: number;
-  currency: string;
-  address: string;
-  status: string;
-  fee: number;
-  totalAmount: number;
-  transactionHash?: string;
-  createdAt: string;
-  processedAt?: string;
-  completedAt?: string;
-}
-
-interface WalletBalance {
-  balances: Record<string, number>;
-  updated_at: string;
-}
+const CRYPTO_OPTIONS = [
+  { value: 'btc', label: 'Bitcoin', symbol: 'BTC', icon: '₿', fee: 0.0001 },
+  { value: 'eth', label: 'Ethereum', symbol: 'ETH', icon: 'Ξ', fee: 0.005 },
+  { value: 'usdt', label: 'Tether', symbol: 'USDT', icon: '₮', fee: 1 },
+  { value: 'usdc', label: 'USD Coin', symbol: 'USDC', icon: '$', fee: 1 },
+];
 
 const WalletWithdraw = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [address, setAddress] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalHistory[]>([]);
-  const [wallet, setWallet] = useState<WalletBalance | null>(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  
-  // Fee calculation
-  const withdrawalFee = amount ? Math.max(parseFloat(amount) * 0.01, 1) : 0;
-  const totalAmount = amount ? parseFloat(amount) + withdrawalFee : 0;
-  const availableBalance = wallet?.balances[currency] || 0;
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('btc');
+  const [address, setAddress] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    
-    fetchWallet();
-    fetchWithdrawalHistory();
-  }, [user, navigate]);
+  const selectedCrypto = CRYPTO_OPTIONS.find(c => c.value === currency);
 
-  const fetchWallet = async () => {
-    try {
-      const response = await api.wallet.getBalance();
-      setWallet(response.wallet);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load wallet");
-    }
-  };
+  // Fetch wallet balance
+  const { data: balanceData } = useQuery({
+    queryKey: ['walletBalance'],
+    queryFn: () => api.wallet.getBalance(),
+  });
 
-  const fetchWithdrawalHistory = async () => {
-    try {
-      setIsLoadingHistory(true);
-      const response = await api.wallet.getWithdrawals();
-      setWithdrawalHistory(response.withdrawals || []);
-    } catch (error: any) {
-      console.error("Failed to load withdrawal history:", error);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  const handleWithdrawal = async (e: React.FormEvent) => {
+  const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!amount || parseFloat(amount) <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-    
-    if (parseFloat(amount) < 10) {
-      toast.error("Minimum withdrawal is $10");
-      return;
-    }
-    
-    if (parseFloat(amount) > 10000) {
-      toast.error("Maximum withdrawal is $10,000 per transaction");
-      return;
-    }
-    
-    if (!address || address.trim().length < 10) {
-      toast.error("Please enter a valid withdrawal address");
-      return;
-    }
-    
-    if (totalAmount > availableBalance) {
-      toast.error(`Insufficient balance. Available: ${availableBalance.toFixed(2)} ${currency}`);
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast.error('Please enter a valid amount');
       return;
     }
 
-    setIsSubmitting(true);
+    if (!address || address.length < 20) {
+      toast.error('Please enter a valid wallet address');
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      const response = await api.wallet.withdraw({
-        amount: parseFloat(amount),
-        currency,
-        address: address.trim()
+      await api.wallet.withdraw({
+        amount: numAmount,
+        currency: currency,
+        address: address,
       });
-
-      toast.success(response.message || "Withdrawal request submitted successfully");
       
-      // Reset form
-      setAmount("");
-      setAddress("");
-      
-      // Refresh data
-      await Promise.all([fetchWallet(), fetchWithdrawalHistory()]);
-      
+      setSuccess(true);
+      toast.success('Withdrawal request submitted!');
     } catch (error: any) {
-      toast.error(error.message || "Failed to submit withdrawal request");
+      toast.error(error.message || 'Failed to process withdrawal');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
-      case "processing":
-        return <Clock className="h-5 w-5 text-cyan-500 animate-pulse" />;
-      case "pending":
-        return <Clock className="h-5 w-5 text-gold-400" />;
-      case "cancelled":
-      case "failed":
-        return <AlertTriangle className="h-5 w-5 text-red-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-muted-foreground" />;
-    }
-  };
+  // Success state
+  if (success) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/dashboard"
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-400" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-display font-bold text-white">Withdrawal Submitted</h1>
+            <p className="text-gray-400 text-sm">Your request is being processed</p>
+          </div>
+        </div>
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "text-emerald-500";
-      case "processing":
-        return "text-cyan-500";
-      case "pending":
-        return "text-gold-400";
-      case "cancelled":
-      case "failed":
-        return "text-red-500";
-      default:
-        return "text-muted-foreground";
-    }
-  };
+        <div className="max-w-lg mx-auto">
+          <DashboardCard glowColor="emerald">
+            <div className="text-center space-y-6 py-6">
+              <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-semibold text-white">Request Submitted</h2>
+                <p className="text-gray-400 mt-2">Your withdrawal is being processed and will be sent shortly.</p>
+              </div>
+
+              <div className="p-4 bg-white/5 rounded-xl text-left space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Amount</span>
+                  <span className="text-white font-mono">{amount} {selectedCrypto?.symbol}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Network Fee</span>
+                  <span className="text-white font-mono">{selectedCrypto?.fee} {selectedCrypto?.symbol}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">To Address</span>
+                  <span className="text-gold-400 font-mono text-xs truncate max-w-[200px]">{address}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-white/10 hover:bg-white/5"
+                  onClick={() => {
+                    setSuccess(false);
+                    setAmount('');
+                    setAddress('');
+                  }}
+                >
+                  New Withdrawal
+                </Button>
+                <Link to="/transactions" className="flex-1">
+                  <Button className="w-full bg-gold-500 hover:bg-gold-400 text-black">
+                    View Transactions
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </DashboardCard>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/dashboard")}
-              className="min-h-[44px]"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <Link
+          to="/dashboard"
+          className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-400" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-display font-bold text-white">Withdraw Funds</h1>
+          <p className="text-gray-400 text-sm">Send cryptocurrency to external wallet</p>
         </div>
-      </header>
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Page Title */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold mb-2">Withdraw Funds</h1>
-          <p className="text-muted-foreground">
-            Withdraw your funds to an external wallet or bank account
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Withdrawal Form */}
-          <div className="lg:col-span-2">
-            <Card className="glass-card border-gold-500/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-gold-400" />
-                  New Withdrawal
-                </CardTitle>
-                <CardDescription>
-                  Submit a withdrawal request. Processing time: 1-3 business days
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleWithdrawal} className="space-y-6">
-                  {/* Currency Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select value={currency} onValueChange={setCurrency}>
-                      <SelectTrigger id="currency" className="h-12">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="BTC">BTC</SelectItem>
-                        <SelectItem value="ETH">ETH</SelectItem>
-                        <SelectItem value="USDT">USDT</SelectItem>
-                        <SelectItem value="USDC">USDC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Available: {availableBalance.toFixed(2)} {currency}
-                    </p>
-                  </div>
-
-                  {/* Amount Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      min="10"
-                      max="10000"
-                      placeholder="Enter amount"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="h-12 text-lg"
-                      required
-                    />
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Minimum: $10</span>
-                      <span>Maximum: $10,000</span>
-                    </div>
-                  </div>
-
-                  {/* Address Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Withdrawal Address</Label>
-                    <Input
-                      id="address"
-                      type="text"
-                      placeholder={currency === "USD" ? "Bank account or routing number" : "Wallet address"}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="h-12 font-mono text-sm"
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Double-check the address. Withdrawals cannot be reversed.
-                    </p>
-                  </div>
-
-                  {/* Fee Summary */}
-                  {amount && parseFloat(amount) > 0 && (
-                    <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Withdrawal Amount:</span>
-                        <span className="font-semibold">{parseFloat(amount).toFixed(2)} {currency}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Network Fee (1%):</span>
-                        <span>{withdrawalFee.toFixed(2)} {currency}</span>
-                      </div>
-                      <div className="border-t border-border/50 pt-2 flex justify-between font-semibold">
-                        <span>Total Deduction:</span>
-                        <span className={cn(
-                          "text-lg",
-                          totalAmount > availableBalance ? "text-red-500" : "text-gold-400"
-                        )}>
-                          {totalAmount.toFixed(2)} {currency}
-                        </span>
-                      </div>
-                      {totalAmount > availableBalance && (
-                        <div className="flex items-center gap-2 text-sm text-red-500 pt-2">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span>Insufficient balance</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Security Notice */}
-                  <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-4">
-                    <div className="flex items-start gap-3">
-                      <Shield className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-semibold text-cyan-400 mb-1">Security Notice</p>
-                        <ul className="space-y-1 text-cyan-300/80">
-                          <li>• Withdrawals are reviewed for security</li>
-                          <li>• You will receive email confirmation</li>
-                          <li>• Processing takes 1-3 business days</li>
-                          <li>• Contact support for urgent requests</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold text-lg"
-                    disabled={isSubmitting || !amount || !address || totalAmount > availableBalance}
-                  >
-                    {isSubmitting ? "Processing..." : "Submit Withdrawal Request"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Withdrawal History */}
-          <div>
-            <Card className="glass-card border-gold-500/10">
-              <CardHeader>
-                <CardTitle className="text-lg">Recent Withdrawals</CardTitle>
-                <CardDescription>Your withdrawal history</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingHistory ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse space-y-2">
-                        <div className="h-4 bg-gold-500/10 rounded w-3/4" />
-                        <div className="h-3 bg-gold-500/10 rounded w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                ) : withdrawalHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {withdrawalHistory.slice(0, 5).map((withdrawal) => (
-                      <div
-                        key={withdrawal.id}
-                        className="p-3 rounded-lg border border-border/50 hover:bg-gold-500/5 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(withdrawal.status)}
-                            <span className={cn("font-semibold text-sm", getStatusColor(withdrawal.status))}>
-                              {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
-                            </span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Withdraw Form */}
+        <div className="lg:col-span-2">
+          <DashboardCard>
+            <form onSubmit={handleWithdraw} className="space-y-6">
+              {/* Currency Select */}
+              <div className="space-y-3">
+                <Label className="text-gray-300">Select Asset</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger className="h-14 bg-white/5 border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a2e] border-white/10">
+                    {CRYPTO_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{option.icon}</span>
+                          <div>
+                            <span className="font-medium">{option.label}</span>
+                            <span className="text-gray-500 ml-2">{option.symbol}</span>
                           </div>
-                          <span className="font-semibold text-sm">
-                            {withdrawal.amount} {withdrawal.currency}
-                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground font-mono truncate">
-                          {withdrawal.address}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(withdrawal.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                      </SelectItem>
                     ))}
-                  </div>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Amount Input */}
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <Label className="text-gray-300">Amount</Label>
+                  <span className="text-sm text-gray-500">
+                    Available: <span className="text-gold-400">0.00 {selectedCrypto?.symbol}</span>
+                  </span>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="h-14 text-xl font-mono bg-white/5 border-white/10 focus:border-gold-500/50 pr-20"
+                    step="0.00000001"
+                    required
+                    data-testid="withdraw-amount-input"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+                    {selectedCrypto?.symbol}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="text-sm text-gold-400 hover:text-gold-300"
+                  onClick={() => setAmount('0')}
+                >
+                  Max
+                </button>
+              </div>
+
+              {/* Address Input */}
+              <div className="space-y-3">
+                <Label className="text-gray-300">Withdrawal Address</Label>
+                <Input
+                  type="text"
+                  placeholder={`Enter ${selectedCrypto?.symbol} address`}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="h-14 font-mono bg-white/5 border-white/10 focus:border-gold-500/50"
+                  required
+                  data-testid="withdraw-address-input"
+                />
+              </div>
+
+              {/* Fee Info */}
+              <div className="p-4 bg-white/5 rounded-xl space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Network Fee</span>
+                  <span className="text-white">{selectedCrypto?.fee} {selectedCrypto?.symbol}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">You will receive</span>
+                  <span className="text-white font-semibold">
+                    {amount ? (parseFloat(amount) - (selectedCrypto?.fee || 0)).toFixed(8) : '0.00'} {selectedCrypto?.symbol}
+                  </span>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full h-14 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold text-lg"
+                disabled={isLoading || !amount || !address}
+                data-testid="withdraw-submit-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Wallet className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">No withdrawals yet</p>
-                  </div>
+                  <>
+                    <Send className="h-5 w-5 mr-2" />
+                    Withdraw {selectedCrypto?.symbol}
+                  </>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </Button>
+            </form>
+          </DashboardCard>
         </div>
-      </main>
+
+        {/* Info Sidebar */}
+        <div className="space-y-4">
+          <DashboardCard glowColor="gold">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-gold-500/10 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-gold-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">Important</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Double-check the withdrawal address. Transactions cannot be reversed once confirmed.
+                </p>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard>
+            <div className="space-y-4">
+              <h3 className="font-semibold text-white">Withdrawal Limits</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Min withdrawal</span>
+                  <span className="text-white">0.001 BTC</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Max withdrawal</span>
+                  <span className="text-white">10 BTC / day</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Processing time</span>
+                  <span className="text-white">10-30 mins</span>
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard glowColor="emerald">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <Shield className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">Secure Withdrawals</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  All withdrawals are reviewed for security. Large withdrawals may require additional verification.
+                </p>
+              </div>
+            </div>
+          </DashboardCard>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,376 +1,421 @@
 /**
- * Price Alerts Page
- * Create and manage cryptocurrency price alerts
+ * Price Alerts Page - Dashboard Version
+ * Premium Bybit-style price alert management
  */
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   Bell,
   Plus,
   Trash2,
-  ArrowUp,
-  ArrowDown,
+  TrendingUp,
+  TrendingDown,
+  ArrowLeft,
   Loader2,
-  BellRing,
+  CheckCircle2,
   AlertCircle,
-  CheckCircle2
+  Mail,
+  Smartphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
+import DashboardCard from '@/components/dashboard/DashboardCard';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-interface PriceAlert {
+const CRYPTO_OPTIONS = [
+  { value: 'BTC', label: 'Bitcoin', icon: '₿' },
+  { value: 'ETH', label: 'Ethereum', icon: 'Ξ' },
+  { value: 'SOL', label: 'Solana', icon: 'S' },
+  { value: 'XRP', label: 'Ripple', icon: 'X' },
+  { value: 'DOGE', label: 'Dogecoin', icon: 'D' },
+];
+
+interface Alert {
   id: string;
   symbol: string;
   targetPrice: number;
   condition: 'above' | 'below';
   isActive: boolean;
+  notifyEmail: boolean;
+  notifyPush: boolean;
   createdAt: string;
   triggeredAt?: string;
 }
 
-const CRYPTO_OPTIONS = [
-  { value: 'BTC', label: 'Bitcoin', price: 95000 },
-  { value: 'ETH', label: 'Ethereum', price: 3300 },
-  { value: 'BNB', label: 'BNB', price: 700 },
-  { value: 'SOL', label: 'Solana', price: 145 },
-  { value: 'XRP', label: 'Ripple', price: 2.15 },
-  { value: 'ADA', label: 'Cardano', price: 0.85 },
-  { value: 'DOGE', label: 'Dogecoin', price: 0.32 },
-];
-
 const PriceAlerts = () => {
-  const navigate = useNavigate();
-  
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  
-  // Form state
-  const [symbol, setSymbol] = useState('BTC');
-  const [targetPrice, setTargetPrice] = useState('');
-  const [condition, setCondition] = useState<'above' | 'below'>('above');
-  const [notifyPush, setNotifyPush] = useState(true);
-  const [notifyEmail, setNotifyEmail] = useState(true);
+  const queryClient = useQueryClient();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newAlert, setNewAlert] = useState({
+    symbol: 'BTC',
+    targetPrice: '',
+    condition: 'above' as 'above' | 'below',
+    notifyEmail: true,
+    notifyPush: true,
+  });
 
-  // Fetch alerts on mount
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
+  // Fetch alerts
+  const { data: alertsData, isLoading } = useQuery({
+    queryKey: ['priceAlerts'],
+    queryFn: () => api.alerts.getAll(),
+  });
 
-  const fetchAlerts = async () => {
-    try {
-      const response = await api.alerts.getAll();
-      setAlerts(response.alerts || []);
-    } catch (error) {
-      console.error('Failed to fetch alerts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Create alert mutation
+  const createMutation = useMutation({
+    mutationFn: (data: typeof newAlert) => api.alerts.create({
+      symbol: data.symbol,
+      targetPrice: parseFloat(data.targetPrice),
+      condition: data.condition,
+      notifyEmail: data.notifyEmail,
+      notifyPush: data.notifyPush,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['priceAlerts'] });
+      toast.success('Alert created successfully!');
+      setIsCreateOpen(false);
+      setNewAlert({ symbol: 'BTC', targetPrice: '', condition: 'above', notifyEmail: true, notifyPush: true });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create alert');
+    },
+  });
 
-  const handleCreateAlert = async (e: React.FormEvent) => {
+  // Delete alert mutation
+  const deleteMutation = useMutation({
+    mutationFn: (alertId: string) => api.alerts.delete(alertId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['priceAlerts'] });
+      toast.success('Alert deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete alert');
+    },
+  });
+
+  // Toggle alert mutation
+  const toggleMutation = useMutation({
+    mutationFn: ({ alertId, isActive }: { alertId: string; isActive: boolean }) =>
+      api.alerts.update(alertId, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['priceAlerts'] });
+    },
+  });
+
+  const alerts: Alert[] = alertsData?.alerts || [];
+  const activeAlerts = alerts.filter(a => a.isActive);
+  const triggeredAlerts = alerts.filter(a => a.triggeredAt);
+
+  const handleCreateAlert = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const price = parseFloat(targetPrice);
-    if (isNaN(price) || price <= 0) {
+    if (!newAlert.targetPrice || parseFloat(newAlert.targetPrice) <= 0) {
       toast.error('Please enter a valid price');
       return;
     }
-
-    setIsCreating(true);
-
-    try {
-      const response = await api.alerts.create({
-        symbol,
-        targetPrice: price,
-        condition,
-        notifyPush,
-        notifyEmail,
-      });
-
-      setAlerts(prev => [response.alert, ...prev]);
-      toast.success(`Alert created for ${symbol} ${condition} $${price.toLocaleString()}`);
-      
-      // Reset form
-      setTargetPrice('');
-      setShowCreateForm(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create alert');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleDeleteAlert = async (alertId: string) => {
-    try {
-      await api.alerts.delete(alertId);
-      setAlerts(prev => prev.filter(a => a.id !== alertId));
-      toast.success('Alert deleted');
-    } catch (error) {
-      toast.error('Failed to delete alert');
-    }
-  };
-
-  const handleToggleAlert = async (alertId: string, isActive: boolean) => {
-    try {
-      await api.alerts.update(alertId, { isActive });
-      setAlerts(prev => prev.map(a => 
-        a.id === alertId ? { ...a, isActive } : a
-      ));
-    } catch (error) {
-      toast.error('Failed to update alert');
-    }
-  };
-
-  const getCurrentPrice = (sym: string) => {
-    const crypto = CRYPTO_OPTIONS.find(c => c.value === sym);
-    return crypto?.price || 0;
+    createMutation.mutate(newAlert);
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
-        <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1">
-                Price <span className="text-gradient">Alerts</span>
-              </h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Get notified when crypto reaches your target price
-              </p>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-white flex items-center gap-3">
+            <Bell className="h-7 w-7 text-gold-400" />
+            Price Alerts
+          </h1>
+          <p className="text-gray-400 mt-1">Get notified when prices hit your targets</p>
+        </div>
+
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Alert
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-[#1a1a2e] border-white/10 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white">Create Price Alert</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Get notified when a cryptocurrency reaches your target price.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateAlert} className="space-y-4 mt-4">
+              {/* Asset Select */}
+              <div className="space-y-2">
+                <Label className="text-gray-300">Asset</Label>
+                <Select value={newAlert.symbol} onValueChange={(v) => setNewAlert({ ...newAlert, symbol: v })}>
+                  <SelectTrigger className="bg-white/5 border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a2e] border-white/10">
+                    {CRYPTO_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{option.icon}</span>
+                          <span>{option.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Condition Select */}
+              <div className="space-y-2">
+                <Label className="text-gray-300">Condition</Label>
+                <Select value={newAlert.condition} onValueChange={(v: 'above' | 'below') => setNewAlert({ ...newAlert, condition: v })}>
+                  <SelectTrigger className="bg-white/5 border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a2e] border-white/10">
+                    <SelectItem value="above">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-emerald-400" />
+                        <span>Price goes above</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="below">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-red-400" />
+                        <span>Price goes below</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Target Price */}
+              <div className="space-y-2">
+                <Label className="text-gray-300">Target Price (USD)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={newAlert.targetPrice}
+                    onChange={(e) => setNewAlert({ ...newAlert, targetPrice: e.target.value })}
+                    className="pl-8 bg-white/5 border-white/10"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Notification Options */}
+              <div className="space-y-3 pt-2">
+                <Label className="text-gray-300">Notifications</Label>
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">Email</span>
+                  </div>
+                  <Switch
+                    checked={newAlert.notifyEmail}
+                    onCheckedChange={(v) => setNewAlert({ ...newAlert, notifyEmail: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">Push Notification</span>
+                  </div>
+                  <Switch
+                    checked={newAlert.notifyPush}
+                    onCheckedChange={(v) => setNewAlert({ ...newAlert, notifyPush: v })}
+                  />
+                </div>
+              </div>
+
+              {/* Submit */}
+              <Button
+                type="submit"
+                className="w-full bg-gold-500 hover:bg-gold-400 text-black"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Alert'
+                )}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <DashboardCard>
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gold-500/10 rounded-xl">
+              <Bell className="h-6 w-6 text-gold-400" />
             </div>
-            <Button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              className="bg-gold-500 hover:bg-gold-600 text-black min-h-[44px]"
-            >
+            <div>
+              <p className="text-sm text-gray-400">Total Alerts</p>
+              <p className="text-2xl font-bold text-white">{alerts.length}</p>
+            </div>
+          </div>
+        </DashboardCard>
+
+        <DashboardCard glowColor="emerald">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-500/10 rounded-xl">
+              <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Active</p>
+              <p className="text-2xl font-bold text-white">{activeAlerts.length}</p>
+            </div>
+          </div>
+        </DashboardCard>
+
+        <DashboardCard glowColor="violet">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-violet-500/10 rounded-xl">
+              <AlertCircle className="h-6 w-6 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Triggered</p>
+              <p className="text-2xl font-bold text-white">{triggeredAlerts.length}</p>
+            </div>
+          </div>
+        </DashboardCard>
+      </div>
+
+      {/* Alerts List */}
+      <DashboardCard title="Your Alerts" icon={<Bell className="h-5 w-5" />}>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 bg-white/5 rounded-xl animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-white/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-24 bg-white/10 rounded" />
+                    <div className="h-3 w-32 bg-white/10 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="p-4 bg-white/5 rounded-full w-fit mx-auto mb-4">
+              <Bell className="h-8 w-8 text-gray-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">No alerts yet</h3>
+            <p className="text-gray-400 mb-4">Create your first price alert to get started</p>
+            <Button onClick={() => setIsCreateOpen(true)} className="bg-gold-500 hover:bg-gold-400 text-black">
               <Plus className="h-4 w-4 mr-2" />
               Create Alert
             </Button>
           </div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <AlertItem
+                key={alert.id}
+                alert={alert}
+                onToggle={(isActive) => toggleMutation.mutate({ alertId: alert.id, isActive })}
+                onDelete={() => deleteMutation.mutate(alert.id)}
+                isDeleting={deleteMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </DashboardCard>
+    </div>
+  );
+};
 
-          {/* Create Alert Form */}
-          {showCreateForm && (
-            <Card className="glass-card border-gold-500/10 mb-6 animate-slide-up">
-              <CardHeader>
-                <CardTitle className="text-lg">New Price Alert</CardTitle>
-                <CardDescription>Set up a new price notification</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateAlert} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Cryptocurrency Select */}
-                    <div className="space-y-2">
-                      <Label>Cryptocurrency</Label>
-                      <Select value={symbol} onValueChange={setSymbol}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CRYPTO_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label} ({option.value})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Current: ${getCurrentPrice(symbol).toLocaleString()}
-                      </p>
-                    </div>
+// Alert Item Component
+const AlertItem = ({
+  alert,
+  onToggle,
+  onDelete,
+  isDeleting,
+}: {
+  alert: Alert;
+  onToggle: (isActive: boolean) => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) => {
+  const crypto = CRYPTO_OPTIONS.find(c => c.value === alert.symbol);
 
-                    {/* Target Price */}
-                    <div className="space-y-2">
-                      <Label>Target Price (USD)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={targetPrice}
-                          onChange={(e) => setTargetPrice(e.target.value)}
-                          className="pl-8 h-12"
-                          step="0.01"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Condition */}
-                  <div className="space-y-2">
-                    <Label>Alert When Price Goes</Label>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setCondition('above')}
-                        className={cn(
-                          'flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all',
-                          condition === 'above'
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500'
-                            : 'border-border hover:border-emerald-500/50'
-                        )}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                        Above
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCondition('below')}
-                        className={cn(
-                          'flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all',
-                          condition === 'below'
-                            ? 'border-red-500 bg-red-500/10 text-red-500'
-                            : 'border-border hover:border-red-500/50'
-                        )}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                        Below
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Notification Options */}
-                  <div className="space-y-3">
-                    <Label>Notify Me Via</Label>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex items-center justify-between sm:justify-start gap-3 p-3 bg-muted/50 rounded-lg flex-1">
-                        <div className="flex items-center gap-2">
-                          <BellRing className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Push Notification</span>
-                        </div>
-                        <Switch checked={notifyPush} onCheckedChange={setNotifyPush} />
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-start gap-3 p-3 bg-muted/50 rounded-lg flex-1">
-                        <div className="flex items-center gap-2">
-                          <Bell className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Email</span>
-                        </div>
-                        <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submit */}
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1 min-h-[44px]"
-                      onClick={() => setShowCreateForm(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 bg-gold-500 hover:bg-gold-600 text-black min-h-[44px]"
-                      disabled={isCreating}
-                    >
-                      {isCreating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Create Alert'
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Alerts List */}
-          <div className="space-y-4">
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-gold-400" />
-              </div>
-            ) : alerts.length === 0 ? (
-              <Card className="glass-card border-gold-500/10">
-                <CardContent className="py-12 text-center">
-                  <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">
-                    No price alerts yet. Create one to get started!
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              alerts.map((alert) => (
-                <Card 
-                  key={alert.id} 
-                  className={cn(
-                    'glass-card border-gold-500/10 transition-all',
-                    !alert.isActive && 'opacity-60'
-                  )}
-                >
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        {/* Icon */}
-                        <div className={cn(
-                          'h-10 w-10 sm:h-12 sm:w-12 rounded-lg flex items-center justify-center flex-shrink-0',
-                          alert.condition === 'above' 
-                            ? 'bg-emerald-500/10' 
-                            : 'bg-red-500/10'
-                        )}>
-                          {alert.condition === 'above' ? (
-                            <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
-                          ) : (
-                            <ArrowDown className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
-                          )}
-                        </div>
-                        
-                        {/* Info */}
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm sm:text-base">
-                            {alert.symbol}
-                          </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            {alert.condition === 'above' ? '↑ Above' : '↓ Below'} ${alert.targetPrice.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        {alert.triggeredAt && (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        )}
-                        <Switch
-                          checked={alert.isActive}
-                          onCheckedChange={(checked) => handleToggleAlert(alert.id, checked)}
-                        />
-                        <button
-                          onClick={() => handleDeleteAlert(alert.id)}
-                          className="p-2 text-muted-foreground hover:text-red-500 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        'p-4 rounded-xl border transition-all',
+        alert.isActive
+          ? 'bg-white/5 border-white/10'
+          : 'bg-white/2 border-white/5 opacity-60'
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            'w-10 h-10 rounded-lg flex items-center justify-center text-xl font-bold',
+            alert.condition === 'above' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+          )}>
+            {crypto?.icon || alert.symbol.charAt(0)}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-white">{alert.symbol}</span>
+              <span className={cn(
+                'text-xs px-2 py-0.5 rounded-full',
+                alert.condition === 'above'
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-red-500/10 text-red-400'
+              )}>
+                {alert.condition === 'above' ? '↑' : '↓'} ${alert.targetPrice.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+              {alert.notifyEmail && <Mail className="h-3 w-3" />}
+              {alert.notifyPush && <Smartphone className="h-3 w-3" />}
+              {alert.triggeredAt && (
+                <span className="text-gold-400">Triggered</span>
+              )}
+            </div>
           </div>
         </div>
-      </main>
-      <Footer />
-    </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={alert.isActive}
+            onCheckedChange={onToggle}
+          />
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
