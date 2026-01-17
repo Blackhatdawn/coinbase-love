@@ -38,10 +38,10 @@ const FeaturesSection = () => {
     <section className="py-20 bg-background/50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-14">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-4xl font-bold mb-3">
             Why Choose <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">CryptoVault</span>?
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-foreground/70 text-[15px] sm:text-base max-w-xl mx-auto leading-relaxed">
             Industry-leading platform trusted by millions. Built for beginners and pros alike.
           </p>
         </div>
@@ -53,13 +53,13 @@ const FeaturesSection = () => {
               className="group glass-card p-6 border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 animate-slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="w-12 h-12 rounded-xl bg-gold-500/10 flex items-center justify-center mb-4 group-hover:bg-gold-500/20 group-hover:scale-110 transition-all">
-                <feature.icon className="h-6 w-6 text-gold-400" />
+              <div className="w-14 h-14 rounded-xl bg-gold-500/10 flex items-center justify-center mb-4 group-hover:bg-gold-500/20 group-hover:scale-110 transition-all">
+                <feature.icon className="h-7 w-7 text-gold-400" />
               </div>
               <h3 className="font-display text-xl font-semibold mb-2 group-hover:text-gold-400 transition-colors">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-foreground/70 text-[15px] leading-relaxed">
                 {feature.description}
               </p>
             </div>
