@@ -22,8 +22,9 @@
     --secondary: 222 47% 12%;
     --secondary-foreground: 210 40% 98%;
 
+    /* Enhanced muted colors for better readability - WCAG AA compliant */
     --muted: 222 30% 14%;
-    --muted-foreground: 215 20% 55%;
+    --muted-foreground: 215 20% 65%; /* Increased from 55% to 65% for better contrast */
 
     --accent: 265 89% 60%;
     --accent-foreground: 210 40% 98%;
@@ -52,6 +53,12 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 30% 18%;
     --sidebar-ring: 38 92% 50%;
+
+    /* Mobile-optimized font sizes */
+    --font-size-xs: 0.8125rem;  /* 13px instead of 12px */
+    --font-size-sm: 0.9375rem;  /* 15px instead of 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
   }
 
   .dark {
