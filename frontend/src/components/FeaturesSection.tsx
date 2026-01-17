@@ -39,7 +39,7 @@ const FeaturesSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-14">
           <h2 className="font-display text-3xl sm:text-4xl md:text-4xl font-bold mb-3">
-            Why Choose <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">CryptoVault</span>?
+            Why Choose <span className="text-gold-400">CryptoVault</span>?
           </h2>
           <p className="text-foreground/70 text-[15px] sm:text-base max-w-xl mx-auto leading-relaxed">
             Industry-leading platform trusted by millions. Built for beginners and pros alike.
