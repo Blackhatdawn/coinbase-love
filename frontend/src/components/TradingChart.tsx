@@ -90,8 +90,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       height: 400
     });
 
-    // FIXED: v5 API uses chart.addAreaSeries() instead of chart.addSeries(AreaSeries, options)
-    const areaSeries = chart.addAreaSeries({
+    // FIXED: v5 API uses chart.addSeries(AreaSeries, options) instead of chart.addAreaSeries(options)
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: priceChange24h >= 0 ? '#10b981' : '#ef4444',
       topColor: priceChange24h >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
       bottomColor: 'rgba(16, 185, 129, 0.0)',
