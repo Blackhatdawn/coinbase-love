@@ -417,8 +417,7 @@ async def refresh_token(request: Request):
 async def verify_email(
     data: VerifyEmailRequest, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Verify email with code or token."""
     users_collection = db.get_collection("users")
