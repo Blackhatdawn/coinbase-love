@@ -354,8 +354,7 @@ async def update_profile(
 async def change_password(
     request: Request,
     user_id: str = Depends(get_current_user_id),
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Change user password."""
     users_collection = db.get_collection("users")
