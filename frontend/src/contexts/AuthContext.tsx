@@ -30,7 +30,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkSession = async () => {
       try {
         console.log('[Auth] Checking session...');
-        const response = await api.auth.getProfile();
+        
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+        );
+        
+        const response = await Promise.race([
+          api.auth.getProfile(),
+          timeoutPromise
+        ]) as any;
+        
         console.log('[Auth] Session check response:', response);
         
         const userData: User = {
