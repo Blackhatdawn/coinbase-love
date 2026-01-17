@@ -484,6 +484,17 @@ app.include_router(users.router, prefix="/api")
 app.include_router(websocket.router)
 
 # ============================================
+# SOCKET.IO INTEGRATION
+# ============================================
+
+# Mount Socket.IO ASGI app for real-time communication
+from socketio import ASGIApp
+socket_app = ASGIApp(socketio_manager.sio, app)
+
+# Socket.IO endpoints will be available at /socket.io/
+logger.info("✅ Socket.IO mounted at /socket.io/")
+
+# ============================================
 # ROOT & HEALTH ENDPOINTS
 # ============================================
 
