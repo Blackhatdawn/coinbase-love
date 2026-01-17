@@ -179,8 +179,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Even if logout fails, clear the user state
       console.error("Logout error:", error);
     }
-    // Clear user state (cookies are cleared by the server)
+    // Clear user state and localStorage
     setUser(null);
+    localStorage.removeItem('cv_user');
     
     // Clear user context in Sentry
     clearSentryUser();
