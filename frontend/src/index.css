@@ -106,6 +106,44 @@
     pointer-events: none;
   }
 
+  /* Mobile-first readable text utilities */
+  .text-readable {
+    @apply text-foreground/90;
+  }
+
+  .text-readable-muted {
+    @apply text-muted-foreground;
+    color: hsl(215 20% 70%); /* Higher contrast than default */
+  }
+
+  /* Mobile-optimized text sizes with better readability */
+  .text-xs-mobile {
+    @apply text-[13px] leading-relaxed;
+  }
+
+  .text-sm-mobile {
+    @apply text-[15px] leading-relaxed;
+  }
+
+  .text-base-mobile {
+    @apply text-base leading-relaxed;
+  }
+
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .touch-target-sm {
+    @apply min-h-[40px] min-w-[40px];
+  }
+
+  /* High contrast for important text */
+  .text-high-contrast {
+    @apply text-foreground;
+  }
+}
+
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);
