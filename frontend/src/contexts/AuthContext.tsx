@@ -31,6 +31,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('[Auth] Checking session...');
         
+        // First check localStorage for cached user data (backup for cross-site cookie issues)
+        const cachedUser = localStorage.getItem('cv_user');
+        if (cachedUser) {
+          try {
+            const userData = JSON.parse(cachedUser);
+            setUser(userData);
+            console.log('[Auth] Restored user from localStorage:', userData.email);
+            
+            // Verify the session is still valid in background
+            try {
+              const response = await api.auth.getProfile();
+              // Update with fresh data if session is valid
+              const freshUserData: User = {
+                id: response.user.id,
+                email: response.user.email,
+                name: response.user.name,
+                createdAt: response.user.createdAt,
+              };
+              setUser(freshUserData);
+              localStorage.setItem('cv_user', JSON.stringify(freshUserData));
+            } catch (verifyError) {
+              // Session expired, clear localStorage
+              console.log('[Auth] Session expired, clearing cached user');
+              localStorage.removeItem('cv_user');
+              setUser(null);
+            }
+            setIsLoading(false);
+            return;
+          } catch (parseError) {
+            console.log('[Auth] Failed to parse cached user');
+            localStorage.removeItem('cv_user');
+          }
+        }
+        
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Session check timeout')), 10000)
@@ -50,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           createdAt: response.user.createdAt,
         };
         setUser(userData);
+        localStorage.setItem('cv_user', JSON.stringify(userData));
         
         // Set user context in Sentry
         setSentryUser({
@@ -69,6 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('[Auth] No active session (expected for logged-out users)');
         }
         setUser(null);
+        localStorage.removeItem('cv_user');
         clearSentryUser();
       } finally {
         console.log('[Auth] Setting isLoading to false');
