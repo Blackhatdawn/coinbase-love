@@ -195,24 +195,24 @@ const FAQSection = () => {
         </div>
 
         {/* Still Have Questions CTA */}
-        <div className="mt-12 sm:mt-16 text-center glass-card p-6 sm:p-8 max-w-2xl mx-auto border border-gold-500/20">
+        <div className="mt-12 sm:mt-16 text-center glass-card p-8 sm:p-8 max-w-2xl mx-auto border border-gold-500/20">
           <h3 className="font-display text-xl sm:text-2xl font-bold mb-3">
             Still have questions?
           </h3>
-          <p className="text-muted-foreground text-sm sm:text-base mb-6">
+          <p className="text-foreground/70 text-[15px] sm:text-base mb-6 leading-relaxed">
             Our custody specialists are available 24/7 to help you understand our services 
             and find the right solution for your needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a 
               href="/contact"
-              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105"
+              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105 touch-target"
             >
               Contact Support
             </a>
             <a 
               href="mailto:support@cryptovault.financial"
-              className="inline-flex items-center justify-center px-6 py-3 border border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-foreground rounded-lg transition-all duration-300"
+              className="inline-flex items-center justify-center px-6 py-3 border border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-foreground rounded-lg transition-all duration-300 touch-target"
             >
               Email Us
             </a>
@@ -220,20 +220,20 @@ const FAQSection = () => {
         </div>
 
         {/* Additional Resources */}
-        <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
-          <a href="/security" className="hover:text-gold-400 transition-colors underline">
+        <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-[13px] sm:text-sm text-foreground/60">
+          <a href="/security" className="hover:text-gold-400 transition-colors underline touch-target-sm">
             Security Architecture
           </a>
           <span className="text-gold-500/30">•</span>
-          <a href="/proof-of-reserves" className="hover:text-gold-400 transition-colors underline">
+          <a href="/proof-of-reserves" className="hover:text-gold-400 transition-colors underline touch-target-sm">
             Proof of Reserves
           </a>
           <span className="text-gold-500/30">•</span>
-          <a href="/terms" className="hover:text-gold-400 transition-colors underline">
+          <a href="/terms" className="hover:text-gold-400 transition-colors underline touch-target-sm">
             Terms of Service
           </a>
           <span className="text-gold-500/30">•</span>
-          <a href="/help" className="hover:text-gold-400 transition-colors underline">
+          <a href="/help" className="hover:text-gold-400 transition-colors underline touch-target-sm">
             Help Center
           </a>
         </div>
