@@ -1,13 +1,13 @@
 """
 PriceStreamService
 Real-time cryptocurrency price streaming service.
-Connects to CoinCap WebSocket, parses prices, and updates Redis cache.
+Connects to CoinCap WebSocket for specific assets only.
 
 Architecture:
-1. Connect to CoinCap WebSocket (primary source)
-2. Parse JSON stream and update Redis with 30s TTL
+1. Connect to CoinCap WebSocket (primary source) - SPECIFIC ASSETS ONLY
+2. Parse JSON stream and update in-memory cache
 3. Auto-reconnect on disconnect with exponential backoff
-4. Fallback to Binance if CoinCap unavailable >30s
+4. Fallback to cached data if connection fails
 5. Monitor connection health with detailed logging
 """
 
@@ -18,12 +18,16 @@ import time
 from typing import Dict, Optional, Set
 from datetime import datetime, timedelta
 from enum import Enum
-import websockets
-import httpx
-
-from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
+
+# Try to import websockets, but gracefully handle if not available
+try:
+    import websockets
+    WEBSOCKETS_AVAILABLE = True
+except ImportError:
+    WEBSOCKETS_AVAILABLE = False
+    logger.warning("⚠️ websockets library not available - price streaming disabled")
 
 
 class ConnectionState(Enum):
@@ -32,71 +36,73 @@ class ConnectionState(Enum):
     CONNECTING = "connecting"
     CONNECTED = "connected"
     RECONNECTING = "reconnecting"
-    SWITCHING_SOURCE = "switching_source"
-    OFFLINE = "offline"
+    DISABLED = "disabled"
 
 
 class PriceStreamService:
     """
     Real-time price streaming service with automatic failover.
-    Connects to CoinCap primary, falls back to Binance if needed.
+    Connects to CoinCap WebSocket for specific tracked assets only.
     """
+    
+    # Track only major coins to reduce message volume
+    TRACKED_ASSETS = [
+        "bitcoin", "ethereum", "binancecoin", "solana", 
+        "ripple", "cardano", "dogecoin", "polkadot",
+        "chainlink", "litecoin", "avalanche-2", "polygon"
+    ]
     
     def __init__(self):
         # Connection management
         self.state = ConnectionState.DISCONNECTED
         self.is_running = False
         self.websocket = None
-        self.current_source = "coincap"  # or "binance"
         
-        # Reconnection strategy
+        # Reconnection strategy - INCREASED BACKOFF
         self.reconnect_attempt = 0
-        self.max_reconnect_attempts = 10
-        self.base_backoff = 1  # seconds
-        self.max_backoff = 30  # seconds
+        self.max_reconnect_attempts = 5
+        self.base_backoff = 5  # Start at 5 seconds (was 1)
+        self.max_backoff = 120  # Max 2 minutes (was 30)
+        self.min_reconnect_interval = 10  # Minimum 10 seconds between reconnects
         self.last_reconnect_time = 0
         
-        # WebSocket endpoints
-        self.COINCAP_WS = "wss://ws.coincap.io/prices?assets=ALL"
-        self.BINANCE_WS = "wss://stream.binance.com:9443/ws/!ticker@arr"
+        # WebSocket endpoint - SPECIFIC ASSETS ONLY
+        self.COINCAP_WS = f"wss://ws.coincap.io/prices?assets={','.join(self.TRACKED_ASSETS)}"
         
         # Price tracking
         self.prices: Dict[str, float] = {}
         self.last_update = datetime.now()
-        self.symbol_mapping = self._build_symbol_mapping()
+        self.last_message_time = datetime.now()
         
-        # Fallback timeout: switch to Binance if CoinCap down >30s
-        self.fallback_timeout = 30
-        self.last_successful_update = datetime.now()
+        # Symbol mapping
+        self.symbol_mapping = {
+            "bitcoin": "BTC",
+            "ethereum": "ETH",
+            "binancecoin": "BNB",
+            "solana": "SOL",
+            "ripple": "XRP",
+            "cardano": "ADA",
+            "dogecoin": "DOGE",
+            "avalanche-2": "AVAX",
+            "polkadot": "DOT",
+            "chainlink": "LINK",
+            "polygon": "MATIC",
+            "litecoin": "LTC",
+        }
+        
+        # Health check
+        self.message_count = 0
+        self.error_count = 0
         
         # Tasks
         self._task: Optional[asyncio.Task] = None
-        self._fallback_task: Optional[asyncio.Task] = None
+        self._health_task: Optional[asyncio.Task] = None
         
-        logger.info("🚀 PriceStreamService initialized (source: CoinCap primary)")
-    
-    def _build_symbol_mapping(self) -> Dict[str, str]:
-        """Map coin symbols to their canonical IDs"""
-        return {
-            "BTC": "bitcoin",
-            "ETH": "ethereum",
-            "BNB": "binancecoin",
-            "SOL": "solana",
-            "XRP": "ripple",
-            "ADA": "cardano",
-            "DOGE": "dogecoin",
-            "AVAX": "avalanche-2",
-            "DOT": "polkadot",
-            "LINK": "chainlink",
-            "MATIC": "polygon",
-            "LTC": "litecoin",
-            "UNI": "uniswap",
-            "ATOM": "cosmos",
-            "XLM": "stellar",
-            "NEAR": "near",
-            "ARB": "arbitrum",
-            "OP": "optimism",
-        }
+        if not WEBSOCKETS_AVAILABLE:
+            self.state = ConnectionState.DISABLED
+            logger.warning("🚫 PriceStreamService disabled - websockets not available")
+        else:
+            logger.info("🚀 PriceStreamService initialized (tracking %d assets)", len(self.TRACKED_ASSETS))
     
     # ============================================
     # LIFECYCLE METHODS
@@ -104,6 +110,10 @@ class PriceStreamService:
     
     async def start(self) -> None:
         """Start the price stream service"""
+        if not WEBSOCKETS_AVAILABLE:
+            logger.warning("⚠️ Cannot start - websockets library not available")
+            return
+        
         if self.is_running:
             logger.warning("⚠️ PriceStreamService already running")
             return
@@ -113,9 +123,7 @@ class PriceStreamService:
         
         logger.info("✅ Starting PriceStreamService")
         self._task = asyncio.create_task(self._stream_loop())
-        
-        # Start fallback monitor
-        self._fallback_task = asyncio.create_task(self._fallback_monitor())
+        self._health_task = asyncio.create_task(self._health_monitor())
     
     async def stop(self) -> None:
         """Stop the price stream service"""
@@ -129,38 +137,48 @@ class PriceStreamService:
         
         if self._task:
             self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
         
-        if self._fallback_task:
-            self._fallback_task.cancel()
+        if self._health_task:
+            self._health_task.cancel()
+            try:
+                await self._health_task
+            except asyncio.CancelledError:
+                pass
         
         self._update_state(ConnectionState.DISCONNECTED)
         logger.info("🛑 PriceStreamService stopped")
     
     async def get_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol"""
-        # Try cache first
-        cache_key = f"crypto:price:{symbol.lower()}"
-        cached = await redis_cache.get(cache_key)
-        if cached:
-            return float(cached)
+        # Check by coin ID first
+        if symbol.lower() in self.prices:
+            return self.prices[symbol.lower()]
         
-        # Return in-memory if available
-        if symbol in self.prices:
-            return self.prices[symbol]
+        # Check by symbol
+        for coin_id, sym in self.symbol_mapping.items():
+            if sym.upper() == symbol.upper() and coin_id in self.prices:
+                return self.prices[coin_id]
         
         return None
+    
+    def get_all_prices(self) -> Dict[str, float]:
+        """Get all cached prices"""
+        return self.prices.copy()
     
     def get_status(self) -> Dict:
         """Get service health status"""
         return {
             "state": self.state.value,
             "is_running": self.is_running,
-            "source": self.current_source,
             "prices_cached": len(self.prices),
             "last_update": self.last_update.isoformat(),
-            "last_successful_update": self.last_successful_update.isoformat(),
+            "message_count": self.message_count,
+            "error_count": self.error_count,
             "reconnect_attempt": self.reconnect_attempt,
-            "uptime_seconds": (datetime.now() - self.last_update).total_seconds(),
         }
     
     # ============================================
@@ -171,19 +189,31 @@ class PriceStreamService:
         """Main streaming loop with automatic reconnection"""
         while self.is_running:
             try:
-                # Determine which source to use
-                ws_url = self.COINCAP_WS if self.current_source == "coincap" else self.BINANCE_WS
+                # Enforce minimum reconnect interval
+                time_since_last = time.time() - self.last_reconnect_time
+                if time_since_last < self.min_reconnect_interval:
+                    wait_time = self.min_reconnect_interval - time_since_last
+                    logger.debug(f"⏳ Waiting {wait_time:.1f}s before reconnect...")
+                    await asyncio.sleep(wait_time)
                 
-                logger.info(f"🔌 Connecting to {self.current_source}...")
+                self.last_reconnect_time = time.time()
+                
+                logger.info("🔌 Connecting to CoinCap WebSocket...")
                 self._update_state(ConnectionState.CONNECTING)
                 
-                # Connect to WebSocket
-                async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as websocket:
+                # Connect to WebSocket with proper settings
+                async with websockets.connect(
+                    self.COINCAP_WS,
+                    ping_interval=30,  # Increased from 20
+                    ping_timeout=15,   # Increased from 10
+                    close_timeout=10,
+                    max_size=10 * 1024 * 1024,  # 10MB max message
+                ) as websocket:
                     self.websocket = websocket
                     self._update_state(ConnectionState.CONNECTED)
                     self.reconnect_attempt = 0
                     
-                    logger.info(f"✅ Connected to {self.current_source} WebSocket")
+                    logger.info("✅ Connected to CoinCap WebSocket")
                     
                     # Process messages
                     async for message in websocket:
@@ -193,103 +223,49 @@ class PriceStreamService:
                         await self._process_message(message)
             
             except websockets.exceptions.ConnectionClosed as e:
-                logger.warning(f"⚠️ {self.current_source} connection closed: {e}")
+                logger.warning(f"⚠️ WebSocket connection closed: {e.code} - {e.reason}")
                 self._update_state(ConnectionState.DISCONNECTED)
-                
-                # Attempt reconnection with backoff
+                await self._handle_reconnection()
+            
+            except websockets.exceptions.InvalidStatusCode as e:
+                logger.error(f"❌ WebSocket invalid status: {e}")
+                self.error_count += 1
+                await self._handle_reconnection()
+            
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ WebSocket connection timeout")
+                self._update_state(ConnectionState.DISCONNECTED)
                 await self._handle_reconnection()
             
             except Exception as e:
-                logger.error(f"❌ Error in price stream: {e}")
-                self._update_state(ConnectionState.OFFLINE)
-                
-                await asyncio.sleep(5)
+                logger.error(f"❌ Error in price stream: {type(e).__name__}: {e}")
+                self.error_count += 1
+                self._update_state(ConnectionState.DISCONNECTED)
                 await self._handle_reconnection()
     
     async def _process_message(self, message: str) -> None:
-        """Process WebSocket message from CoinCap or Binance"""
-        try:
-            if self.current_source == "coincap":
-                await self._process_coincap_message(message)
-            else:
-                await self._process_binance_message(message)
-            
-            self.last_successful_update = datetime.now()
-        
-        except Exception as e:
-            logger.warning(f"⚠️ Error processing message: {e}")
-    
-    async def _process_coincap_message(self, message: str) -> None:
-        """
-        Process CoinCap WebSocket message
-        Format: {"bitcoin":"45000.50","ethereum":"2500.25",...}
-        """
+        """Process WebSocket message from CoinCap"""
         try:
             data = json.loads(message)
             
             for coin_id, price_str in data.items():
                 try:
                     price = float(price_str)
-                    
-                    # Update in-memory cache
                     self.prices[coin_id] = price
-                    
-                    # Update Redis cache with 30s TTL
-                    cache_key = f"crypto:price:{coin_id}"
-                    await redis_cache.set(cache_key, str(price), ttl=30)
-                    
-                    # Also cache by symbol if we have mapping
-                    for symbol, mapped_id in self.symbol_mapping.items():
-                        if mapped_id == coin_id:
-                            symbol_key = f"crypto:price:{symbol.lower()}"
-                            await redis_cache.set(symbol_key, str(price), ttl=30)
-                
-                except (ValueError, TypeError) as e:
-                    logger.debug(f"⚠️ Invalid price for {coin_id}: {e}")
+                except (ValueError, TypeError):
+                    continue
             
             self.last_update = datetime.now()
+            self.last_message_time = datetime.now()
+            self.message_count += 1
         
         except json.JSONDecodeError as e:
-            logger.debug(f"⚠️ Invalid JSON in CoinCap message: {e}")
-    
-    async def _process_binance_message(self, message: str) -> None:
-        """
-        Process Binance WebSocket message
-        Format: [{"s":"BTCUSDT","c":"45000.50",...}, ...]
-        """
-        try:
-            data = json.loads(message)
-            
-            if not isinstance(data, list):
-                return
-            
-            for ticker in data:
-                try:
-                    symbol = ticker.get("s", "")  # e.g., "BTCUSDT"
-                    price_str = ticker.get("c")  # close price
-                    
-                    if not symbol or not price_str:
-                        continue
-                    
-                    # Extract base symbol (remove USDT/BUSD)
-                    base_symbol = symbol.replace("USDT", "").replace("BUSD", "").replace("USDC", "")
-                    price = float(price_str)
-                    
-                    # Update caches
-                    self.prices[base_symbol] = price
-                    cache_key = f"crypto:price:{base_symbol.lower()}"
-                    await redis_cache.set(cache_key, str(price), ttl=30)
-                
-                except (ValueError, KeyError, TypeError) as e:
-                    logger.debug(f"⚠️ Error processing Binance ticker: {e}")
-            
-            self.last_update = datetime.now()
-        
-        except json.JSONDecodeError as e:
-            logger.debug(f"⚠️ Invalid JSON in Binance message: {e}")
+            logger.debug(f"⚠️ Invalid JSON: {e}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error processing message: {e}")
     
     # ============================================
-    # RECONNECTION & FAILOVER
+    # RECONNECTION
     # ============================================
     
     async def _handle_reconnection(self) -> None:
@@ -299,7 +275,13 @@ class PriceStreamService:
         
         self.reconnect_attempt += 1
         
-        # Calculate backoff
+        if self.reconnect_attempt > self.max_reconnect_attempts:
+            logger.error(f"❌ Max reconnection attempts ({self.max_reconnect_attempts}) exceeded. Stopping.")
+            self.is_running = False
+            self._update_state(ConnectionState.DISABLED)
+            return
+        
+        # Calculate backoff with exponential increase
         backoff = min(
             self.base_backoff * (2 ** (self.reconnect_attempt - 1)),
             self.max_backoff
@@ -307,44 +289,32 @@ class PriceStreamService:
         
         logger.info(
             f"📈 Reconnection attempt {self.reconnect_attempt}/{self.max_reconnect_attempts} "
-            f"in {backoff}s (source: {self.current_source})"
+            f"in {backoff}s"
         )
         
         self._update_state(ConnectionState.RECONNECTING)
         await asyncio.sleep(backoff)
-        
-        # If too many attempts on CoinCap, switch to Binance
-        if self.reconnect_attempt > 3 and self.current_source == "coincap":
-            logger.warning("⚠️ CoinCap failing, switching to Binance")
-            self.current_source = "binance"
-            self.reconnect_attempt = 0
-            self._update_state(ConnectionState.SWITCHING_SOURCE)
     
-    async def _fallback_monitor(self) -> None:
-        """Monitor for prolonged outages and switch sources if needed"""
+    async def _health_monitor(self) -> None:
+        """Monitor connection health"""
         while self.is_running:
             try:
-                time_since_update = (datetime.now() - self.last_successful_update).total_seconds()
+                await asyncio.sleep(60)  # Check every minute
                 
-                # If no updates >30s and using CoinCap, switch to Binance
-                if (
-                    time_since_update > self.fallback_timeout
-                    and self.current_source == "coincap"
-                    and self.state != ConnectionState.SWITCHING_SOURCE
-                ):
-                    logger.warning(f"⚠️ No updates for {time_since_update}s, switching to Binance")
-                    self.current_source = "binance"
-                    self.reconnect_attempt = 0
-                    self._update_state(ConnectionState.SWITCHING_SOURCE)
+                if self.state == ConnectionState.CONNECTED:
+                    time_since_message = (datetime.now() - self.last_message_time).total_seconds()
                     
-                    if self.websocket:
-                        await self.websocket.close()
-                
-                await asyncio.sleep(10)
+                    if time_since_message > 120:  # No message in 2 minutes
+                        logger.warning(f"⚠️ No messages received for {time_since_message:.0f}s - connection may be stale")
+                        
+                        # Force reconnect if stale
+                        if self.websocket:
+                            await self.websocket.close()
             
+            except asyncio.CancelledError:
+                break
             except Exception as e:
-                logger.warning(f"⚠️ Error in fallback monitor: {e}")
-                await asyncio.sleep(10)
+                logger.warning(f"⚠️ Health monitor error: {e}")
     
     # ============================================
     # UTILITIES
@@ -361,8 +331,11 @@ class PriceStreamService:
         if not self.is_running:
             return False
         
-        time_since_update = (datetime.now() - self.last_successful_update).total_seconds()
-        return time_since_update < 60  # Healthy if received update in last 60s
+        if self.state != ConnectionState.CONNECTED:
+            return False
+        
+        time_since_update = (datetime.now() - self.last_update).total_seconds()
+        return time_since_update < 120  # Healthy if received update in last 2 minutes
 
 
 # Global service instance
