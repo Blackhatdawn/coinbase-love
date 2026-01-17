@@ -29,7 +29,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // The HttpOnly cookie will be sent automatically
     const checkSession = async () => {
       try {
+        console.log('[Auth] Checking session...');
         const response = await api.auth.getProfile();
+        console.log('[Auth] Session check response:', response);
+        
         const userData: User = {
           id: response.user.id,
           email: response.user.email,
@@ -44,15 +47,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: userData.email,
           username: userData.name,
         });
+        
+        console.log('[Auth] Session check successful, user:', userData.email);
       } catch (error: any) {
         // Expected: No valid session, user is not authenticated
         // Log errors only if they seem unexpected
-        if (error?.status && error.status !== 401 && error.status !== 0) {
-          console.warn('⚠️ Session check failed:', error.message);
+        console.log('[Auth] Session check failed:', error);
+        if (error?.statusCode && error.statusCode !== 401 && error.statusCode !== 0) {
+          console.warn('⚠️ Unexpected session check error:', error.message || error);
+        } else {
+          console.log('[Auth] No active session (expected for logged-out users)');
         }
         setUser(null);
         clearSentryUser();
       } finally {
+        console.log('[Auth] Setting isLoading to false');
         setIsLoading(false);
       }
     };
