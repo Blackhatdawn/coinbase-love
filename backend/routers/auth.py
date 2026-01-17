@@ -603,8 +603,7 @@ async def validate_reset_token(token: str, db = Depends(get_db)):
 async def reset_password(
     data: ResetPasswordRequest, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Reset password with valid token."""
     users_collection = db.get_collection("users")
