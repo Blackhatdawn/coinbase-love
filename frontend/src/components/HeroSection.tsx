@@ -24,21 +24,21 @@ const HeroSection = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-500"></span>
             </span>
-            <span className="text-xs sm:text-sm text-gold-400/90">Institutional-Grade Security</span>
+            <span className="text-xs sm:text-sm text-gold-400/90">Trusted by 250+ Institutions Globally</span>
           </div>
 
           {/* Headline - Gold gradient with mobile-first sizing */}
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2" data-testid="hero-headline">
-            Secure, Institutional-Grade
+            The Custody Solution
             <span className="block bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 bg-clip-text text-transparent">
-              Custody for Digital Assets
+              Institutions Trust With $10B+
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-2xl mx-auto px-4" data-testid="hero-subheadline">
-            CryptoVault Financial provides bank-grade custody solutions with cold storage,
-            multi-signature wallets, and comprehensive compliance.
+            Multi-jurisdiction cold storage, real-time proof of reserves, and zero security breaches since 2019. 
+            Built for family offices, hedge funds, and enterprises who demand more than promises.
           </p>
 
           {/* CTAs - Gold themed with mobile-first sizing */}
