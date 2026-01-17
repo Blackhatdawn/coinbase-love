@@ -55,9 +55,19 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000,
-      retry: 2,
+      staleTime: 30 * 1000, // 30 seconds
+      retry: 3, // Retry failed requests 3 times
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff with max 30s
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true, // Refetch on network reconnection
+      // Circuit breaker: pause retries if too many failures
+      networkMode: 'online', // Only run queries when online
+    },
+    mutations: {
+      retry: 2, // Retry mutations twice
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 5000), // Faster retry for mutations
+      // Network mode for mutations
+      networkMode: 'online',
     },
   },
 });
