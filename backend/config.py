@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # CoinGecko API Configuration
     coingecko_api_key: Optional[str] = None
     use_mock_prices: bool = False
+    
+    # CoinMarketCap API Configuration
+    coinmarketcap_api_key: Optional[str] = None
 
     # Redis Configuration (Upstash)
     use_redis: bool = True
