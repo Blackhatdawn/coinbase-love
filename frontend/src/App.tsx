@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
 import OnboardingLoader from "@/components/OnboardingLoader";
+import AppLayout from "@/layouts/AppLayout";
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 import { HelmetProvider } from 'react-helmet-async';
@@ -72,16 +73,16 @@ const queryClient = new QueryClient({
   },
 });
 
-// Suspense fallback component
+// Suspense fallback component - Premium loading animation
 const PageLoader = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
+  <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
     <div className="flex flex-col items-center gap-4">
       <div className="relative">
         <div className="w-16 h-16 rounded-full border-2 border-gold-500/20" />
         <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-gold-500 animate-spin" />
         <img src="/logo.svg" alt="" className="absolute inset-0 m-auto w-8 h-8" />
       </div>
-      <p className="text-sm text-muted-foreground">Loading...</p>
+      <p className="text-sm text-muted-foreground animate-pulse">Loading...</p>
     </div>
   </div>
 );
@@ -149,12 +150,12 @@ const AppContent = () => {
       
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public Routes */}
+          {/* ============================================ */}
+          {/* PUBLIC ROUTES - With full marketing layout */}
+          {/* ============================================ */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/markets" element={<Markets />} />
-          <Route path="/trade" element={<ErrorBoundary><EnhancedTrade /></ErrorBoundary>} />
-          <Route path="/earn" element={<Earn />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/contact" element={<Contact />} />
 
@@ -181,16 +182,21 @@ const AppContent = () => {
           <Route path="/aml" element={<AMLPolicy />} />
           <Route path="/risk-disclosure" element={<RiskDisclosure />} />
 
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
-          <Route path="/wallet/deposit" element={<ProtectedRoute><WalletDeposit /></ProtectedRoute>} />
-          <Route path="/wallet/withdraw" element={<ProtectedRoute><WalletWithdraw /></ProtectedRoute>} />
-          <Route path="/wallet/transfer" element={<ProtectedRoute><P2PTransfer /></ProtectedRoute>} />
-          <Route path="/alerts" element={<ProtectedRoute><PriceAlerts /></ProtectedRoute>} />
-
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          {/* ============================================ */}
+          {/* PROTECTED ROUTES - With AppLayout (Dashboard layout) */}
+          {/* No heavy footer, slim sidebar, professional dashboard UI */}
+          {/* ============================================ */}
+          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/transactions" element={<TransactionHistory />} />
+            <Route path="/wallet/deposit" element={<WalletDeposit />} />
+            <Route path="/wallet/withdraw" element={<WalletWithdraw />} />
+            <Route path="/wallet/transfer" element={<P2PTransfer />} />
+            <Route path="/alerts" element={<PriceAlerts />} />
+            <Route path="/trade" element={<ErrorBoundary><EnhancedTrade /></ErrorBoundary>} />
+            <Route path="/earn" element={<Earn />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
