@@ -81,18 +81,18 @@ const stats = [
 
 const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
   <div 
-    className="glass-card p-5 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 h-full flex flex-col"
+    className="glass-card p-6 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 h-full flex flex-col"
     data-testid={`testimonial-${testimonial.id}`}
   >
     {/* Rating Stars */}
     <div className="flex gap-1 mb-4">
       {Array.from({ length: testimonial.rating }).map((_, i) => (
-        <Star key={i} className="h-4 w-4 fill-gold-400 text-gold-400" />
+        <Star key={i} className="h-5 w-5 fill-gold-400 text-gold-400" />
       ))}
     </div>
     
-    {/* Content */}
-    <p className="text-sm sm:text-base text-muted-foreground mb-6 flex-1 leading-relaxed">
+    {/* Content - Improved readability */}
+    <p className="text-[15px] sm:text-base text-foreground/75 mb-6 flex-1 leading-relaxed">
       "{testimonial.content}"
     </p>
     
@@ -101,10 +101,10 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
       <img 
         src={testimonial.avatar} 
         alt={testimonial.name}
-        className="h-10 w-10 rounded-full bg-gold-500/20"
+        className="h-12 w-12 rounded-full bg-gold-500/20"
       />
       <div className="flex-1">
-        <div className="font-semibold text-sm flex items-center gap-2">
+        <div className="font-semibold text-[15px] flex items-center gap-2 text-foreground">
           {testimonial.name}
           <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500/20 border border-blue-500/50">
             <svg className="h-2.5 w-2.5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -112,7 +112,7 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
             </svg>
           </span>
         </div>
-        <div className="text-xs text-muted-foreground">{testimonial.role}</div>
+        <div className="text-[13px] text-foreground/60 mt-0.5">{testimonial.role}</div>
       </div>
     </div>
   </div>
