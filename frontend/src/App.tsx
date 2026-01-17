@@ -198,6 +198,9 @@ const AppContent = () => {
             <Route path="/alerts" element={<PriceAlerts />} />
             <Route path="/trade" element={<ErrorBoundary><EnhancedTrade /></ErrorBoundary>} />
             <Route path="/earn" element={<Earn />} />
+            <Route path="/referrals" element={<Referrals />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/security" element={<DashboardSecurity />} />
             <Route path="/admin" element={<AdminDashboard />} />
           </Route>
 
