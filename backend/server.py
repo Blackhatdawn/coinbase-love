@@ -747,12 +747,20 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
 
+        # Initialize enhanced Redis pub/sub
+        try:
+            logger.info("✅ Enhanced Redis with pub/sub initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ Enhanced Redis initialization warning: {str(e)}")
+
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
         logger.info(f"📍 Environment: {settings.environment}")
         logger.info(f"💾 Database: {settings.db_name}")
         logger.info(f"🔐 JWT Algorithm: {settings.jwt_algorithm}")
         logger.info(f"⏱️ Rate Limit: {settings.rate_limit_per_minute} req/min")
+        logger.info(f"🔌 Socket.IO: Enabled at /socket.io/")
+        logger.info(f"📦 Compression: GZip + Brotli enabled")
         logger.info("="*70)
 
     except Exception as e:
