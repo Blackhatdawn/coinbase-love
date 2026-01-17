@@ -49,7 +49,7 @@ echo ""
 # Test 5: API Endpoint
 echo "5️⃣ Testing API Endpoint..."
 API=$(curl -s http://localhost:8001/api/crypto)
-if echo "$API" | grep -q "data"; then
+if echo "$API" | grep -q "cryptocurrencies"; then
     echo "   ✅ API endpoint responding"
 else
     echo "   ❌ API endpoint failed"
