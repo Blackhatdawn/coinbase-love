@@ -54,6 +54,7 @@
     "ethers": "^6.16.0",
     "expo": "^54.0.31",
     "firebase": "^12.7.0",
+    "framer-motion": "^12.26.2",
     "input-otp": "^1.4.2",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.462.0",
