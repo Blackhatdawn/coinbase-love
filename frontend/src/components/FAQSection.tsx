@@ -95,17 +95,17 @@ const FAQCard = ({ faq, isOpen, onToggle }: { faq: FAQItem; isOpen: boolean; onT
   >
     <button
       onClick={onToggle}
-      className="w-full text-left p-5 sm:p-6 flex items-start justify-between gap-4 group"
+      className="w-full text-left p-5 sm:p-6 flex items-start justify-between gap-4 group touch-target"
       aria-expanded={isOpen}
     >
       <div className="flex-1">
-        <h3 className="font-semibold text-base sm:text-lg text-foreground group-hover:text-gold-400 transition-colors">
+        <h3 className="font-semibold text-[15px] sm:text-lg text-foreground group-hover:text-gold-400 transition-colors leading-relaxed">
           {faq.question}
         </h3>
       </div>
       <ChevronDown 
         className={cn(
-          "h-5 w-5 text-gold-400 transition-transform duration-300 flex-shrink-0 mt-1",
+          "h-6 w-6 text-gold-400 transition-transform duration-300 flex-shrink-0 mt-0.5",
           isOpen && "rotate-180"
         )}
       />
@@ -118,7 +118,7 @@ const FAQCard = ({ faq, isOpen, onToggle }: { faq: FAQItem; isOpen: boolean; onT
       )}
     >
       <div className="px-5 sm:px-6 pb-5 sm:pb-6">
-        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed border-t border-border/30 pt-4">
+        <p className="text-[15px] sm:text-base text-foreground/75 leading-relaxed border-t border-border/30 pt-4">
           {faq.answer}
         </p>
       </div>
