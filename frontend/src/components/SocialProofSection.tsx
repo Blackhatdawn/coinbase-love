@@ -188,17 +188,17 @@ const SocialProofSection = () => {
           ))}
         </div>
 
-        {/* Trust Badges */}
-        <div className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-8 opacity-60">
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+        {/* Trust Badges - Improved readability */}
+        <div className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
+          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
             <Shield className="h-4 w-4" />
             <span>SOC 2 Compliant</span>
           </div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
             <DollarSign className="h-4 w-4" />
             <span>$500M Insurance</span>
           </div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
             <Clock className="h-4 w-4" />
             <span>24/7 Support</span>
           </div>
