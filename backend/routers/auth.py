@@ -489,8 +489,7 @@ async def verify_email(
 async def resend_verification(
     data: ResendVerificationRequest, 
     request: Request,
-    db = Depends(get_db),
-    limiter = Depends(get_limiter)
+    db = Depends(get_db)
 ):
     """Resend verification email."""
     users_collection = db.get_collection("users")
