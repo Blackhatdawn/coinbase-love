@@ -594,6 +594,12 @@ async def get_csrf_token(request: Request):
         return response
     return {"csrf_token": csrf_token}
 
+
+@app.get("/api/socketio/stats", tags=["monitoring"])
+async def get_socketio_stats():
+    """Get Socket.IO connection statistics."""
+    return socketio_manager.get_stats()
+
 # ============================================
 # STARTUP & SHUTDOWN EVENTS
 # ============================================
