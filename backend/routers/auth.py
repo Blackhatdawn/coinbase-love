@@ -28,7 +28,7 @@ from auth import (
     decode_token, generate_backup_codes, generate_2fa_secret,
     generate_device_fingerprint, verify_2fa_code
 )
-from dependencies import get_current_user_id, get_db, get_limiter
+from dependencies import get_current_user_id, get_db
 from blacklist import blacklist_token
 
 logger = logging.getLogger(__name__)
