@@ -230,7 +230,8 @@ async def login(
         await db.get_collection("login_attempts").insert_one(login_attempt)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not user.email_verified:
+    # Skip email verification check in development mode
+    if not user.email_verified and settings.environment == 'production':
         raise HTTPException(
             status_code=401,
             detail="Email not verified. Please check your email and verify your account."
