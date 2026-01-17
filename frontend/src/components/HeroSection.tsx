@@ -76,33 +76,33 @@ const HeroSection = () => {
             <div className="glass-card p-4 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.1s' }} data-testid="trust-indicator-1">
               <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Vault className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
+                  <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
                 </div>
                 <div className="text-left sm:text-center">
-                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">95%+</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Cold Storage</div>
+                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">Zero Breaches</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Since 2019</div>
                 </div>
               </div>
             </div>
             <div className="glass-card p-4 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.2s' }} data-testid="trust-indicator-2">
               <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
+                  <Vault className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
                 </div>
                 <div className="text-left sm:text-center">
-                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">Multi-Sig</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">2-of-3, 3-of-5 Support</div>
+                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">$10.2B</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Assets Under Custody</div>
                 </div>
               </div>
             </div>
             <div className="glass-card p-4 sm:p-6 animate-slide-up border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group" style={{ animationDelay: '0.3s' }} data-testid="trust-indicator-3">
               <div className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 sm:mx-auto sm:mb-3 rounded-xl bg-gold-500/10 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors flex-shrink-0">
-                  <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
+                  <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
                 </div>
                 <div className="text-left sm:text-center">
-                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">$500M</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Insurance Coverage</div>
+                  <div className="font-display text-xl sm:text-2xl font-bold text-gold-400">5 Jurisdictions</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Multi-Location Storage</div>
                 </div>
               </div>
             </div>
