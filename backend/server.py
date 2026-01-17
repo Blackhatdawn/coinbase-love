@@ -759,8 +759,8 @@ async def startup_event():
         logger.info(f"💾 Database: {settings.db_name}")
         logger.info(f"🔐 JWT Algorithm: {settings.jwt_algorithm}")
         logger.info(f"⏱️ Rate Limit: {settings.rate_limit_per_minute} req/min")
-        logger.info(f"🔌 Socket.IO: Enabled at /socket.io/")
-        logger.info(f"📦 Compression: GZip + Brotli enabled")
+        logger.info("🔌 Socket.IO: Enabled at /socket.io/")
+        logger.info("📦 Compression: GZip + Brotli enabled")
         logger.info("="*70)
 
     except Exception as e:
