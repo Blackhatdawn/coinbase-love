@@ -142,7 +142,6 @@
   .text-high-contrast {
     @apply text-foreground;
   }
-}
 
   .text-gradient {
     @apply bg-clip-text text-transparent;
