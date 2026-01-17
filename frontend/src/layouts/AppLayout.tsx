@@ -157,7 +157,7 @@ const MobileBottomNav = () => {
               <span className="text-[10px] font-medium">{item.label}</span>
             </a>
           );
-        })})
+        })}
       </div>
     </nav>
   );
