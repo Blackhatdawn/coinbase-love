@@ -15,7 +15,7 @@ const CTASection = () => {
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold-500/10 border border-gold-500/20 mb-8 backdrop-blur-sm">
             <Sparkles className="h-4 w-4 text-gold-400" />
-            <span className="text-sm text-gold-400 font-medium">New users get $10 in free crypto</span>
+            <span className="text-sm text-gold-400 font-medium">Enterprise accounts: First month custody fees waived</span>
           </div>
 
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-6">
