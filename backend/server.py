@@ -733,25 +733,22 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
 
-        # Start real-time price stream service (PRIMARY)
+        # Start real-time price stream service (PRIMARY - CoinCap WebSocket)
+        # This connects to CoinCap WebSocket for real-time streaming
         try:
             await price_stream_service.start()
             logger.info("✅ Real-time price stream service started (CoinCap WebSocket)")
         except Exception as e:
             logger.warning(f"⚠️ Price stream service failed to start: {str(e)}")
 
-        # Start WebSocket price feed (FALLBACK)
+        # Start WebSocket price feed (SECONDARY - CoinGecko REST API)
+        # This fetches from CoinGecko API for clients that connect via our WebSocket
+        # NOTE: Only starts if there are WebSocket connections (lazy loading)
         try:
-            asyncio.create_task(price_feed.start())
-            logger.info("✅ WebSocket price feed started (fallback)")
+            await price_feed.start()
+            logger.info("✅ WebSocket price feed started (CoinGecko API, 30s interval)")
         except Exception as e:
             logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
-
-        # Initialize enhanced Redis pub/sub
-        try:
-            logger.info("✅ Enhanced Redis with pub/sub initialized")
-        except Exception as e:
-            logger.warning(f"⚠️ Enhanced Redis initialization warning: {str(e)}")
 
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
