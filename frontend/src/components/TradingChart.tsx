@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, AreaSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
@@ -85,11 +85,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       },
       rightPriceScale: {
         borderColor: '#2B2B43'
-      }
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 400
     });
 
-    // v5 API: Use chart.addSeries(AreaSeries, options) - AreaSeries is imported from lightweight-charts
-    const areaSeries = chart.addSeries(AreaSeries, {
+    // FIXED: v5 API uses chart.addAreaSeries() instead of chart.addSeries(AreaSeries, options)
+    const areaSeries = chart.addAreaSeries({
       lineColor: priceChange24h >= 0 ? '#10b981' : '#ef4444',
       topColor: priceChange24h >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
       bottomColor: 'rgba(16, 185, 129, 0.0)',
