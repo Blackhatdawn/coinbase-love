@@ -94,11 +94,20 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
     
     {/* Author */}
     <div className="flex items-center gap-3 pt-4 border-t border-border/30">
-      <div className="h-10 w-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold-400 font-bold text-sm">
-        {testimonial.avatar}
-      </div>
-      <div>
-        <div className="font-semibold text-sm">{testimonial.name}</div>
+      <img 
+        src={testimonial.avatar} 
+        alt={testimonial.name}
+        className="h-10 w-10 rounded-full bg-gold-500/20"
+      />
+      <div className="flex-1">
+        <div className="font-semibold text-sm flex items-center gap-2">
+          {testimonial.name}
+          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500/20 border border-blue-500/50">
+            <svg className="h-2.5 w-2.5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+            </svg>
+          </span>
+        </div>
         <div className="text-xs text-muted-foreground">{testimonial.role}</div>
       </div>
     </div>
