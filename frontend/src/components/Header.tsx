@@ -295,30 +295,36 @@ const Header = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex h-16 sm:h-18 lg:h-20 items-center justify-between">
             
-            {/* LEFT: Logo */}
+            {/* LEFT: Logo with enhanced branding */}
             <Link 
               to="/" 
-              className="flex items-center gap-2 sm:gap-3 group"
+              className="flex items-center gap-3 group relative"
               data-testid="logo-link"
               aria-label="CryptoVault - Go to homepage"
             >
+              {/* Logo with glow effect */}
               <div className="relative">
+                <div className="absolute inset-0 bg-gold-400/20 rounded-full blur-xl group-hover:bg-gold-400/30 transition-all duration-300" />
                 <img 
                   src="/logo.svg" 
                   alt="CryptoVault Logo" 
-                  className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="relative h-11 w-11 sm:h-12 sm:w-12 lg:h-14 lg:w-14 object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                 />
               </div>
               
-              <div className="flex flex-col">
-                <span className="font-display text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight leading-none">
+              {/* Brand text with enhanced styling */}
+              <div className="flex flex-col relative">
+                <span className="font-display text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight leading-none group-hover:text-gold-400 transition-colors duration-300">
                   Crypto<span className="text-gold-400">Vault</span>
                 </span>
-                <span className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground tracking-widest uppercase mt-0.5 font-mono">
-                  <Shield className="h-2.5 w-2.5 text-gold-400" />
-                  Secure Global Trading
+                <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground tracking-widest uppercase mt-1 font-mono group-hover:text-gold-400/80 transition-colors duration-300">
+                  <Shield className="h-3 w-3 text-gold-400" />
+                  Institutional-Grade Security
                 </span>
               </div>
+
+              {/* Decorative line */}
+              <div className="hidden xl:block h-8 w-px bg-gradient-to-b from-transparent via-gold-500/30 to-transparent ml-2" />
             </Link>
 
             {/* CENTER: Desktop Navigation */}
