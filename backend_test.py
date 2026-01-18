@@ -113,6 +113,103 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Get Bitcoin Details", False, f"Failed to get Bitcoin details: {data}")
 
+    def test_coingecko_api_key_integration(self):
+        """Test CoinGecko API key integration and price feed functionality"""
+        # Test if price endpoint is working (should use CoinGecko API)
+        success, data = self.make_request('GET', '/crypto')
+        if success and 'cryptocurrencies' in data:
+            cryptocurrencies = data.get('cryptocurrencies', [])
+            if cryptocurrencies:
+                self.log_test("CoinGecko API Integration", True, f"Price data retrieved successfully with {len(cryptocurrencies)} cryptocurrencies")
+                
+                # Check if we have realistic price data (not mock)
+                btc_data = next((c for c in cryptocurrencies if c.get('symbol') == 'BTC'), None)
+                if btc_data and btc_data.get('price', 0) > 20000:  # Realistic BTC price
+                    self.log_test("CoinGecko Real Data", True, f"BTC price: ${btc_data['price']:,.2f} (appears to be real data)")
+                else:
+                    self.log_test("CoinGecko Real Data", False, "Price data appears to be mock or unrealistic")
+            else:
+                self.log_test("CoinGecko API Integration", False, "No cryptocurrency data returned")
+        else:
+            self.log_test("CoinGecko API Integration", False, f"Failed to get cryptocurrency data: {data}")
+
+    def test_price_feed_status_logic(self):
+        """Test price feed status and last update tracking"""
+        # Test price feed status endpoint
+        success, data = self.make_request('GET', '/prices/status')
+        if success:
+            if 'status' in data and 'last_update' in data:
+                status = data.get('status')
+                last_update = data.get('last_update')
+                self.log_test("Price Feed Status Endpoint", True, f"Status: {status}, Last Update: {last_update}")
+                
+                # Check if status logic is working (LIVE if updated within 60 seconds)
+                if status in ['LIVE', 'OFFLINE']:
+                    self.log_test("Price Feed Status Logic", True, f"Status correctly shows: {status}")
+                else:
+                    self.log_test("Price Feed Status Logic", False, f"Unexpected status: {status}")
+            else:
+                self.log_test("Price Feed Status Endpoint", False, f"Missing status or last_update fields: {data}")
+        else:
+            # Try alternative endpoint
+            success, data = self.make_request('GET', '/api/prices/feed-status')
+            if success:
+                self.log_test("Price Feed Status Endpoint (Alternative)", True, f"Alternative endpoint working: {data}")
+            else:
+                self.log_test("Price Feed Status Endpoint", False, f"Price feed status endpoint not accessible: {data}")
+
+    def test_redis_caching(self):
+        """Test Redis caching functionality"""
+        # Test if Redis is being used for caching
+        # Make multiple requests to see if caching is working
+        import time
+        
+        # First request (should hit API)
+        start_time = time.time()
+        success1, data1 = self.make_request('GET', '/crypto')
+        first_request_time = time.time() - start_time
+        
+        # Second request (should hit cache if Redis is working)
+        start_time = time.time()
+        success2, data2 = self.make_request('GET', '/crypto')
+        second_request_time = time.time() - start_time
+        
+        if success1 and success2:
+            # If Redis caching is working, second request should be faster
+            if second_request_time < first_request_time * 0.8:  # 20% faster threshold
+                self.log_test("Redis Caching Performance", True, f"Second request faster ({second_request_time:.3f}s vs {first_request_time:.3f}s) - caching likely working")
+            else:
+                self.log_test("Redis Caching Performance", False, f"No significant speed improvement ({second_request_time:.3f}s vs {first_request_time:.3f}s) - caching may not be working")
+            
+            # Check if data is consistent
+            if data1 == data2:
+                self.log_test("Redis Cache Consistency", True, "Cached data matches original data")
+            else:
+                self.log_test("Redis Cache Consistency", False, "Cached data differs from original")
+        else:
+            self.log_test("Redis Caching Test", False, "Could not test caching due to API errors")
+
+    def test_sentry_configuration(self):
+        """Test Sentry configuration and graceful degradation"""
+        # Test that the API works even with empty Sentry DSN
+        success, data = self.make_request('GET', '/health')
+        if success:
+            health_data = data
+            if health_data.get('status') == 'healthy':
+                self.log_test("Sentry Graceful Degradation", True, "API works correctly with empty Sentry DSN")
+            else:
+                self.log_test("Sentry Graceful Degradation", False, f"API health check failed: {health_data}")
+        else:
+            self.log_test("Sentry Graceful Degradation", False, f"API not responding: {data}")
+        
+        # Test that errors don't break the API due to Sentry issues
+        # Try an endpoint that might cause an error
+        success, data = self.make_request('GET', '/crypto/nonexistent-coin', expected_status=404)
+        if success or data.get('error', {}).get('code') == 'NOT_FOUND':
+            self.log_test("Sentry Error Handling", True, "API handles errors gracefully even with Sentry configuration")
+        else:
+            self.log_test("Sentry Error Handling", False, f"Unexpected error response: {data}")
+
     def test_new_features_endpoints(self):
         """Test new feature endpoints added in the update"""
         # Test password reset request endpoint (correct path)
