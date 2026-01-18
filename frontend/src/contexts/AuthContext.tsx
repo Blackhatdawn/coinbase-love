@@ -37,28 +37,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             const userData = JSON.parse(cachedUser);
             setUser(userData);
+            setIsLoading(false); // Set loading to false immediately when using cached data
             console.log('[Auth] Restored user from localStorage:', userData.email);
             
-            // Verify the session is still valid in background
-            try {
-              const response = await api.auth.getProfile();
-              // Update with fresh data if session is valid
-              const freshUserData: User = {
-                id: response.user.id,
-                email: response.user.email,
-                name: response.user.name,
-                createdAt: response.user.createdAt,
-              };
-              setUser(freshUserData);
-              localStorage.setItem('cv_user', JSON.stringify(freshUserData));
-            } catch (verifyError) {
-              // Session expired, clear localStorage
-              console.log('[Auth] Session expired, clearing cached user');
-              localStorage.removeItem('cv_user');
-              setUser(null);
-            }
-            setIsLoading(false);
-            return;
+            // Verify the session is still valid in background (non-blocking)
+            api.auth.getProfile()
+              .then((response) => {
+                // Update with fresh data if session is valid
+                const freshUserData: User = {
+                  id: response.user.id,
+                  email: response.user.email,
+                  name: response.user.name,
+                  createdAt: response.user.createdAt,
+                };
+                setUser(freshUserData);
+                localStorage.setItem('cv_user', JSON.stringify(freshUserData));
+              })
+              .catch(() => {
+                // Session expired, clear localStorage
+                console.log('[Auth] Session expired, clearing cached user');
+                localStorage.removeItem('cv_user');
+                setUser(null);
+              });
+            
+            return; // Exit early, we already set loading to false
           } catch (parseError) {
             console.log('[Auth] Failed to parse cached user');
             localStorage.removeItem('cv_user');
@@ -67,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+          setTimeout(() => reject(new Error('Session check timeout')), 5000) // Reduced to 5s
         );
         
         const response = await Promise.race([
