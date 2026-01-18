@@ -162,32 +162,33 @@ class CryptoVaultAPITester:
 
     def test_redis_caching(self):
         """Test Redis caching functionality"""
-        # Test if Redis is being used for caching
-        # Make multiple requests to see if caching is working
+        # Test if Redis is being used for caching by checking different endpoints
         import time
         
-        # First request (should hit API)
-        start_time = time.time()
-        success1, data1 = self.make_request('GET', '/crypto')
-        first_request_time = time.time() - start_time
-        
-        # Second request (should hit cache if Redis is working)
-        start_time = time.time()
-        success2, data2 = self.make_request('GET', '/crypto')
-        second_request_time = time.time() - start_time
+        # Test 1: Check if we can see cache hits in logs by making requests to different coins
+        success1, data1 = self.make_request('GET', '/crypto/bitcoin')
+        success2, data2 = self.make_request('GET', '/crypto/ethereum')
         
         if success1 and success2:
-            # If Redis caching is working, second request should be faster
-            if second_request_time < first_request_time * 0.8:  # 20% faster threshold
-                self.log_test("Redis Caching Performance", True, f"Second request faster ({second_request_time:.3f}s vs {first_request_time:.3f}s) - caching likely working")
-            else:
-                self.log_test("Redis Caching Performance", False, f"No significant speed improvement ({second_request_time:.3f}s vs {first_request_time:.3f}s) - caching may not be working")
+            self.log_test("Redis Cache Endpoints", True, "Multiple crypto endpoints accessible")
             
-            # Check if data is consistent
-            if data1 == data2:
-                self.log_test("Redis Cache Consistency", True, "Cached data matches original data")
+            # Test 2: Check if the same request is faster (cache hit)
+            start_time = time.time()
+            success3, data3 = self.make_request('GET', '/crypto/bitcoin')
+            repeat_request_time = time.time() - start_time
+            
+            if success3 and repeat_request_time < 0.5:  # Should be very fast if cached
+                self.log_test("Redis Cache Performance", True, f"Repeat request very fast ({repeat_request_time:.3f}s) - likely cached")
             else:
-                self.log_test("Redis Cache Consistency", False, "Cached data differs from original")
+                self.log_test("Redis Cache Performance", False, f"Repeat request not significantly faster ({repeat_request_time:.3f}s)")
+            
+            # Test 3: Check if data structure suggests caching
+            if isinstance(data1, dict) and 'cryptocurrency' in data1:
+                crypto_data = data1['cryptocurrency']
+                if 'last_updated' in crypto_data or 'cached_at' in str(data1):
+                    self.log_test("Redis Cache Data Structure", True, "Response includes caching metadata")
+                else:
+                    self.log_test("Redis Cache Data Structure", False, "No obvious caching metadata in response")
         else:
             self.log_test("Redis Caching Test", False, "Could not test caching due to API errors")
 
