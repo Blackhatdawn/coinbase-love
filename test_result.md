@@ -77,20 +77,23 @@ backend:
 frontend:
   - task: "Dashboard Widget Drag-and-Drop"
     implemented: true
-    working: "NA"
-    file: "/app/frontend/src/components/Dashboard.js"
-    stuck_count: 0
+    working: false
+    file: "/app/frontend/src/pages/Dashboard.tsx"
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Frontend drag-and-drop not tested by testing agent per system limitations"
+      - working: false
+        agent: "testing"
+        comment: "❌ Dashboard loading issue prevents full testing. Drag handles (6 found) appear on hover as expected, but dashboard gets stuck on 'Loading your session...' screen. @dnd-kit libraries are properly installed and drag handle implementation exists in code."
 
   - task: "Price Feed Status Indicator UI"
     implemented: true
-    working: "NA"
-    file: "/app/frontend/src/components/Dashboard.js"
+    working: true
+    file: "/app/frontend/src/pages/Dashboard.tsx"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
@@ -98,6 +101,9 @@ frontend:
       - working: "NA"
         agent: "main"
         comment: "Frontend UI not tested by testing agent per system limitations"
+      - working: true
+        agent: "testing"
+        comment: "✅ Price feed status indicator working correctly. Shows 'OFFLINE' status with gray dot in top right of dashboard when price feed is disconnected. Backend shows CoinGecko API rate limiting (429 errors) which correctly triggers OFFLINE status. Status logic implemented properly in Dashboard.tsx lines 202-203."
 
 metadata:
   created_by: "testing_agent"
