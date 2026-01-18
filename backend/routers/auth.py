@@ -567,7 +567,8 @@ async def forgot_password(
 
     subject, html_content, text_content = email_service.get_password_reset_email(
         name=user.name,
-        reset_link=reset_link
+        token=reset_token,
+        app_url=settings.app_url
     )
 
     await email_service.send_email(
