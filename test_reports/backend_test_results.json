@@ -1,113 +1,162 @@
 {
-  "total_tests": 15,
-  "passed_tests": 13,
-  "failed_tests": 2,
-  "success_rate": 86.66666666666667,
+  "total_tests": 22,
+  "passed_tests": 17,
+  "failed_tests": 5,
+  "success_rate": 77.27272727272727,
   "test_results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:08.619414"
+      "timestamp": "2026-01-18T23:02:20.849499"
     },
     {
       "test": "Health Check",
       "success": true,
       "details": "API is healthy",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:08.736742"
+      "timestamp": "2026-01-18T23:02:20.990517"
+    },
+    {
+      "test": "CoinGecko API Integration",
+      "success": true,
+      "details": "Price data retrieved successfully with 10 cryptocurrencies",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:21.967587"
+    },
+    {
+      "test": "CoinGecko Real Data",
+      "success": true,
+      "details": "BTC price: $95,472.12 (appears to be real data)",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:21.967606"
+    },
+    {
+      "test": "Price Feed Status Endpoint",
+      "success": false,
+      "details": "Price feed status endpoint not accessible: {'error': {'code': 'NOT_FOUND', 'message': 'Not Found', 'request_id': '60ecfd01-5a2c-4d3b-a9b0-54aa58f274ac', 'timestamp': '2026-01-18T23:02:22.138476'}}",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:22.140783"
+    },
+    {
+      "test": "Redis Caching Performance",
+      "success": false,
+      "details": "No significant speed improvement (0.131s vs 0.142s) - caching may not be working",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:22.414162"
+    },
+    {
+      "test": "Redis Cache Consistency",
+      "success": true,
+      "details": "Cached data matches original data",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:22.414189"
+    },
+    {
+      "test": "Sentry Graceful Degradation",
+      "success": true,
+      "details": "API works correctly with empty Sentry DSN",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:22.481004"
+    },
+    {
+      "test": "Sentry Error Handling",
+      "success": true,
+      "details": "API handles errors gracefully even with Sentry configuration",
+      "response_data": null,
+      "timestamp": "2026-01-18T23:02:22.737646"
     },
     {
       "test": "Get All Cryptocurrencies",
       "success": true,
       "details": "Retrieved 10 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:09.868256"
+      "timestamp": "2026-01-18T23:02:22.866216"
     },
     {
       "test": "Get Bitcoin Details",
       "success": true,
       "details": "Bitcoin details retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:09.989286"
+      "timestamp": "2026-01-18T23:02:22.973108"
     },
     {
       "test": "Password Reset Request",
       "success": false,
-      "details": "Password reset failed: {'error': {'code': 'INTERNAL_ERROR', 'message': 'An internal server error occurred', 'request_id': 'ba2417a8-2b27-4dee-8065-ac937c49a077', 'timestamp': '2026-01-17T18:26:10.101102'}}",
+      "details": "Password reset failed: {'error': {'code': 'INTERNAL_ERROR', 'message': 'An internal server error occurred', 'request_id': 'ed356ec8-e19e-4718-af58-4d2a54b99f89', 'timestamp': '2026-01-18T23:02:23.098111'}}",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.106439"
+      "timestamp": "2026-01-18T23:02:23.101752"
     },
     {
       "test": "Alerts Endpoint (Auth Required)",
       "success": true,
       "details": "Alerts endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.147393"
+      "timestamp": "2026-01-18T23:02:23.136093"
     },
     {
       "test": "Admin Stats Endpoint (Auth Required)",
       "success": true,
       "details": "Admin stats endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.188827"
+      "timestamp": "2026-01-18T23:02:23.172417"
     },
     {
       "test": "Wallet Deposit Endpoint (Auth Required)",
       "success": true,
       "details": "Wallet deposit endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.231586"
+      "timestamp": "2026-01-18T23:02:23.211119"
     },
     {
       "test": "Wallet Balance Endpoint (Auth Required)",
       "success": true,
       "details": "Wallet balance endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.272059"
+      "timestamp": "2026-01-18T23:02:23.246319"
     },
     {
       "test": "Transactions Endpoint (Auth Required)",
       "success": true,
       "details": "Transactions endpoint correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:10.310383"
+      "timestamp": "2026-01-18T23:02:23.282404"
     },
     {
       "test": "User Signup",
       "success": true,
-      "details": "User created with ID: 2d25dc73-3283-48f2-a4d1-074bb16e6e44",
+      "details": "User created with ID: fe494115-f96f-44b1-af5c-a50233cb2643",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:11.008653"
+      "timestamp": "2026-01-18T23:02:23.918663"
     },
     {
       "test": "User Login",
-      "success": true,
-      "details": "Login successful (cookies set)",
+      "success": false,
+      "details": "Email verification required (expected for new accounts)",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:11.372240"
+      "timestamp": "2026-01-18T23:02:24.204163"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:11.408660"
+      "timestamp": "2026-01-18T23:02:24.237599"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:11.452257"
+      "timestamp": "2026-01-18T23:02:24.270034"
     },
     {
       "test": "CORS Configuration",
       "success": false,
       "details": "No CORS headers found",
       "response_data": null,
-      "timestamp": "2026-01-17T18:26:11.482470"
+      "timestamp": "2026-01-18T23:02:24.303883"
     }
   ]
 }
