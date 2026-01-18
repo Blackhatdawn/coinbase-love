@@ -66,7 +66,7 @@ class CoinGeckoService:
         
         headers = {}
         if self.api_key:
-            headers["x-cg-demo-api-key"] = self.api_key
+            headers["x-cg-pro-api-key"] = self.api_key
         
         url = f"{self.base_url}/coins/markets"
         params = {
