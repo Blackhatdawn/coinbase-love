@@ -136,25 +136,27 @@ class CryptoVaultAPITester:
     def test_price_feed_status_logic(self):
         """Test price feed status and last update tracking"""
         # Test price feed status endpoint
-        success, data = self.make_request('GET', '/prices/status')
+        success, data = self.make_request('GET', '/prices/status/health')
         if success:
-            if 'status' in data and 'last_update' in data:
-                status = data.get('status')
+            if 'healthy' in data and 'last_update' in data:
+                healthy = data.get('healthy')
                 last_update = data.get('last_update')
-                self.log_test("Price Feed Status Endpoint", True, f"Status: {status}, Last Update: {last_update}")
+                state = data.get('state', 'unknown')
+                self.log_test("Price Feed Status Endpoint", True, f"Healthy: {healthy}, State: {state}, Last Update: {last_update}")
                 
-                # Check if status logic is working (LIVE if updated within 60 seconds)
-                if status in ['LIVE', 'OFFLINE']:
-                    self.log_test("Price Feed Status Logic", True, f"Status correctly shows: {status}")
+                # Check if status logic is working
+                if healthy in [True, False] and state in ['connected', 'disconnected', 'connecting']:
+                    self.log_test("Price Feed Status Logic", True, f"Status correctly shows healthy={healthy}, state={state}")
                 else:
-                    self.log_test("Price Feed Status Logic", False, f"Unexpected status: {status}")
+                    self.log_test("Price Feed Status Logic", False, f"Unexpected status values: healthy={healthy}, state={state}")
             else:
-                self.log_test("Price Feed Status Endpoint", False, f"Missing status or last_update fields: {data}")
+                self.log_test("Price Feed Status Endpoint", False, f"Missing required fields: {data}")
         else:
-            # Try alternative endpoint
-            success, data = self.make_request('GET', '/api/prices/feed-status')
-            if success:
-                self.log_test("Price Feed Status Endpoint (Alternative)", True, f"Alternative endpoint working: {data}")
+            # Try alternative endpoint - general prices endpoint
+            success, data = self.make_request('GET', '/prices')
+            if success and 'status' in data:
+                status_info = data.get('status', {})
+                self.log_test("Price Feed Status Endpoint (Alternative)", True, f"Alternative endpoint working: {status_info}")
             else:
                 self.log_test("Price Feed Status Endpoint", False, f"Price feed status endpoint not accessible: {data}")
 
