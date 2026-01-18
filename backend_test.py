@@ -330,7 +330,7 @@ class CryptoVaultAPITester:
     def run_all_tests(self):
         """Run comprehensive test suite"""
         print("="*70)
-        print("🚀 CryptoVault Backend API Test Suite")
+        print("🚀 CryptoVault Backend API Test Suite - Dashboard Enhancements")
         print("="*70)
         
         # Basic connectivity tests
@@ -338,12 +338,25 @@ class CryptoVaultAPITester:
         self.test_root_endpoint()
         self.test_health_check()
         
+        # CryptoVault Dashboard Enhancement Tests
+        print("\n🔑 Testing CoinGecko API Key Integration...")
+        self.test_coingecko_api_key_integration()
+        
+        print("\n📊 Testing Price Feed Status Logic...")
+        self.test_price_feed_status_logic()
+        
+        print("\n🗄️ Testing Redis Caching...")
+        self.test_redis_caching()
+        
+        print("\n🛡️ Testing Sentry Configuration...")
+        self.test_sentry_configuration()
+        
         # Public API tests
         print("\n💰 Testing Cryptocurrency APIs...")
         self.test_crypto_endpoints()
         
         # New features tests
-        print("\n🆕 Testing New Feature Endpoints...")
+        print("\n🆕 Testing Feature Endpoints...")
         self.test_new_features_endpoints()
         
         # Authentication tests
