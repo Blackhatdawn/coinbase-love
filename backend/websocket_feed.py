@@ -24,8 +24,11 @@ class PriceFeedManager:
         self.last_api_call: Optional[datetime] = None
         
         # RATE LIMITING - CoinGecko free tier allows ~10-30 calls/min
-        self.update_interval = 30  # Fetch every 30 seconds (was 10)
-        self.min_api_interval = 10  # Minimum 10 seconds between API calls
+        # With API key, we can be more aggressive
+        coingecko_api_key = os.environ.get('COINGECKO_API_KEY')
+        self.api_key = coingecko_api_key
+        self.update_interval = 15 if coingecko_api_key else 30  # Faster with API key
+        self.min_api_interval = 5 if coingecko_api_key else 10  # Minimum interval
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
         
@@ -82,6 +85,11 @@ class PriceFeedManager:
                 await asyncio.sleep(wait_time)
         
         try:
+            # Use API key if available for higher rate limits
+            headers = {}
+            if self.api_key:
+                headers["x-cg-pro-api-key"] = self.api_key
+            
             async with httpx.AsyncClient(timeout=15) as client:
                 response = await client.get(
                     "https://api.coingecko.com/api/v3/simple/price",
@@ -91,7 +99,8 @@ class PriceFeedManager:
                         "include_24hr_change": "true",
                         "include_market_cap": "true",
                         "include_24hr_vol": "true"
-                    }
+                    },
+                    headers=headers
                 )
                 
                 self.last_api_call = datetime.now()
