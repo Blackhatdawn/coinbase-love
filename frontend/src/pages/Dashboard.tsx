@@ -226,15 +226,40 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Main Dashboard Grid */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
+      {/* Main Dashboard Grid with Drag & Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
       >
-        {/* Hero Card - Total Balance (spans 2-3 columns) */}
-        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-2 xl:col-span-3">
+        <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
+          >
+            {widgetOrder.map((widgetId) => (
+              <SortableWidget key={widgetId} id={widgetId}>
+                {renderWidget(widgetId, {
+                  portfolioData,
+                  portfolioLoading,
+                  holdings,
+                  totalValue,
+                  portfolioChange,
+                  prices,
+                  transactionsData,
+                  transactionsLoading,
+                  user,
+                  copiedReferral,
+                  refetchPortfolio,
+                  handleCopyReferral,
+                })}
+              </SortableWidget>
+            ))}
+          </motion.div>
+        </SortableContext>
+      </DndContext>
           <DashboardCard
             title="Total Balance"
             icon={<Wallet className="h-5 w-5" />}
