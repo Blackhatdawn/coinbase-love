@@ -1,6 +1,6 @@
 /**
  * Dashboard - Premium Trading Dashboard
- * Bybit-inspired modular card layout with real-time data
+ * Bybit-inspired modular card layout with real-time data and drag-and-drop reordering
  */
 
 import { useState, useEffect } from 'react';
@@ -20,9 +20,27 @@ import {
   Gift,
   Percent,
   Clock,
-  ExternalLink
+  ExternalLink,
+  GripVertical
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { api } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceWebSocket } from '@/hooks/usePriceWebSocket';
@@ -47,12 +65,31 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
 };
 
+// Default widget order
+const DEFAULT_WIDGET_ORDER = ['balance', 'security', 'holdings', 'earn', 'referrals', 'transactions'];
+
 const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { prices, status: priceStatus } = usePriceWebSocket();
   const [showWelcome, setShowWelcome] = useState(false);
   const [copiedReferral, setCopiedReferral] = useState(false);
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cv_widget_order');
+    return saved ? JSON.parse(saved) : DEFAULT_WIDGET_ORDER;
+  });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Check for first login
   useEffect(() => {
@@ -105,6 +142,28 @@ const Dashboard = () => {
     setTimeout(() => setCopiedReferral(false), 2000);
   };
 
+  // Handle drag end - reorder widgets
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setWidgetOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        
+        // Save to localStorage
+        localStorage.setItem('cv_widget_order', JSON.stringify(newOrder));
+        
+        return newOrder;
+      });
+    }
+  };
+
+  // Check if price feed is working (based on last update timestamp)
+  const isPriceFeedActive = priceStatus.lastUpdate && 
+    (new Date().getTime() - new Date(priceStatus.lastUpdate).getTime()) < 60000; // Active if updated in last 60s
+
   // Show welcome animation for first-time users
   if (showWelcome && user) {
     return (
@@ -130,12 +189,17 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Live Status */}
+          {/* Live Status - Shows HTTP Polling Status */}
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
-            {priceStatus.isConnected ? (
+            {isPriceFeedActive ? (
               <>
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                 <span className="text-xs text-emerald-400 font-medium">LIVE</span>
+              </>
+            ) : priceStatus.isConnecting ? (
+              <>
+                <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                <span className="text-xs text-amber-400 font-medium">CONNECTING</span>
               </>
             ) : (
               <>
