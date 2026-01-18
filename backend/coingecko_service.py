@@ -164,7 +164,7 @@ class CoinGeckoService:
         try:
             headers = {}
             if self.api_key:
-                headers["x-cg-demo-api-key"] = self.api_key
+                headers["x-cg-pro-api-key"] = self.api_key
             
             url = f"{self.base_url}/coins/{coin_id}"
             params = {
@@ -217,7 +217,7 @@ class CoinGeckoService:
         try:
             headers = {}
             if self.api_key:
-                headers["x-cg-demo-api-key"] = self.api_key
+                headers["x-cg-pro-api-key"] = self.api_key
             
             url = f"{self.base_url}/coins/{coin_id}/market_chart"
             params = {
