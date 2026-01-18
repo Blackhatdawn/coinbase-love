@@ -113,11 +113,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "CoinGecko API Key Integration"
-    - "Price Feed Status Backend Logic"
-    - "Redis Caching Integration"
-    - "Sentry Configuration Backend"
-  stuck_tasks: []
+    - "Dashboard Widget Drag-and-Drop"
+    - "Price Feed Status Indicator UI"
+  stuck_tasks:
+    - "Dashboard Widget Drag-and-Drop"
   test_all: false
   test_priority: "high_first"
 
@@ -126,3 +125,5 @@ agent_communication:
     message: "Starting comprehensive backend testing for CryptoVault dashboard enhancements. Focus on API key integration, Redis caching, price feed status logic, and Sentry configuration."
   - agent: "testing"
     message: "✅ Backend testing completed successfully. All major features working correctly. Fixed CoinGecko API key header and password reset email service. Redis caching functional, price feed status endpoint working, Sentry graceful degradation confirmed. Success rate: 91.7% (22/24 tests passed). Minor issues: Redis cache metadata not visible in responses, email verification required for login (expected behavior)."
+  - agent: "testing"
+    message: "🎯 Frontend testing completed for dashboard features. CRITICAL ISSUE: Dashboard loading stuck on 'Loading your session...' screen preventing full widget testing. Price feed status indicator working correctly (shows OFFLINE due to CoinGecko rate limiting). Drag-and-drop implementation exists and drag handles appear on hover, but cannot fully test due to loading issue. Authentication works but session management may have issues."
