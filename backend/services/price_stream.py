@@ -1,20 +1,21 @@
 """
 PriceStreamService
 Real-time cryptocurrency price streaming service.
-Connects to CoinCap WebSocket for specific assets only.
 
-Architecture:
-1. Connect to CoinCap WebSocket (primary source) - SPECIFIC ASSETS ONLY
-2. Parse JSON stream and update in-memory cache
-3. Auto-reconnect on disconnect with exponential backoff
-4. Fallback to cached data if connection fails
-5. Monitor connection health with detailed logging
+NOTE: CoinCap WebSocket now requires an API key (free tier limited).
+This service is DISABLED by default. Use the CoinGecko-based websocket_feed instead.
+
+To enable with CoinCap API key:
+1. Get API key from https://coincap.io/api-key
+2. Set COINCAP_API_KEY in .env
+3. Service will auto-enable
 """
 
 import asyncio
 import json
 import logging
 import time
+import os
 from typing import Dict, Optional, Set
 from datetime import datetime, timedelta
 from enum import Enum
@@ -42,10 +43,12 @@ class ConnectionState(Enum):
 class PriceStreamService:
     """
     Real-time price streaming service with automatic failover.
-    Connects to CoinCap WebSocket for specific tracked assets only.
+    
+    IMPORTANT: CoinCap WebSocket API now requires an API key.
+    This service is disabled by default. Set COINCAP_API_KEY in .env to enable.
     """
     
-    # Track only major coins to reduce message volume
+    # Track only major coins
     TRACKED_ASSETS = [
         "bitcoin", "ethereum", "binancecoin", "solana", 
         "ripple", "cardano", "dogecoin", "polkadot",
@@ -53,20 +56,23 @@ class PriceStreamService:
     ]
     
     def __init__(self):
+        # Check for API key
+        self.api_key = os.environ.get('COINCAP_API_KEY')
+        self.is_enabled = bool(self.api_key) and WEBSOCKETS_AVAILABLE
+        
         # Connection management
-        self.state = ConnectionState.DISCONNECTED
+        self.state = ConnectionState.DISABLED if not self.is_enabled else ConnectionState.DISCONNECTED
         self.is_running = False
         self.websocket = None
         
-        # Reconnection strategy - INCREASED BACKOFF
+        # Reconnection strategy
         self.reconnect_attempt = 0
-        self.max_reconnect_attempts = 5
-        self.base_backoff = 5  # Start at 5 seconds (was 1)
-        self.max_backoff = 120  # Max 2 minutes (was 30)
-        self.min_reconnect_interval = 10  # Minimum 10 seconds between reconnects
+        self.max_reconnect_attempts = 3
+        self.base_backoff = 30
+        self.max_backoff = 300
         self.last_reconnect_time = 0
         
-        # WebSocket endpoint - SPECIFIC ASSETS ONLY
+        # WebSocket endpoint (requires API key header now)
         self.COINCAP_WS = f"wss://ws.coincap.io/prices?assets={','.join(self.TRACKED_ASSETS)}"
         
         # Price tracking
@@ -96,22 +102,20 @@ class PriceStreamService:
         
         # Tasks
         self._task: Optional[asyncio.Task] = None
-        self._health_task: Optional[asyncio.Task] = None
         
-        if not WEBSOCKETS_AVAILABLE:
-            self.state = ConnectionState.DISABLED
-            logger.warning("🚫 PriceStreamService disabled - websockets not available")
+        if not self.is_enabled:
+            if not self.api_key:
+                logger.info("ℹ️ PriceStreamService disabled - COINCAP_API_KEY not set")
+                logger.info("ℹ️ Using CoinGecko API via websocket_feed instead")
+            elif not WEBSOCKETS_AVAILABLE:
+                logger.warning("⚠️ PriceStreamService disabled - websockets not available")
         else:
             logger.info("🚀 PriceStreamService initialized (tracking %d assets)", len(self.TRACKED_ASSETS))
     
-    # ============================================
-    # LIFECYCLE METHODS
-    # ============================================
-    
     async def start(self) -> None:
         """Start the price stream service"""
-        if not WEBSOCKETS_AVAILABLE:
-            logger.warning("⚠️ Cannot start - websockets library not available")
+        if not self.is_enabled:
+            logger.info("ℹ️ PriceStreamService not starting (disabled)")
             return
         
         if self.is_running:
@@ -121,9 +125,8 @@ class PriceStreamService:
         self.is_running = True
         self.reconnect_attempt = 0
         
-        logger.info("✅ Starting PriceStreamService")
+        logger.info("✅ Starting PriceStreamService (CoinCap WebSocket)")
         self._task = asyncio.create_task(self._stream_loop())
-        self._health_task = asyncio.create_task(self._health_monitor())
     
     async def stop(self) -> None:
         """Stop the price stream service"""
@@ -142,23 +145,14 @@ class PriceStreamService:
             except asyncio.CancelledError:
                 pass
         
-        if self._health_task:
-            self._health_task.cancel()
-            try:
-                await self._health_task
-            except asyncio.CancelledError:
-                pass
-        
         self._update_state(ConnectionState.DISCONNECTED)
         logger.info("🛑 PriceStreamService stopped")
     
     async def get_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol"""
-        # Check by coin ID first
         if symbol.lower() in self.prices:
             return self.prices[symbol.lower()]
         
-        # Check by symbol
         for coin_id, sym in self.symbol_mapping.items():
             if sym.upper() == symbol.upper() and coin_id in self.prices:
                 return self.prices[coin_id]
@@ -172,42 +166,46 @@ class PriceStreamService:
     def get_status(self) -> Dict:
         """Get service health status"""
         return {
+            "enabled": self.is_enabled,
             "state": self.state.value,
             "is_running": self.is_running,
             "prices_cached": len(self.prices),
-            "last_update": self.last_update.isoformat(),
+            "last_update": self.last_update.isoformat() if self.last_update else None,
             "message_count": self.message_count,
             "error_count": self.error_count,
-            "reconnect_attempt": self.reconnect_attempt,
         }
-    
-    # ============================================
-    # MAIN STREAMING LOOP
-    # ============================================
     
     async def _stream_loop(self) -> None:
         """Main streaming loop with automatic reconnection"""
         while self.is_running:
             try:
-                # Enforce minimum reconnect interval
-                time_since_last = time.time() - self.last_reconnect_time
-                if time_since_last < self.min_reconnect_interval:
-                    wait_time = self.min_reconnect_interval - time_since_last
-                    logger.debug(f"⏳ Waiting {wait_time:.1f}s before reconnect...")
-                    await asyncio.sleep(wait_time)
+                # Wait between reconnection attempts
+                if self.reconnect_attempt > 0:
+                    backoff = min(
+                        self.base_backoff * (2 ** (self.reconnect_attempt - 1)),
+                        self.max_backoff
+                    )
+                    logger.info(f"⏳ Reconnecting in {backoff}s (attempt {self.reconnect_attempt}/{self.max_reconnect_attempts})")
+                    await asyncio.sleep(backoff)
                 
-                self.last_reconnect_time = time.time()
+                if self.reconnect_attempt >= self.max_reconnect_attempts:
+                    logger.error("❌ Max reconnection attempts reached. Disabling service.")
+                    self.is_running = False
+                    self._update_state(ConnectionState.DISABLED)
+                    break
                 
                 logger.info("🔌 Connecting to CoinCap WebSocket...")
                 self._update_state(ConnectionState.CONNECTING)
                 
-                # Connect to WebSocket with proper settings
+                # Connect with API key header
+                headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+                
                 async with websockets.connect(
                     self.COINCAP_WS,
-                    ping_interval=30,  # Increased from 20
-                    ping_timeout=15,   # Increased from 10
+                    extra_headers=headers,
+                    ping_interval=30,
+                    ping_timeout=15,
                     close_timeout=10,
-                    max_size=10 * 1024 * 1024,  # 10MB max message
                 ) as websocket:
                     self.websocket = websocket
                     self._update_state(ConnectionState.CONNECTED)
@@ -215,43 +213,35 @@ class PriceStreamService:
                     
                     logger.info("✅ Connected to CoinCap WebSocket")
                     
-                    # Process messages
                     async for message in websocket:
                         if not self.is_running:
                             break
-                        
                         await self._process_message(message)
             
             except websockets.exceptions.ConnectionClosed as e:
-                logger.warning(f"⚠️ WebSocket connection closed: {e.code} - {e.reason}")
+                logger.warning(f"⚠️ WebSocket closed: {e.code} - {e.reason}")
                 self._update_state(ConnectionState.DISCONNECTED)
-                await self._handle_reconnection()
-            
-            except websockets.exceptions.InvalidStatusCode as e:
-                logger.error(f"❌ WebSocket invalid status: {e}")
-                self.error_count += 1
-                await self._handle_reconnection()
-            
-            except asyncio.TimeoutError:
-                logger.warning("⚠️ WebSocket connection timeout")
-                self._update_state(ConnectionState.DISCONNECTED)
-                await self._handle_reconnection()
+                self.reconnect_attempt += 1
             
             except Exception as e:
-                logger.error(f"❌ Error in price stream: {type(e).__name__}: {e}")
+                logger.error(f"❌ WebSocket error: {type(e).__name__}: {e}")
                 self.error_count += 1
                 self._update_state(ConnectionState.DISCONNECTED)
-                await self._handle_reconnection()
+                self.reconnect_attempt += 1
     
     async def _process_message(self, message: str) -> None:
-        """Process WebSocket message from CoinCap"""
+        """Process WebSocket message"""
         try:
             data = json.loads(message)
             
+            # Check for error
+            if "error" in data:
+                logger.error(f"❌ CoinCap error: {data['error']}")
+                return
+            
             for coin_id, price_str in data.items():
                 try:
-                    price = float(price_str)
-                    self.prices[coin_id] = price
+                    self.prices[coin_id] = float(price_str)
                 except (ValueError, TypeError):
                     continue
             
@@ -264,78 +254,11 @@ class PriceStreamService:
         except Exception as e:
             logger.warning(f"⚠️ Error processing message: {e}")
     
-    # ============================================
-    # RECONNECTION
-    # ============================================
-    
-    async def _handle_reconnection(self) -> None:
-        """Handle reconnection with exponential backoff"""
-        if not self.is_running:
-            return
-        
-        self.reconnect_attempt += 1
-        
-        if self.reconnect_attempt > self.max_reconnect_attempts:
-            logger.error(f"❌ Max reconnection attempts ({self.max_reconnect_attempts}) exceeded. Stopping.")
-            self.is_running = False
-            self._update_state(ConnectionState.DISABLED)
-            return
-        
-        # Calculate backoff with exponential increase
-        backoff = min(
-            self.base_backoff * (2 ** (self.reconnect_attempt - 1)),
-            self.max_backoff
-        )
-        
-        logger.info(
-            f"📈 Reconnection attempt {self.reconnect_attempt}/{self.max_reconnect_attempts} "
-            f"in {backoff}s"
-        )
-        
-        self._update_state(ConnectionState.RECONNECTING)
-        await asyncio.sleep(backoff)
-    
-    async def _health_monitor(self) -> None:
-        """Monitor connection health"""
-        while self.is_running:
-            try:
-                await asyncio.sleep(60)  # Check every minute
-                
-                if self.state == ConnectionState.CONNECTED:
-                    time_since_message = (datetime.now() - self.last_message_time).total_seconds()
-                    
-                    if time_since_message > 120:  # No message in 2 minutes
-                        logger.warning(f"⚠️ No messages received for {time_since_message:.0f}s - connection may be stale")
-                        
-                        # Force reconnect if stale
-                        if self.websocket:
-                            await self.websocket.close()
-            
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.warning(f"⚠️ Health monitor error: {e}")
-    
-    # ============================================
-    # UTILITIES
-    # ============================================
-    
     def _update_state(self, new_state: ConnectionState) -> None:
         """Update connection state with logging"""
         if self.state != new_state:
             logger.info(f"🔄 Connection state: {self.state.value} → {new_state.value}")
             self.state = new_state
-    
-    async def health_check(self) -> bool:
-        """Check if service is healthy"""
-        if not self.is_running:
-            return False
-        
-        if self.state != ConnectionState.CONNECTED:
-            return False
-        
-        time_since_update = (datetime.now() - self.last_update).total_seconds()
-        return time_since_update < 120  # Healthy if received update in last 2 minutes
 
 
 # Global service instance
