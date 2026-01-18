@@ -68,6 +68,44 @@ const itemVariants = {
 // Default widget order
 const DEFAULT_WIDGET_ORDER = ['balance', 'security', 'holdings', 'earn', 'referrals', 'transactions'];
 
+// Sortable Widget Wrapper
+const SortableWidget = ({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      variants={itemVariants}
+      className={cn('relative group', className)}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 right-2 p-1.5 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
+      {children}
+    </motion.div>
+  );
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -239,278 +277,312 @@ const Dashboard = () => {
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
           >
-            {widgetOrder.map((widgetId) => (
-              <SortableWidget key={widgetId} id={widgetId}>
-                {renderWidget(widgetId, {
-                  portfolioData,
-                  portfolioLoading,
-                  holdings,
-                  totalValue,
-                  portfolioChange,
-                  prices,
-                  transactionsData,
-                  transactionsLoading,
-                  user,
-                  copiedReferral,
-                  refetchPortfolio,
-                  handleCopyReferral,
-                })}
-              </SortableWidget>
-            ))}
+            {widgetOrder.map((widgetId) => {
+              // Determine grid span class based on widget type
+              const spanClass = widgetId === 'balance' 
+                ? 'md:col-span-2 lg:col-span-2 xl:col-span-3' 
+                : widgetId === 'holdings' || widgetId === 'transactions'
+                ? 'md:col-span-2'
+                : '';
+              
+              return (
+                <SortableWidget key={widgetId} id={widgetId} className={spanClass}>
+                  {renderWidget(widgetId, {
+                    portfolioData,
+                    portfolioLoading,
+                    holdings,
+                    totalValue,
+                    portfolioChange,
+                    prices,
+                    transactionsData,
+                    transactionsLoading,
+                    user,
+                    copiedReferral,
+                    refetchPortfolio,
+                    handleCopyReferral,
+                  })}
+                </SortableWidget>
+              );
+            })}
           </motion.div>
         </SortableContext>
       </DndContext>
-          <DashboardCard
-            title="Total Balance"
-            icon={<Wallet className="h-5 w-5" />}
-            className="h-full"
-            glowColor="gold"
-          >
-            <div className="space-y-4">
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl sm:text-5xl font-display font-bold text-white">
-                  ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <div className={cn(
-                  'flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-semibold',
-                  portfolioChange >= 0
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-red-500/10 text-red-400'
-                )}>
-                  {portfolioChange >= 0 ? (
-                    <TrendingUp className="h-4 w-4" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4" />
-                  )}
-                  {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}%
-                </div>
-              </div>
+    </div>
+  );
+};
 
-              {/* BTC Equivalent */}
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=029" alt="BTC" className="w-4 h-4" />
-                ≈ {((totalValue) / (parseFloat(prices['btc'] || '68000'))).toFixed(6)} BTC
-              </div>
+// Widget renderer function
+const renderWidget = (widgetId: string, props: any) => {
+  const {
+    portfolioData,
+    portfolioLoading,
+    holdings,
+    totalValue,
+    portfolioChange,
+    prices,
+    transactionsData,
+    transactionsLoading,
+    user,
+    copiedReferral,
+    refetchPortfolio,
+    handleCopyReferral,
+  } = props;
 
-              {/* Quick Actions */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
-                <Link to="/wallet/deposit" className="flex-1 min-w-[120px]">
-                  <Button className="w-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold">
-                    <ArrowDownRight className="h-4 w-4 mr-2" />
-                    Deposit
-                  </Button>
-                </Link>
-                <Link to="/wallet/withdraw" className="flex-1 min-w-[120px]">
-                  <Button variant="outline" className="w-full border-white/10 hover:bg-white/5">
-                    <ArrowUpRight className="h-4 w-4 mr-2" />
-                    Withdraw
-                  </Button>
-                </Link>
-                <Link to="/trade" className="flex-1 min-w-[120px]">
-                  <Button variant="outline" className="w-full border-gold-500/30 text-gold-400 hover:bg-gold-500/10">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Trade
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </DashboardCard>
-        </motion.div>
-
-        {/* Security Status Card */}
-        <motion.div variants={itemVariants} className="xl:col-span-1">
-          <DashboardCard
-            title="Security"
-            icon={<Shield className="h-5 w-5" />}
-            className="h-full"
-            glowColor="emerald"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-500/10 rounded-xl">
-                  <Shield className="h-8 w-8 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-white">Protected</p>
-                  <p className="text-xs text-emerald-400">All systems secure</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <SecurityItem label="2FA" enabled status="Enabled" />
-                <SecurityItem label="Email Verified" enabled status="Verified" />
-                <SecurityItem label="Anti-Phishing" enabled={false} status="Set up" link="/security" />
-              </div>
-            </div>
-          </DashboardCard>
-        </motion.div>
-
-        {/* Holdings Card */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
-          <DashboardCard
-            title="Your Assets"
-            action={
-              <Link to="/trade" className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1">
-                Trade <ExternalLink className="h-3 w-3" />
-              </Link>
-            }
-            className="h-full"
-          >
-            {portfolioLoading ? (
-              <HoldingsSkeleton />
-            ) : holdings.length > 0 ? (
-              <div className="space-y-3">
-                {holdings.slice(0, 4).map((holding: any, i: number) => {
-                  const wsPrice = prices[holding.symbol?.toLowerCase()];
-                  const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
-                  const change = Math.random() > 0.5 ? Math.random() * 5 : -Math.random() * 3; // Mock 24h change
-
-                  return (
-                    <HoldingRow
-                      key={holding.symbol}
-                      symbol={holding.symbol}
-                      name={holding.name}
-                      amount={holding.amount}
-                      value={currentValue}
-                      change={change}
-                      isLive={!!wsPrice}
-                    />
-                  );
-                })}
-                {holdings.length > 4 && (
-                  <Link
-                    to="/portfolio"
-                    className="block text-center text-sm text-gray-400 hover:text-gold-400 py-2"
-                  >
-                    View all {holdings.length} assets
-                  </Link>
+  switch (widgetId) {
+    case 'balance':
+      return (
+        <DashboardCard
+          title="Total Balance"
+          icon={<Wallet className="h-5 w-5" />}
+          className="h-full"
+          glowColor="gold"
+        >
+          <div className="space-y-4">
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl sm:text-5xl font-display font-bold text-white">
+                ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <div className={cn(
+                'flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-semibold',
+                portfolioChange >= 0
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-red-500/10 text-red-400'
+              )}>
+                {portfolioChange >= 0 ? (
+                  <TrendingUp className="h-4 w-4" />
+                ) : (
+                  <TrendingDown className="h-4 w-4" />
                 )}
+                {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}%
               </div>
-            ) : (
-              <EmptyState
-                icon={<Wallet className="h-12 w-12" />}
-                title="No assets yet"
-                description="Deposit crypto to start building your portfolio"
-                action={
-                  <Link to="/wallet/deposit">
-                    <Button size="sm" className="bg-gold-500 hover:bg-gold-400 text-black">
-                      Deposit Now
-                    </Button>
-                  </Link>
-                }
-              />
-            )}
-          </DashboardCard>
-        </motion.div>
+            </div>
 
-        {/* Staking/Earn Card */}
-        <motion.div variants={itemVariants}>
-          <DashboardCard
-            title="Earn"
-            icon={<Percent className="h-5 w-5" />}
-            badge="Up to 12% APY"
-            className="h-full"
-            glowColor="violet"
-          >
-            <div className="space-y-4">
-              <div className="p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">Active Stakes</span>
-                  <span className="text-lg font-semibold text-white">$0.00</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Rewards Earned</span>
-                  <span className="text-lg font-semibold text-emerald-400">+$0.00</span>
-                </div>
-              </div>
+            {/* BTC Equivalent */}
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=029" alt="BTC" className="w-4 h-4" />
+              ≈ {((totalValue) / (parseFloat(prices['btc'] || '68000'))).toFixed(6)} BTC
+            </div>
 
-              <Link to="/earn">
-                <Button className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500">
-                  Start Earning
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
+              <Link to="/wallet/deposit" className="flex-1 min-w-[120px]">
+                <Button className="w-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold">
+                  <ArrowDownRight className="h-4 w-4 mr-2" />
+                  Deposit
+                </Button>
+              </Link>
+              <Link to="/wallet/withdraw" className="flex-1 min-w-[120px]">
+                <Button variant="outline" className="w-full border-white/10 hover:bg-white/5">
+                  <ArrowUpRight className="h-4 w-4 mr-2" />
+                  Withdraw
+                </Button>
+              </Link>
+              <Link to="/trade" className="flex-1 min-w-[120px]">
+                <Button variant="outline" className="w-full border-gold-500/30 text-gold-400 hover:bg-gold-500/10">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Trade
                 </Button>
               </Link>
             </div>
-          </DashboardCard>
-        </motion.div>
+          </div>
+        </DashboardCard>
+      );
 
-        {/* Referral Card */}
-        <motion.div variants={itemVariants}>
-          <DashboardCard
-            title="Referrals"
-            icon={<Gift className="h-5 w-5" />}
-            className="h-full"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-white">0</p>
-                  <p className="text-xs text-gray-400">Total Referrals</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-emerald-400">$0.00</p>
-                  <p className="text-xs text-gray-400">Earned</p>
-                </div>
+    case 'security':
+      return (
+        <DashboardCard
+          title="Security"
+          icon={<Shield className="h-5 w-5" />}
+          className="h-full"
+          glowColor="emerald"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-500/10 rounded-xl">
+                <Shield className="h-8 w-8 text-emerald-400" />
               </div>
-
-              <div className="p-3 bg-white/5 rounded-lg">
-                <p className="text-xs text-gray-400 mb-2">Your referral code</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm font-mono text-gold-400 truncate">
-                    CV{user?.id?.slice(-6)?.toUpperCase() || 'VAULT'}
-                  </code>
-                  <button
-                    onClick={handleCopyReferral}
-                    className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                    aria-label="Copy referral link"
-                  >
-                    {copiedReferral ? (
-                      <Check className="h-4 w-4 text-emerald-400" />
-                    ) : (
-                      <Copy className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
-                </div>
+              <div>
+                <p className="text-lg font-semibold text-white">Protected</p>
+                <p className="text-xs text-emerald-400">All systems secure</p>
               </div>
-
-              <p className="text-xs text-gray-500">
-                Earn 10% of your friends' trading fees
-              </p>
             </div>
-          </DashboardCard>
-        </motion.div>
 
-        {/* Recent Transactions Card */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
-          <DashboardCard
-            title="Recent Activity"
-            icon={<Clock className="h-5 w-5" />}
-            action={
-              <Link to="/transactions" className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1">
-                View All <ExternalLink className="h-3 w-3" />
-              </Link>
-            }
-            className="h-full"
-          >
-            {transactionsLoading ? (
-              <TransactionsSkeleton />
-            ) : (transactionsData?.transactions?.length || 0) > 0 ? (
-              <div className="space-y-2">
-                {transactionsData?.transactions?.slice(0, 5).map((tx: any) => (
-                  <TransactionRow key={tx.id} transaction={tx} />
-                ))}
+            <div className="space-y-2">
+              <SecurityItem label="2FA" enabled status="Enabled" />
+              <SecurityItem label="Email Verified" enabled status="Verified" />
+              <SecurityItem label="Anti-Phishing" enabled={false} status="Set up" link="/security" />
+            </div>
+          </div>
+        </DashboardCard>
+      );
+
+    case 'holdings':
+      return (
+        <DashboardCard
+          title="Your Assets"
+          action={
+            <Link to="/trade" className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1">
+              Trade <ExternalLink className="h-3 w-3" />
+            </Link>
+          }
+          className="h-full"
+        >
+          {portfolioLoading ? (
+            <HoldingsSkeleton />
+          ) : holdings.length > 0 ? (
+            <div className="space-y-3">
+              {holdings.slice(0, 4).map((holding: any, i: number) => {
+                const wsPrice = prices[holding.symbol?.toLowerCase()];
+                const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
+                const change = Math.random() > 0.5 ? Math.random() * 5 : -Math.random() * 3; // Mock 24h change
+
+                return (
+                  <HoldingRow
+                    key={holding.symbol}
+                    symbol={holding.symbol}
+                    name={holding.name}
+                    amount={holding.amount}
+                    value={currentValue}
+                    change={change}
+                    isLive={!!wsPrice}
+                  />
+                );
+              })}
+              {holdings.length > 4 && (
+                <Link
+                  to="/portfolio"
+                  className="block text-center text-sm text-gray-400 hover:text-gold-400 py-2"
+                >
+                  View all {holdings.length} assets
+                </Link>
+              )}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<Wallet className="h-12 w-12" />}
+              title="No assets yet"
+              description="Deposit crypto to start building your portfolio"
+              action={
+                <Link to="/wallet/deposit">
+                  <Button size="sm" className="bg-gold-500 hover:bg-gold-400 text-black">
+                    Deposit Now
+                  </Button>
+                </Link>
+              }
+            />
+          )}
+        </DashboardCard>
+      );
+
+    case 'earn':
+      return (
+        <DashboardCard
+          title="Earn"
+          icon={<Percent className="h-5 w-5" />}
+          badge="Up to 12% APY"
+          className="h-full"
+          glowColor="violet"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-400">Active Stakes</span>
+                <span className="text-lg font-semibold text-white">$0.00</span>
               </div>
-            ) : (
-              <EmptyState
-                icon={<Clock className="h-10 w-10" />}
-                title="No transactions"
-                description="Your trading activity will appear here"
-              />
-            )}
-          </DashboardCard>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-400">Rewards Earned</span>
+                <span className="text-lg font-semibold text-emerald-400">+$0.00</span>
+              </div>
+            </div>
+
+            <Link to="/earn">
+              <Button className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500">
+                Start Earning
+              </Button>
+            </Link>
+          </div>
+        </DashboardCard>
+      );
+
+    case 'referrals':
+      return (
+        <DashboardCard
+          title="Referrals"
+          icon={<Gift className="h-5 w-5" />}
+          className="h-full"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-white">0</p>
+                <p className="text-xs text-gray-400">Total Referrals</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-emerald-400">$0.00</p>
+                <p className="text-xs text-gray-400">Earned</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-xs text-gray-400 mb-2">Your referral code</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm font-mono text-gold-400 truncate">
+                  CV{user?.id?.slice(-6)?.toUpperCase() || 'VAULT'}
+                </code>
+                <button
+                  onClick={handleCopyReferral}
+                  className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                  aria-label="Copy referral link"
+                >
+                  {copiedReferral ? (
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-4 w-4 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Earn 10% of your friends' trading fees
+            </p>
+          </div>
+        </DashboardCard>
+      );
+
+    case 'transactions':
+      return (
+        <DashboardCard
+          title="Recent Activity"
+          icon={<Clock className="h-5 w-5" />}
+          action={
+            <Link to="/transactions" className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1">
+              View All <ExternalLink className="h-3 w-3" />
+            </Link>
+          }
+          className="h-full"
+        >
+          {transactionsLoading ? (
+            <TransactionsSkeleton />
+          ) : (transactionsData?.transactions?.length || 0) > 0 ? (
+            <div className="space-y-2">
+              {transactionsData?.transactions?.slice(0, 5).map((tx: any) => (
+                <TransactionRow key={tx.id} transaction={tx} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<Clock className="h-10 w-10" />}
+              title="No transactions"
+              description="Your trading activity will appear here"
+            />
+          )}
+        </DashboardCard>
+      );
+
+    default:
+      return null;
+  }
 };
 
 // Sub-components
