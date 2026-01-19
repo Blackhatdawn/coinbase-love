@@ -86,12 +86,14 @@ async def readiness_probe():
     
     status_code = 200 if ready else 503
     
-    return Response(
-        content={
-            "status": "ready" if ready else "not ready",
-            "services": services,
-            "timestamp": datetime.utcnow().isoformat()
-        },
+    response_data = {
+        "status": "ready" if ready else "not ready",
+        "services": services,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    return JSONResponse(
+        content=response_data,
         status_code=status_code
     )
 
