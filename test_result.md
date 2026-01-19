@@ -175,11 +175,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Dashboard Widget Drag-and-Drop"
-    - "Price Feed Status Indicator UI"
-  stuck_tasks:
-    - "Dashboard Widget Drag-and-Drop"
-  test_all: false
+    - "Session Loading Performance Fix"
+    - "Protected Routes Security"
+    - "API Endpoints Health Check"
+  stuck_tasks: []
+  test_all: true
   test_priority: "high_first"
 
 agent_communication:
