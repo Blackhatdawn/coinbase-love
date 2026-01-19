@@ -4,6 +4,7 @@ Prometheus-compatible metrics and health checks
 """
 
 from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
 from datetime import datetime
 import psutil
 import asyncio
