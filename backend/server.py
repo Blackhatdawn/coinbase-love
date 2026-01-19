@@ -524,7 +524,7 @@ app.include_router(users.router, prefix="/api", tags=["legacy"])
 app.include_router(websocket.router)
 
 # Monitoring (no versioning or auth required)
-app.include_router(monitoring.router)
+app.include_router(monitoring.router, prefix="/api")
 
 # ============================================
 # SOCKET.IO INTEGRATION
