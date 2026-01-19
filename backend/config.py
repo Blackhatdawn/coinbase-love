@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+    csrf_secret: Optional[str] = None
 
     # CORS Configuration
     cors_origins: str = "*"
@@ -51,6 +52,17 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8001
     environment: str = "development"
+    
+    # Performance & Security
+    request_timeout_seconds: int = 30
+    max_request_size_mb: int = 10
+    enable_compression: bool = True
+    enable_https_redirect: bool = False
+    
+    # Feature Flags
+    enable_email_verification: bool = True
+    enable_2fa: bool = False
+    enable_api_docs: bool = True
 
     # MongoDB Connection Pool Settings
     mongo_max_pool_size: int = 50
@@ -74,10 +86,25 @@ class Settings(BaseSettings):
 
     # CoinGecko API Configuration
     coingecko_api_key: Optional[str] = None
+    coingecko_rate_limit: int = 50
     use_mock_prices: bool = False
+    
+    # CoinCap API Configuration
+    coincap_api_key: Optional[str] = None
     
     # CoinMarketCap API Configuration
     coinmarketcap_api_key: Optional[str] = None
+    
+    # NowPayments Configuration
+    nowpayments_api_key: Optional[str] = None
+    nowpayments_ipn_secret: Optional[str] = None
+    nowpayments_sandbox: bool = True
+    
+    # Firebase Configuration
+    firebase_credentials_path: Optional[str] = None
+    
+    # Email Configuration
+    email_verification_url: Optional[str] = None
 
     # Redis Configuration (Upstash)
     use_redis: bool = True
@@ -88,6 +115,7 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
     sentry_traces_sample_rate: float = 0.1
     sentry_profiles_sample_rate: float = 0.1
+    sentry_environment: str = "development"
 
     model_config = SettingsConfigDict(
         env_file=str(env_path),
