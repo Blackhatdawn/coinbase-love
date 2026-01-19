@@ -439,7 +439,7 @@ app.add_middleware(
 # Add Brotli compression for better compression ratios
 try:
     from fastapi.middleware.gzip import GZipMiddleware
-    import brotli
+    # import brotli  # Optional: for Brotli compression
     
     # Note: Brotli is preferred over GZip for better compression
     # Most modern browsers support Brotli (br encoding)
