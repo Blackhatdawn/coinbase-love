@@ -7,6 +7,7 @@ monitoring, and production-grade features.
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZIPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Optional, Set
 from datetime import datetime
@@ -451,6 +452,11 @@ except ImportError:
 # ============================================
 # CUSTOM MIDDLEWARE
 # ============================================
+
+# Add compression first (responses will be compressed)
+if hasattr(settings, 'enable_compression') and settings.enable_compression:
+    app.add_middleware(GZIPMiddleware, minimum_size=1000)
+    logger.info("✅ Response compression enabled (Gzip)")
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
