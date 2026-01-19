@@ -1,176 +1,274 @@
 {
-  "total_tests": 24,
-  "passed_tests": 22,
-  "failed_tests": 2,
-  "success_rate": 91.66666666666666,
+  "total_tests": 38,
+  "passed_tests": 3,
+  "failed_tests": 35,
+  "success_rate": 7.894736842105263,
   "test_results": [
+    {
+      "test": "Legacy Health Check (/api/health)",
+      "success": false,
+      "details": "Status code: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.217698"
+    },
+    {
+      "test": "Versioned Auth Endpoint (/api/v1/auth/login)",
+      "success": false,
+      "details": "Unexpected status: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.278891"
+    },
+    {
+      "test": "Kubernetes Liveness Probe",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.394444"
+    },
+    {
+      "test": "Kubernetes Readiness Probe",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.473540"
+    },
+    {
+      "test": "JSON Metrics Endpoint",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.534282"
+    },
+    {
+      "test": "Circuit Breakers Endpoint",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.592501"
+    },
+    {
+      "test": "Password Reset - Invalid Email Validation",
+      "success": false,
+      "details": "Unexpected status: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.638131"
+    },
+    {
+      "test": "Password Reset - Valid Email",
+      "success": false,
+      "details": "Status code: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.686063"
+    },
+    {
+      "test": "Password Reset - Weak Password Validation",
+      "success": false,
+      "details": "Unexpected status: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.732572"
+    },
+    {
+      "test": "Password Reset - Password Mismatch Validation",
+      "success": false,
+      "details": "Unexpected status: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.784414"
+    },
+    {
+      "test": "Legacy Crypto Endpoint (/api/crypto)",
+      "success": false,
+      "details": "Status code: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.846118"
+    },
+    {
+      "test": "Versioned Crypto Endpoint (/api/v1/crypto)",
+      "success": false,
+      "details": "Status code: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:26.903014"
+    },
+    {
+      "test": "Circuit Breaker Status",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.031542"
+    },
+    {
+      "test": "Monitoring Metrics",
+      "success": false,
+      "details": "Error: Expecting value: line 1 column 1 (char 0)",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.091602"
+    },
+    {
+      "test": "Rate Limiting Headers",
+      "success": false,
+      "details": "No rate limiting headers found",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.141847"
+    },
+    {
+      "test": "Rate Limiting Functionality",
+      "success": false,
+      "details": "Unexpected responses: [520, 520, 520]",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.573868"
+    },
+    {
+      "test": "User Email Index Performance",
+      "success": false,
+      "details": "Unexpected response: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.616444"
+    },
+    {
+      "test": "Crypto Symbol Index Performance",
+      "success": false,
+      "details": "Unexpected response: 520",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.664186"
+    },
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:51.915886"
+      "timestamp": "2026-01-19T02:58:27.722084"
     },
     {
       "test": "Health Check",
-      "success": true,
-      "details": "API is healthy",
+      "success": false,
+      "details": "Health endpoint returned 520",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:51.983908"
+      "timestamp": "2026-01-19T02:58:27.781213"
     },
     {
       "test": "CoinGecko API Integration",
-      "success": true,
-      "details": "Price data retrieved successfully with 10 cryptocurrencies",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.153481"
-    },
-    {
-      "test": "CoinGecko Real Data",
-      "success": true,
-      "details": "BTC price: $95,472.12 (appears to be real data)",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.153502"
-    },
-    {
-      "test": "Price Feed Status Endpoint (Alternative)",
-      "success": true,
-      "details": "Alternative endpoint working: {'enabled': False, 'state': 'disabled', 'is_running': False, 'prices_cached': 0, 'last_update': '2026-01-18T23:04:19.468151', 'message_count': 0, 'error_count': 0}",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.223930"
-    },
-    {
-      "test": "Redis Cache Endpoints",
-      "success": true,
-      "details": "Multiple crypto endpoints accessible",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.475530"
-    },
-    {
-      "test": "Redis Cache Performance",
-      "success": true,
-      "details": "Repeat request very fast (0.167s) - likely cached",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.642325"
-    },
-    {
-      "test": "Redis Cache Data Structure",
       "success": false,
-      "details": "No obvious caching metadata in response",
+      "details": "Failed to get cryptocurrency data: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.642352"
+      "timestamp": "2026-01-19T02:58:27.834180"
+    },
+    {
+      "test": "Price Feed Status Endpoint",
+      "success": false,
+      "details": "Price feed status endpoint not accessible: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:27.925491"
+    },
+    {
+      "test": "Redis Caching Test",
+      "success": false,
+      "details": "Could not test caching due to API errors",
+      "response_data": null,
+      "timestamp": "2026-01-19T02:58:28.013820"
     },
     {
       "test": "Sentry Graceful Degradation",
-      "success": true,
-      "details": "API works correctly with empty Sentry DSN",
+      "success": false,
+      "details": "API not responding: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.706826"
+      "timestamp": "2026-01-19T02:58:28.054068"
     },
     {
       "test": "Sentry Error Handling",
-      "success": true,
-      "details": "API handles errors gracefully even with Sentry configuration",
+      "success": false,
+      "details": "Unexpected error response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:52.941665"
+      "timestamp": "2026-01-19T02:58:28.091746"
     },
     {
       "test": "Get All Cryptocurrencies",
-      "success": true,
-      "details": "Retrieved 10 cryptocurrencies",
+      "success": false,
+      "details": "Failed to get cryptocurrencies: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.074845"
+      "timestamp": "2026-01-19T02:58:28.131138"
     },
     {
       "test": "Get Bitcoin Details",
-      "success": true,
-      "details": "Bitcoin details retrieved successfully",
+      "success": false,
+      "details": "Failed to get Bitcoin details: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.195185"
+      "timestamp": "2026-01-19T02:58:28.167221"
     },
     {
       "test": "Password Reset Request",
-      "success": true,
-      "details": "Password reset endpoint working",
+      "success": false,
+      "details": "Password reset failed: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.451653"
+      "timestamp": "2026-01-19T02:58:28.214756"
     },
     {
       "test": "Alerts Endpoint (Auth Required)",
-      "success": true,
-      "details": "Alerts endpoint correctly requires authentication",
+      "success": false,
+      "details": "Unexpected alerts response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.487339"
+      "timestamp": "2026-01-19T02:58:28.266835"
     },
     {
       "test": "Admin Stats Endpoint (Auth Required)",
-      "success": true,
-      "details": "Admin stats endpoint correctly requires authentication",
+      "success": false,
+      "details": "Unexpected admin stats response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.525072"
+      "timestamp": "2026-01-19T02:58:28.317796"
     },
     {
       "test": "Wallet Deposit Endpoint (Auth Required)",
-      "success": true,
-      "details": "Wallet deposit endpoint correctly requires authentication",
+      "success": false,
+      "details": "Unexpected wallet deposit response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.560375"
+      "timestamp": "2026-01-19T02:58:28.356999"
     },
     {
       "test": "Wallet Balance Endpoint (Auth Required)",
-      "success": true,
-      "details": "Wallet balance endpoint correctly requires authentication",
+      "success": false,
+      "details": "Unexpected wallet balance response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.592189"
+      "timestamp": "2026-01-19T02:58:28.396203"
     },
     {
       "test": "Transactions Endpoint (Auth Required)",
-      "success": true,
-      "details": "Transactions endpoint correctly requires authentication",
+      "success": false,
+      "details": "Unexpected transactions response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:53.623524"
+      "timestamp": "2026-01-19T02:58:28.454037"
     },
     {
       "test": "User Signup",
-      "success": true,
-      "details": "User created with ID: c41bb617-c1fa-4e80-8956-139e30d4711e",
-      "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.112130"
-    },
-    {
-      "test": "User Login",
       "success": false,
-      "details": "Email verification required (expected for new accounts)",
+      "details": "Signup failed: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.399234"
+      "timestamp": "2026-01-19T02:58:28.488271"
     },
     {
       "test": "Portfolio Endpoint (Auth Required)",
-      "success": true,
-      "details": "Correctly requires authentication",
+      "success": false,
+      "details": "Unexpected response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.433196"
+      "timestamp": "2026-01-19T02:58:28.528928"
     },
     {
       "test": "Orders Endpoint (Auth Required)",
-      "success": true,
-      "details": "Correctly requires authentication",
+      "success": false,
+      "details": "Unexpected response: {'status_code': 520, 'text': 'Web server returned an unknown error\\n'}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.506756"
+      "timestamp": "2026-01-19T02:58:28.573490"
     },
     {
       "test": "CORS Configuration",
       "success": true,
       "details": "CORS may be configured (headers not visible in same-origin requests)",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.568869"
+      "timestamp": "2026-01-19T02:58:28.610993"
     },
     {
       "test": "Security Headers",
       "success": true,
-      "details": "Security headers present: {'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'}",
+      "details": "Security headers present: {'X-Frame-Options': None, 'X-Content-Type-Options': 'nosniff', 'Strict-Transport-Security': None, 'X-XSS-Protection': None, 'Referrer-Policy': None, 'Permissions-Policy': None}",
       "response_data": null,
-      "timestamp": "2026-01-18T23:04:54.568881"
+      "timestamp": "2026-01-19T02:58:28.611005"
     }
   ]
 }
