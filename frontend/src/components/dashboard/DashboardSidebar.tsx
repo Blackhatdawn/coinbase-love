@@ -19,7 +19,8 @@ import {
   Percent,
   ArrowRightLeft,
   Shield,
-  HelpCircle
+  HelpCircle,
+  PieChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -44,6 +45,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/portfolio', icon: PieChart, label: 'Portfolio' },
   { path: '/trade', icon: TrendingUp, label: 'Trade' },
   { path: '/earn', icon: Percent, label: 'Earn', badge: 'APY 12%' },
   { path: '/wallet/deposit', icon: Wallet, label: 'Deposit' },
