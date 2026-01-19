@@ -532,7 +532,7 @@ class CryptoVaultAPITester:
         print("\n🔌 Testing Circuit Breaker Status...")
         
         try:
-            response = requests.get(f"{self.monitoring_base}/circuit-breakers", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/circuit-breakers", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 
