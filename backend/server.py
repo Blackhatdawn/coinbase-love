@@ -453,10 +453,10 @@ except ImportError:
 # CUSTOM MIDDLEWARE
 # ============================================
 
-# Add compression first (responses will be compressed)
-if hasattr(settings, 'enable_compression') and settings.enable_compression:
-    app.add_middleware(GZIPMiddleware, minimum_size=1000)
-    logger.info("✅ Response compression enabled (Gzip)")
+# Compression will be handled by reverse proxy (nginx/cloudflare)
+# if hasattr(settings, 'enable_compression') and settings.enable_compression:
+#     app.add_middleware(GZIPMiddleware, minimum_size=1000)
+#     logger.info("✅ Response compression enabled (Gzip)")
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
