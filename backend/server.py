@@ -493,23 +493,34 @@ except ImportError as e:
 db_connection: Optional[DatabaseConnection] = None
 
 # ============================================
-# INCLUDE ROUTERS
+# API ROUTES - Version 1
 # ============================================
+# Mount v1 API routes (versioned)
+try:
+    from routers.v1 import api_v1_router
+    app.include_router(api_v1_router)
+    logger.info("✅ API v1 routes mounted at /api/v1/")
+except ImportError as e:
+    logger.warning(f"⚠️ Could not load v1 routes: {e}")
 
-app.include_router(auth.router, prefix="/api")
-app.include_router(portfolio.router, prefix="/api")
-app.include_router(trading.router, prefix="/api")
-app.include_router(crypto.router, prefix="/api")
-app.include_router(prices.router, prefix="/api")
-app.include_router(admin.router, prefix="/api")
-app.include_router(wallet.router, prefix="/api")
-app.include_router(alerts.router, prefix="/api")
-app.include_router(notifications.router, prefix="/api")
-app.include_router(transactions.router, prefix="/api")
-app.include_router(transfers.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
+# ============================================
+# API ROUTES - Legacy (Backward Compatibility)
+# ============================================
+# Keep legacy routes for backward compatibility (will be deprecated)
+app.include_router(auth.router, prefix="/api", tags=["legacy"])
+app.include_router(portfolio.router, prefix="/api", tags=["legacy"])
+app.include_router(trading.router, prefix="/api", tags=["legacy"])
+app.include_router(crypto.router, prefix="/api", tags=["legacy"])
+app.include_router(prices.router, prefix="/api", tags=["legacy"])
+app.include_router(admin.router, prefix="/api", tags=["legacy"])
+app.include_router(wallet.router, prefix="/api", tags=["legacy"])
+app.include_router(alerts.router, prefix="/api", tags=["legacy"])
+app.include_router(notifications.router, prefix="/api", tags=["legacy"])
+app.include_router(transactions.router, prefix="/api", tags=["legacy"])
+app.include_router(transfers.router, prefix="/api", tags=["legacy"])
+app.include_router(users.router, prefix="/api", tags=["legacy"])
 
-# WebSocket routers (no prefix, direct path)
+# WebSocket (no versioning)
 app.include_router(websocket.router)
 
 # ============================================
