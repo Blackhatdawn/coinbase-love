@@ -27,6 +27,7 @@ import { ResetRequest, ResetConfirm } from "./pages/PasswordReset";
 
 // Lazy loaded pages for performance
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
 const TransactionHistory = lazy(() => import("./pages/TransactionHistory"));
 const Markets = lazy(() => import("./pages/Markets"));
 const Trade = lazy(() => import("./pages/Trade"));
@@ -191,6 +192,7 @@ const AppContent = () => {
           {/* ============================================ */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/transactions" element={<TransactionHistory />} />
             <Route path="/wallet/deposit" element={<WalletDeposit />} />
             <Route path="/wallet/withdraw" element={<WalletWithdraw />} />
