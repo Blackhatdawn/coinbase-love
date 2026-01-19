@@ -457,6 +457,29 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitHeadersMiddleware)
 app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
 
+# Import and add advanced security middleware from middleware/security.py
+try:
+    from middleware.security import (
+        AdvancedRateLimiter,
+        RequestValidationMiddleware
+    )
+    
+    # Add advanced rate limiter (with burst protection and IP blocking)
+    app.add_middleware(
+        AdvancedRateLimiter,
+        default_limit=settings.rate_limit_per_minute,
+        window_seconds=60,
+        block_duration=15,  # Block IPs for 15 minutes on burst attack
+        burst_threshold=10   # 10 requests in 1 second = burst
+    )
+    
+    # Add request validation middleware
+    app.add_middleware(RequestValidationMiddleware)
+    
+    logger.info("✅ Advanced security middleware enabled (burst protection & input validation)")
+except ImportError as e:
+    logger.warning(f"⚠️ Advanced security middleware not available: {e}")
+
 # ============================================
 # DATABASE CONNECTION
 # ============================================
