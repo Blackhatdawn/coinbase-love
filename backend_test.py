@@ -718,8 +718,23 @@ class CryptoVaultAPITester:
     def run_all_tests(self):
         """Run comprehensive test suite"""
         print("="*70)
-        print("🚀 CryptoVault Backend API Test Suite - Dashboard Enhancements")
+        print("🚀 CryptoVault Backend API Test Suite - Enterprise Transformation Validation")
         print("="*70)
+        
+        # ============================================
+        # ENTERPRISE TRANSFORMATION VALIDATION
+        # ============================================
+        self.test_core_api_health_endpoints()
+        self.test_input_validation()
+        self.test_api_versioning()
+        self.test_circuit_breaker_status()
+        self.test_monitoring_metrics()
+        self.test_security_middleware()
+        self.test_database_indexes()
+        
+        # ============================================
+        # EXISTING FUNCTIONALITY TESTS
+        # ============================================
         
         # Basic connectivity tests
         print("\n📡 Testing Basic Connectivity...")
