@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-CryptoVault Backend API Testing Suite
-Tests all backend endpoints for functionality and integration
+CryptoVault Backend API Testing Suite - Enterprise Transformation Validation
+Comprehensive testing for production readiness including monitoring, security, and validation
 """
 
 import requests
 import sys
 import json
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
@@ -14,6 +15,7 @@ class CryptoVaultAPITester:
     def __init__(self, base_url: str = "https://cryptovault-dash.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_base = f"{base_url}/api"
+        self.monitoring_base = f"{base_url}/monitoring"
         self.token = None
         self.user_id = None
         self.tests_run = 0
