@@ -7,7 +7,7 @@ monitoring, and production-grade features.
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZIPMiddleware
+from starlette.middleware.gzip import GZIPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Optional, Set
 from datetime import datetime
