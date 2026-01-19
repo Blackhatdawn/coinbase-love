@@ -576,7 +576,7 @@ class CryptoVaultAPITester:
         print("\n📊 Testing Monitoring Metrics...")
         
         try:
-            response = requests.get(f"{self.monitoring_base}/metrics/json", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/metrics/json", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 
