@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { api } from "@/lib/apiClient";
 import { setSentryUser, clearSentryUser } from "@/lib/sentry";
 
@@ -15,110 +15,191 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Maximum time to wait for session check (3 seconds)
+const SESSION_CHECK_TIMEOUT = 3000;
+
+// Retry configuration
+const MAX_RETRY_ATTEMPTS = 2;
+const RETRY_DELAY = 1000;
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isCheckingSession = useRef(false);
+  const sessionCheckTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    // Check for existing session by calling the /me endpoint
-    // If the user is authenticated, the server will return user info
-    // The HttpOnly cookie will be sent automatically
-    const checkSession = async () => {
-      try {
-        console.log('[Auth] Checking session...');
-        
-        // First check localStorage for cached user data (backup for cross-site cookie issues)
-        const cachedUser = localStorage.getItem('cv_user');
-        if (cachedUser) {
-          try {
-            const userData = JSON.parse(cachedUser);
-            setUser(userData);
-            setIsLoading(false); // Set loading to false immediately when using cached data
-            console.log('[Auth] Restored user from localStorage:', userData.email);
-            
-            // Verify the session is still valid in background (non-blocking)
-            api.auth.getProfile()
-              .then((response) => {
-                // Update with fresh data if session is valid
-                const freshUserData: User = {
-                  id: response.user.id,
-                  email: response.user.email,
-                  name: response.user.name,
-                  createdAt: response.user.createdAt,
-                };
-                setUser(freshUserData);
-                localStorage.setItem('cv_user', JSON.stringify(freshUserData));
-              })
-              .catch(() => {
-                // Session expired, clear localStorage
-                console.log('[Auth] Session expired, clearing cached user');
-                localStorage.removeItem('cv_user');
-                setUser(null);
-              });
-            
-            return; // Exit early, we already set loading to false
-          } catch (parseError) {
-            console.log('[Auth] Failed to parse cached user');
-            localStorage.removeItem('cv_user');
-          }
+  /**
+   * Check session with aggressive timeout and retry logic
+   */
+  const checkSession = async (attempt: number = 0): Promise<void> => {
+    // Prevent concurrent session checks
+    if (isCheckingSession.current && attempt === 0) {
+      console.log('[Auth] Session check already in progress');
+      return;
+    }
+
+    isCheckingSession.current = true;
+
+    try {
+      console.log('[Auth] Checking session (attempt', attempt + 1, 'of', MAX_RETRY_ATTEMPTS + 1, ')');
+      
+      // Step 1: Check localStorage for cached user (instant UX)
+      const cachedUser = localStorage.getItem('cv_user');
+      if (cachedUser) {
+        try {
+          const userData = JSON.parse(cachedUser);
+          console.log('[Auth] ✅ Restored user from cache:', userData.email);
+          setUser(userData);
+          setIsLoading(false); // CRITICAL: Set loading false immediately
+          
+          // Step 2: Verify session in background (non-blocking)
+          verifySessionInBackground(userData);
+          
+          return; // Exit early - user is set from cache
+        } catch (parseError) {
+          console.warn('[Auth] ⚠️ Failed to parse cached user:', parseError);
+          localStorage.removeItem('cv_user');
+          // Continue to API check
         }
-        
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 5000) // Reduced to 5s
-        );
-        
-        const response = await Promise.race([
-          api.auth.getProfile(),
-          timeoutPromise
-        ]) as any;
-        
-        console.log('[Auth] Session check response:', response);
-        
-        const userData: User = {
-          id: response.user.id,
-          email: response.user.email,
-          name: response.user.name,
-          createdAt: response.user.createdAt,
-        };
-        setUser(userData);
-        localStorage.setItem('cv_user', JSON.stringify(userData));
-        
-        // Set user context in Sentry
-        setSentryUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.name,
-        });
-        
-        console.log('[Auth] Session check successful, user:', userData.email);
-      } catch (error: any) {
-        // Expected: No valid session, user is not authenticated
-        // Log errors only if they seem unexpected
-        console.log('[Auth] Session check failed:', error);
-        if (error?.statusCode && error.statusCode !== 401 && error.statusCode !== 0) {
-          console.warn('⚠️ Unexpected session check error:', error.message || error);
-        } else {
-          console.log('[Auth] No active session (expected for logged-out users)');
-        }
+      }
+
+      // Step 3: No cache - fetch from API with timeout
+      const response = await fetchWithTimeout(
+        api.auth.getProfile(),
+        SESSION_CHECK_TIMEOUT
+      );
+
+      console.log('[Auth] ✅ Session check successful via API');
+      
+      const userData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        createdAt: response.user.createdAt,
+      };
+
+      setUser(userData);
+      localStorage.setItem('cv_user', JSON.stringify(userData));
+      
+      // Set user context in Sentry
+      setSentryUser({
+        id: userData.id,
+        email: userData.email,
+        username: userData.name,
+      });
+
+    } catch (error: any) {
+      console.log('[Auth] ❌ Session check failed:', error.message || error);
+
+      // Retry logic for network errors
+      if (attempt < MAX_RETRY_ATTEMPTS && isNetworkError(error)) {
+        console.log(`[Auth] 🔄 Retrying in ${RETRY_DELAY}ms...`);
+        await delay(RETRY_DELAY);
+        return checkSession(attempt + 1);
+      }
+
+      // Expected: No valid session
+      if (error?.statusCode === 401 || error?.message === 'Session check timeout') {
+        console.log('[Auth] ℹ️ No active session (expected for logged-out users)');
+      } else {
+        console.warn('[Auth] ⚠️ Unexpected session check error:', error);
+      }
+
+      setUser(null);
+      localStorage.removeItem('cv_user');
+      clearSentryUser();
+    } finally {
+      setIsLoading(false);
+      isCheckingSession.current = false;
+      console.log('[Auth] ✅ Session check complete. Loading state: false');
+    }
+  };
+
+  /**
+   * Verify session in background without blocking UI
+   */
+  const verifySessionInBackground = async (cachedUserData: User) => {
+    try {
+      console.log('[Auth] 🔄 Verifying cached session in background...');
+      
+      const response = await fetchWithTimeout(
+        api.auth.getProfile(),
+        SESSION_CHECK_TIMEOUT
+      );
+      
+      // Update with fresh data if different
+      const freshUserData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        createdAt: response.user.createdAt,
+      };
+
+      if (JSON.stringify(freshUserData) !== JSON.stringify(cachedUserData)) {
+        console.log('[Auth] ✅ Updated user data from server');
+        setUser(freshUserData);
+        localStorage.setItem('cv_user', JSON.stringify(freshUserData));
+      } else {
+        console.log('[Auth] ✅ Cached data is up to date');
+      }
+    } catch (error: any) {
+      // Session expired
+      if (error?.statusCode === 401) {
+        console.log('[Auth] ⚠️ Session expired, clearing cache');
         setUser(null);
         localStorage.removeItem('cv_user');
         clearSentryUser();
-      } finally {
-        console.log('[Auth] Setting isLoading to false');
+      } else {
+        // Network error - keep using cache
+        console.log('[Auth] ⚠️ Background verification failed, keeping cached data');
+      }
+    }
+  };
+
+  /**
+   * Manual session refresh (for use after login/signup)
+   */
+  const refreshSession = async () => {
+    setIsLoading(true);
+    await checkSession(0);
+  };
+
+  // Initial session check on mount
+  useEffect(() => {
+    console.log('[Auth] 🚀 AuthProvider mounted, starting session check');
+    
+    // Clear any existing timers
+    if (sessionCheckTimerRef.current) {
+      clearTimeout(sessionCheckTimerRef.current);
+    }
+
+    // Start session check
+    checkSession(0);
+
+    // Failsafe: Force loading to false after maximum wait time
+    sessionCheckTimerRef.current = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[Auth] ⏱️ Failsafe: Forcing loading state to false after timeout');
         setIsLoading(false);
       }
-    };
+    }, SESSION_CHECK_TIMEOUT + 1000);
 
-    checkSession();
-  }, []);
+    // Cleanup
+    return () => {
+      if (sessionCheckTimerRef.current) {
+        clearTimeout(sessionCheckTimerRef.current);
+      }
+    };
+  }, []); // Only run once on mount
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
     try {
+      console.log('[Auth] 🔐 Signing in...');
       const response = await api.auth.login({ email, password });
 
       const userData: User = {
@@ -128,11 +209,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      // Store user data in localStorage as backup for cross-site cookie issues
+      // Store user data
       localStorage.setItem('cv_user', JSON.stringify(userData));
-      
       setUser(userData);
-      setIsLoading(false); // Ensure loading is false after successful login
+      setIsLoading(false);
       
       // Set user context in Sentry
       setSentryUser({
@@ -141,14 +221,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username: userData.name,
       });
 
+      console.log('[Auth] ✅ Sign in successful');
       return {};
     } catch (error: any) {
+      console.error('[Auth] ❌ Sign in failed:', error);
       return { error: error.message || "Failed to sign in" };
     }
   };
 
   const signUp = async (email: string, password: string, name: string): Promise<{ error?: string }> => {
     try {
+      console.log('[Auth] 📝 Signing up...');
       const response = await api.auth.signup({ email, password, name });
 
       const userData: User = {
@@ -158,8 +241,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      // HttpOnly cookies are set by the server, no need to store here
+      // Store user data
+      localStorage.setItem('cv_user', JSON.stringify(userData));
       setUser(userData);
+      setIsLoading(false);
       
       // Set user context in Sentry
       setSentryUser({
@@ -168,29 +253,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username: userData.name,
       });
 
+      console.log('[Auth] ✅ Sign up successful');
       return {};
     } catch (error: any) {
+      console.error('[Auth] ❌ Sign up failed:', error);
       return { error: error.message || "Failed to create account" };
     }
   };
 
   const signOut = async () => {
     try {
+      console.log('[Auth] 👋 Signing out...');
       await api.auth.logout();
     } catch (error) {
-      // Even if logout fails, clear the user state
-      console.error("Logout error:", error);
+      console.error('[Auth] ⚠️ Logout API error (continuing anyway):', error);
     }
-    // Clear user state and localStorage
+    
+    // Clear state regardless of API success
     setUser(null);
     localStorage.removeItem('cv_user');
-    
-    // Clear user context in Sentry
     clearSentryUser();
+    console.log('[Auth] ✅ Signed out');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );
@@ -203,3 +290,39 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Fetch with timeout
+ */
+function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Session check timeout')), timeoutMs)
+    ),
+  ]);
+}
+
+/**
+ * Check if error is a network error (should retry)
+ */
+function isNetworkError(error: any): boolean {
+  return (
+    error?.code === 'NETWORK_ERROR' ||
+    error?.code === 'TIMEOUT_ERROR' ||
+    error?.message?.includes('timeout') ||
+    error?.message?.includes('network') ||
+    !error?.statusCode // No status code = network error
+  );
+}
+
+/**
+ * Delay helper
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
