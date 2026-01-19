@@ -382,7 +382,7 @@ class CryptoVaultAPITester:
 
         # Test Kubernetes liveness probe
         try:
-            response = requests.get(f"{self.monitoring_base}/health/live", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/health/live", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 self.log_test("Kubernetes Liveness Probe", True, f"Status: {data.get('status', 'unknown')}")
@@ -393,7 +393,7 @@ class CryptoVaultAPITester:
 
         # Test Kubernetes readiness probe
         try:
-            response = requests.get(f"{self.monitoring_base}/health/ready", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/health/ready", timeout=10)
             if response.status_code in [200, 503]:  # 503 is acceptable if services not ready
                 data = response.json()
                 self.log_test("Kubernetes Readiness Probe", True, f"Status: {data.get('status', 'unknown')}")
@@ -404,7 +404,7 @@ class CryptoVaultAPITester:
 
         # Test JSON metrics endpoint
         try:
-            response = requests.get(f"{self.monitoring_base}/metrics/json", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/metrics/json", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if 'application' in data and 'system' in data:
@@ -418,7 +418,7 @@ class CryptoVaultAPITester:
 
         # Test circuit breakers endpoint
         try:
-            response = requests.get(f"{self.monitoring_base}/circuit-breakers", timeout=10)
+            response = requests.get(f"{self.api_base}/monitoring/circuit-breakers", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, dict) and any('state' in str(v) for v in data.values()):
