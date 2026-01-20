@@ -23,7 +23,7 @@ from config import settings, validate_startup_environment
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config
 
 # Services
 from coingecko_service import coingecko_service
@@ -519,6 +519,7 @@ app.include_router(notifications.router, prefix="/api", tags=["legacy"])
 app.include_router(transactions.router, prefix="/api", tags=["legacy"])
 app.include_router(transfers.router, prefix="/api", tags=["legacy"])
 app.include_router(users.router, prefix="/api", tags=["legacy"])
+app.include_router(config.router, prefix="/api")
 
 # WebSocket (no versioning)
 app.include_router(websocket.router)

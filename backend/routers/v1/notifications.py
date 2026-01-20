@@ -239,7 +239,7 @@ async def websocket_notifications(
     """
     WebSocket endpoint for real-time notifications.
     
-    Connect with: ws://localhost:8000/api/notifications/ws?token=<access_token>
+    Connect with: ws(s)://<api-host>/api/notifications/ws?token=<access_token>
     
     Messages will be in format:
     {

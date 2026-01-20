@@ -129,6 +129,15 @@ class Settings(BaseSettings):
     email_from_name: str = "CryptoVault"
     app_url: str = "http://localhost:3000"
 
+    # Public Runtime Configuration (exposed via /api/config)
+    public_api_url: Optional[str] = None
+    public_ws_url: Optional[str] = None
+    public_socket_io_path: str = "/socket.io/"
+    public_site_name: str = "CryptoVault"
+    public_logo_url: Optional[str] = None
+    public_support_email: Optional[str] = None
+    public_sentry_dsn: Optional[str] = None
+
     # CoinGecko API Configuration
     coingecko_api_key: Optional[str] = None
     coingecko_rate_limit: int = 50
@@ -364,6 +373,13 @@ def get_optional_env_vars() -> List[str]:
         "COINGECKO_API_KEY",       # For price data
         "COINCAP_API_KEY",
         "COINMARKETCAP_API_KEY",
+        "PUBLIC_API_URL",          # Base URL exposed to frontend
+        "PUBLIC_WS_URL",           # WebSocket base URL exposed to frontend
+        "PUBLIC_SOCKET_IO_PATH",   # Socket.IO path exposed to frontend
+        "PUBLIC_SITE_NAME",        # Brand name for public config
+        "PUBLIC_LOGO_URL",         # Brand logo URL for public config
+        "PUBLIC_SUPPORT_EMAIL",    # Support email for public config
+        "PUBLIC_SENTRY_DSN",       # Frontend Sentry DSN (public)
     ]
 
 

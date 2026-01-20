@@ -3,13 +3,14 @@ WebSocket Price Feed Service
 Real-time cryptocurrency price updates via WebSocket
 Uses CoinGecko API with proper rate limiting and caching
 """
-import os
 import json
 import asyncio
 import logging
 from typing import Dict, Set, Optional, Any
 from datetime import datetime, timedelta
 import httpx
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,9 @@ class PriceFeedManager:
         
         # RATE LIMITING - CoinGecko free tier allows ~10-30 calls/min
         # With API key, we can be more aggressive
-        coingecko_api_key = os.environ.get('COINGECKO_API_KEY')
-        self.api_key = coingecko_api_key
-        self.update_interval = 15 if coingecko_api_key else 30  # Faster with API key
-        self.min_api_interval = 5 if coingecko_api_key else 10  # Minimum interval
+        self.api_key = settings.coingecko_api_key
+        self.update_interval = 15 if self.api_key else 30  # Faster with API key
+        self.min_api_interval = 5 if self.api_key else 10  # Minimum interval
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
         

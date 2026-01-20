@@ -144,7 +144,7 @@ async def websocket_price_stream(websocket: WebSocket):
     """
     Real-time cryptocurrency price stream WebSocket.
     
-    Connection URL: wss://cryptovault-api.onrender.com/ws/prices
+    Connection URL: wss://<api-host>/ws/prices
     
     Message Types:
     1. connection: Sent when client first connects
@@ -231,7 +231,7 @@ async def websocket_single_price(websocket: WebSocket, symbol: str):
     """
     Real-time price stream for a specific cryptocurrency.
     
-    Connection URL: wss://cryptovault-api.onrender.com/ws/prices/bitcoin
+    Connection URL: wss://<api-host>/ws/prices/bitcoin
     
     Only receives updates for the specified symbol, reducing bandwidth.
     """

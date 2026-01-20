@@ -2,13 +2,14 @@
 Referral System Service
 Handles referral codes, tracking, and rewards
 """
-import os
 import random
 import string
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from bson import ObjectId
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +265,7 @@ class ReferralService:
         
         return {
             "referral_code": referral_code,
-            "referral_link": f"https://cryptovault.financial/auth?ref={referral_code}",
+            "referral_link": f"{settings.app_url.rstrip('/')}/auth?ref={referral_code}",
             "total_referrals": total_referrals,
             "qualified_referrals": qualified_referrals,
             "pending_referrals": pending_referrals,

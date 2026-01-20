@@ -5,9 +5,12 @@ Professional, branded HTML email templates for all transactional emails
 
 from typing import Optional
 
-# Base URL for email assets (use production URL)
-LOGO_URL = "https://www.cryptovault.financial/favicon.svg"
-SITE_URL = "https://www.cryptovault.financial"
+from config import settings
+
+# Base URL for email assets (configurable via backend .env)
+SITE_URL = settings.app_url.rstrip("/")
+LOGO_URL = settings.public_logo_url or f"{SITE_URL}/favicon.svg"
+SUPPORT_EMAIL = settings.public_support_email or "support@cryptovault.financial"
 
 def get_base_template(content: str, preheader: str = "") -> str:
     """
@@ -197,7 +200,7 @@ def welcome_email(name: str) -> str:
         </table>
         
         <p style="margin: 0; font-size: 13px; color: #6b7280; text-align: center;">
-            Questions? Our support team is here 24/7 at <a href="mailto:support@cryptovault.financial" style="color: #FBBF24;">support@cryptovault.financial</a>
+            Questions? Our support team is here 24/7 at <a href="mailto:{SUPPORT_EMAIL}" style="color: #FBBF24;">{SUPPORT_EMAIL}</a>
         </p>
     '''
     return get_base_template(content, f"Welcome to CryptoVault, {name}! Start your crypto journey today.")
