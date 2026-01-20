@@ -52,7 +52,7 @@
   View backend env:     cat /app/backend/.env
   View frontend env:    cat /app/frontend/.env
   
-  Test backend:         curl http://localhost:8001/api/
+  Test backend:         curl http://localhost:8001/health
   Test frontend:        curl http://localhost:3000
   
   Check services:       sudo supervisorctl status

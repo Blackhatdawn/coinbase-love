@@ -166,7 +166,6 @@ db_connection: Optional[DatabaseConnection] = None
 
 async def get_database() -> DatabaseConnection:
     """Get the global database connection instance."""
-    global db_connection
     if db_connection is None or not db_connection.is_connected:
         raise RuntimeError("Database not initialized or not connected. Call initialize_database() first.")
     return db_connection

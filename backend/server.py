@@ -737,8 +737,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up resources on shutdown."""
-    global db_connection
-    
     logger.info("="*70)
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)

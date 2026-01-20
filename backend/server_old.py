@@ -66,7 +66,6 @@ async def get_current_user(request: Request) -> dict:
     """Get current user document."""
     user_id = await get_current_user_id(request)
     
-    global db_connection
     if not db_connection:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -95,7 +94,6 @@ async def get_current_user(request: Request) -> dict:
     """Get current user document."""
     user_id = await get_current_user_id(request)
     
-    global db_connection
     if not db_connection:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -834,7 +832,6 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    global db_connection
     logger.info("="*70)
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)
@@ -858,7 +855,6 @@ async def shutdown_event():
 @api_router.get("/health", tags=["health"])
 async def health_check(request: Request):
     """Health check endpoint with request ID correlation."""
-    global db_connection
     request_id = get_request_id(request)
     
     try:
@@ -934,8 +930,6 @@ async def log_audit(
     request_id: Optional[str] = None
 ):
     """Log audit event with structured data."""
-    global db_connection
-    
     # Log to application logs
     logger.info(
         f"Audit log: {action}",

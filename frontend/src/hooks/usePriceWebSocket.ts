@@ -39,7 +39,7 @@ interface UsePriceWebSocketOptions {
 
 const getDefaultUrl = (): string => {
   const wsBaseUrl = resolveWsBaseUrl();
-  return wsBaseUrl ? `${wsBaseUrl}/ws/prices` : 'ws://localhost:8000/ws/prices';
+  return wsBaseUrl ? `${wsBaseUrl}/ws/prices` : 'ws://localhost:8001/ws/prices';
 };
 
 export function usePriceWebSocket(options: UsePriceWebSocketOptions = {}) {
