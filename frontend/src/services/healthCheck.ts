@@ -5,6 +5,7 @@
  */
 
 import { api } from '@/lib/apiClient';
+import { resolveApiBaseUrl, resolveAppUrl } from '@/lib/runtimeConfig';
 
 interface HealthCheckConfig {
   interval?: number; // ms between pings (default: 4 minutes)
@@ -89,7 +90,7 @@ class HealthCheckService {
       }
 
       const startTime = performance.now();
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const baseUrl = resolveApiBaseUrl();
       const isDevelopment = import.meta.env.DEV;
 
       // In development with no BASE_URL, use relative paths (Vite proxy)
@@ -161,7 +162,7 @@ class HealthCheckService {
       const isNetworkError = !error?.statusCode || error?.statusCode === 0;
       const errorType = isNetworkError ? 'NETWORK' : error?.code || 'UNKNOWN';
       const errorMsg = error?.message || 'Unknown error';
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '(using Vite proxy)';
+      const baseUrl = resolveApiBaseUrl() || '(using Vite proxy)';
       const isDevelopment = import.meta.env.DEV;
 
       // Use exponential backoff for retries
@@ -172,11 +173,12 @@ class HealthCheckService {
       let diagnosticMsg = '';
       if (isNetworkError) {
         if (isDevelopment) {
+          const appUrl = resolveAppUrl() || 'http://localhost:3000';
           diagnosticMsg = '\n💡 Tips for local development:\n' +
             '  - Make sure backend is running: python run_server.py\n' +
             '  - Check backend URL: ' + baseUrl + '\n' +
-            '  - Backend should be on http://localhost:8001\n' +
-            '  - Frontend dev server should be on http://localhost:3000';
+            '  - Backend should match your /api/config response\n' +
+            '  - Frontend dev server should be on ' + appUrl;
         } else {
           diagnosticMsg = '\n💡 Production backend may be sleeping (cold start on free hosting). ' +
             'It will wake up on the next request.';

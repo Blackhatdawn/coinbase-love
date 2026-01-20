@@ -12,7 +12,7 @@ This guide explains how to properly configure CryptoVault for deployment on Verc
 - ✅ `frontend/vercel.json` - Vercel configuration with API rewrites and security headers
 
 ### API Client Configuration
-- ✅ `frontend/src/lib/apiClient.ts` - Uses `import.meta.env.VITE_API_BASE_URL`
+- ✅ `frontend/src/lib/apiClient.ts` - Uses runtime config from `/api/config`
 - ✅ Sentry initialization in `frontend/src/lib/sentry.ts`
 - ✅ Debug status component in `frontend/src/components/DebugApiStatus.tsx`
 
@@ -23,7 +23,7 @@ In your Vercel project dashboard, go to **Settings → Environment Variables** a
 ### Variable: `VITE_API_BASE_URL`
 - **Value**: `https://cryptovault-api.onrender.com`
 - **Environments**: Production, Preview, Development
-- **Description**: Base URL for all API calls
+- **Description**: Optional bootstrap URL (backend remains source of truth via `/api/config`)
 
 ### Variable: `VITE_APP_NAME`
 - **Value**: `CryptoVault`
@@ -43,12 +43,12 @@ In your Vercel project dashboard, go to **Settings → Environment Variables** a
 ### Variable: `VITE_ENABLE_SENTRY`
 - **Value**: `true`
 - **Environments**: Production only
-- **Description**: Enable Sentry error tracking in production
+- **Description**: Optional fallback (prefer backend `PUBLIC_SENTRY_DSN` via `/api/config`)
 
 ### Variable: `VITE_SENTRY_DSN`
 - **Value**: `https://bcb7c3a730f99e6fa758cd3e25edc327@o4510716875505664.ingest.us.sentry.io/4510716879503360`
 - **Environments**: Production only
-- **Description**: Sentry project DSN for error tracking
+- **Description**: Optional fallback (prefer backend `PUBLIC_SENTRY_DSN`)
 
 ## Build Configuration
 
@@ -79,7 +79,7 @@ The `vercel.json` file contains rewrites that proxy all `/api/*` requests to you
 This means:
 - Frontend makes requests to `https://yourdomain.com/api/auth/login`
 - Vercel proxies them to `https://cryptovault-api.onrender.com/auth/login`
-- Your `VITE_API_BASE_URL` is only used in development
+- Your `VITE_API_BASE_URL` is only used as a bootstrap fallback
 
 ## Security Headers
 
@@ -108,8 +108,8 @@ The following security headers are automatically applied:
    - Check build logs for any errors
 
 2. **Verify Environment Variables**
-   - The logs should show: `[API Client] Initialized with BASE_URL: https://cryptovault-api.onrender.com`
-   - If you see `(empty - using relative paths)`, env var was not set
+   - The logs should show: `[API Client] Initialized with BASE_URL: ...`
+   - `/api/config` should respond with `apiBaseUrl` and `wsBaseUrl`
 
 3. **Test API Connectivity**
    - Open DevTools (F12)
@@ -126,9 +126,9 @@ The following security headers are automatically applied:
 
 **Solution**: 
 1. Go to Vercel project Settings → Environment Variables
-2. Add all required variables listed above
-3. Make sure variables are available for "Production" environment
-4. Click "Redeploy" to rebuild with new env vars
+2. Add `VITE_API_BASE_URL` if you are not using `/api` rewrites
+3. Ensure `/api/config` responds with the correct base URLs
+4. Click "Redeploy" to rebuild with new env vars if needed
 
 ### Issue: API Calls Fail in Production
 

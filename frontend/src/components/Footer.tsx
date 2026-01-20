@@ -1,5 +1,6 @@
 import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { resolveSupportEmail } from "@/lib/runtimeConfig";
 
 const Footer = () => {
   const links = {
@@ -32,6 +33,8 @@ const Footer = () => {
       { label: "Risk Disclosure", href: "/risk-disclosure" },
     ],
   };
+
+  const supportEmail = resolveSupportEmail();
 
   return (
     <footer className="border-t border-gold-500/10 bg-background/95" data-testid="footer">
@@ -66,12 +69,12 @@ const Footer = () => {
             {/* Contact Info */}
             <div className="space-y-2 mb-6">
               <a 
-                href="mailto:support@cryptovault.financial" 
+                href={`mailto:${supportEmail}`} 
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-400 transition-colors"
                 data-testid="footer-email"
               >
                 <Mail className="h-4 w-4" />
-                support@cryptovault.financial
+                {supportEmail}
               </a>
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5 text-gold-500/60" />

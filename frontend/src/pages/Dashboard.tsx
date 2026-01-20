@@ -44,6 +44,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { api } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceWebSocket } from '@/hooks/usePriceWebSocket';
+import { resolveAppUrl } from '@/lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -175,7 +176,7 @@ const Dashboard = () => {
   // Copy referral code
   const handleCopyReferral = () => {
     const code = 'CV' + (user?.id?.slice(-6)?.toUpperCase() || 'VAULT');
-    navigator.clipboard.writeText(`https://cryptovault.financial/auth?ref=${code}`);
+    navigator.clipboard.writeText(`${resolveAppUrl()}/auth?ref=${code}`);
     setCopiedReferral(true);
     setTimeout(() => setCopiedReferral(false), 2000);
   };

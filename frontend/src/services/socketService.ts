@@ -8,10 +8,11 @@
  */
 
 import { io, Socket } from 'socket.io-client';
+import { resolveApiBaseUrl, resolveSocketIoPath } from '@/lib/runtimeConfig';
 
 // Get backend URL from environment
 const getSocketURL = () => {
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const apiUrl = resolveApiBaseUrl();
   
   // In development, use proxy
   if (!apiUrl || apiUrl === '') {
@@ -48,7 +49,7 @@ class SocketService {
     console.log(`[Socket] Connecting to ${socketURL}/socket.io/`);
     
     this.socket = io(socketURL, {
-      path: '/socket.io/',
+      path: resolveSocketIoPath(),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

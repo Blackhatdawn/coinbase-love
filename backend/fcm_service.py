@@ -10,6 +10,8 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 import uuid
 
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 # Firebase Admin SDK
@@ -136,7 +138,7 @@ class FCMService:
                         vibrate=[200, 100, 200]
                     ),
                     fcm_options=messaging.WebpushFCMOptions(
-                        link="https://cryptovault.financial"
+                        link=settings.app_url.rstrip("/")
                     )
                 )
             )

@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { resolveSentryConfig, resolveSupportEmail } from '@/lib/runtimeConfig';
 
 interface Props {
   children: ReactNode;
@@ -55,7 +56,8 @@ export class ErrorBoundary extends Component<Props, State> {
   private async reportToSentry(error: Error, errorInfo: ErrorInfo) {
     // Only attempt Sentry reporting in production with DSN configured
     // Note: Install @sentry/react when deploying to production with Sentry
-    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+    const sentryConfig = resolveSentryConfig();
+    if (import.meta.env.PROD && sentryConfig?.dsn) {
       try {
         // Use dynamic import that Vite won't pre-analyze
         const sentryModule = '@sentry/react';
@@ -92,17 +94,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleReportFeedback = async () => {
     // Open Sentry feedback dialog if available
-    if (this.state.eventId && import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+    const sentryConfig = resolveSentryConfig();
+    const supportEmail = resolveSupportEmail();
+    if (this.state.eventId && import.meta.env.PROD && sentryConfig?.dsn) {
       try {
         const sentryModule = '@sentry/react';
         const Sentry = await import(/* @vite-ignore */ sentryModule);
         Sentry.showReportDialog({ eventId: this.state.eventId });
       } catch (e) {
         // Fallback to email
-        window.location.href = 'mailto:support@cryptovault.financial?subject=Error Report';
+        window.location.href = `mailto:${supportEmail}?subject=Error Report`;
       }
     } else {
-      window.location.href = 'mailto:support@cryptovault.financial?subject=Error Report';
+      window.location.href = `mailto:${supportEmail}?subject=Error Report`;
     }
   };
 
@@ -203,7 +207,8 @@ export function useErrorBoundary() {
     setError(error);
     
     // Report to Sentry in production (install @sentry/react when deploying)
-    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+    const sentryConfig = resolveSentryConfig();
+    if (import.meta.env.PROD && sentryConfig?.dsn) {
       try {
         const sentryModule = '@sentry/react';
         const Sentry = await import(/* @vite-ignore */ sentryModule);

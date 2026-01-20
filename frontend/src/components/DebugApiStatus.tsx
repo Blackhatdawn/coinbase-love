@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { healthCheckService } from '@/services/healthCheck';
 import { ChevronDown, ChevronUp, Zap, AlertCircle } from 'lucide-react';
+import { getRuntimeConfig, resolveApiBaseUrl } from '@/lib/runtimeConfig';
 
 export function DebugApiStatus() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,8 +15,8 @@ export function DebugApiStatus() {
   const [apiBaseUrl, setApiBaseUrl] = useState('');
 
   useEffect(() => {
-    // Get API base URL from environment
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'Not configured';
+    const runtimeConfig = getRuntimeConfig();
+    const baseUrl = runtimeConfig?.apiBaseUrl || resolveApiBaseUrl() || 'Not configured';
     setApiBaseUrl(baseUrl);
   }, []);
 
@@ -160,8 +161,7 @@ export function DebugApiStatus() {
             <div className="flex gap-2 p-2 rounded bg-red-500/10 border border-red-500/30">
               <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
               <div className="text-red-300 text-[10px]">
-                Backend connection issues detected. Check console for details and ensure
-                VITE_API_BASE_URL is correctly configured.
+                Backend connection issues detected. Check console and /api/config response.
               </div>
             </div>
           )}

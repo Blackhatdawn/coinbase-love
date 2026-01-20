@@ -4,6 +4,7 @@ API v1 Router - Versioned API endpoints
 
 from fastapi import APIRouter
 from . import auth, crypto, portfolio, trading, transactions, users, wallet, alerts, notifications, prices, transfers
+from routers import config as config_router
 
 # Create main v1 router
 api_v1_router = APIRouter(prefix="/api/v1", tags=["v1"])
@@ -20,3 +21,4 @@ api_v1_router.include_router(alerts.router)
 api_v1_router.include_router(notifications.router)
 api_v1_router.include_router(prices.router)
 api_v1_router.include_router(transfers.router)
+api_v1_router.include_router(config_router.router)

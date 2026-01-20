@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, MessageSquare } from "lucide-react";
 import { useState } from "react";
+import { resolveSupportEmail } from "@/lib/runtimeConfig";
 
 const Contact = () => {
+  const supportEmail = resolveSupportEmail();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -63,9 +65,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-medium mb-1">Email</h3>
-                    <p className="text-sm text-muted-foreground mb-3">support@cryptovault.financial</p>
+                    <p className="text-sm text-muted-foreground mb-3">{supportEmail}</p>
                     <Button variant="outline" size="sm" asChild>
-                      <a href="mailto:support@cryptovault.financial">Send Email</a>
+                      <a href={`mailto:${supportEmail}`}>Send Email</a>
                     </Button>
                   </div>
                 </div>

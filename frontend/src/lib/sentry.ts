@@ -3,18 +3,23 @@
  */
 
 import * as Sentry from '@sentry/react';
+import { getRuntimeConfig, resolveSentryConfig } from './runtimeConfig';
 
 // Initialize Sentry only in production and when DSN is available
 export const initSentry = () => {
-  const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
-  const enableSentry = import.meta.env.VITE_ENABLE_SENTRY === 'true';
-  const isProduction = import.meta.env.MODE === 'production';
+  const runtimeConfig = getRuntimeConfig();
+  const sentryConfig = resolveSentryConfig();
+  const sentryDsn = sentryConfig?.dsn || import.meta.env.VITE_SENTRY_DSN;
+  const enableSentry = sentryConfig?.enabled ?? (import.meta.env.VITE_ENABLE_SENTRY === 'true');
+  const environment = sentryConfig?.environment || import.meta.env.MODE;
+  const isProduction = environment === 'production';
+  const releaseVersion = runtimeConfig?.version || import.meta.env.VITE_APP_VERSION || '1.0.0';
 
   if (isProduction && enableSentry && sentryDsn) {
     Sentry.init({
       dsn: sentryDsn,
-      environment: import.meta.env.MODE,
-      release: `cryptovault@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+      environment,
+      release: `cryptovault@${releaseVersion}`,
       
       // Performance monitoring
       integrations: [

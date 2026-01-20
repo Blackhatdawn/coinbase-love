@@ -15,10 +15,11 @@ import asyncio
 import json
 import logging
 import time
-import os
 from typing import Dict, Optional, Set
 from datetime import datetime, timedelta
 from enum import Enum
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class PriceStreamService:
     
     def __init__(self):
         # Check for API key
-        self.api_key = os.environ.get('COINCAP_API_KEY')
+        self.api_key = settings.coincap_api_key
         self.is_enabled = bool(self.api_key) and WEBSOCKETS_AVAILABLE
         
         # Connection management
