@@ -10,6 +10,66 @@ from dependencies import get_current_user_id, get_db
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
+# ============================================
+# TRANSACTION TYPE NORMALIZATION
+# ============================================
+
+TRANSFER_TYPES = {"transfer_in", "transfer_out", "p2p_send", "p2p_receive"}
+DISPLAY_TYPE_MAP = {
+    "withdrawal": "withdraw",
+    "transfer_in": "transfer",
+    "transfer_out": "transfer",
+    "p2p_send": "transfer",
+    "p2p_receive": "transfer",
+}
+
+
+def normalize_type_filter(type_filter: Optional[str]) -> Optional[dict]:
+    """Normalize UI-friendly type filters to database query filters."""
+    if not type_filter:
+        return None
+
+    normalized = type_filter.lower()
+    if normalized == "buy":
+        return {"type": "trade", "amount": {"$gt": 0}}
+    if normalized == "sell":
+        return {"type": "trade", "amount": {"$lt": 0}}
+    if normalized == "withdraw":
+        return {"type": "withdrawal"}
+    if normalized == "transfer":
+        return {"type": {"$in": list(TRANSFER_TYPES)}}
+
+    allowed = {"deposit", "withdrawal", "trade", "fee", "refund"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid transaction type")
+
+    return {"type": normalized}
+
+
+def resolve_display_type(transaction: dict) -> str:
+    """Map internal transaction types to UI-friendly display types."""
+    tx_type = transaction.get("type", "")
+    if tx_type == "trade":
+        return "buy" if transaction.get("amount", 0) >= 0 else "sell"
+    return DISPLAY_TYPE_MAP.get(tx_type, tx_type)
+
+
+def format_transaction(transaction: dict) -> dict:
+    """Format transaction response with display-friendly fields."""
+    display_type = resolve_display_type(transaction)
+    return {
+        "id": transaction["id"],
+        "type": display_type,
+        "rawType": transaction.get("type"),
+        "amount": transaction["amount"],
+        "currency": transaction.get("currency", "USD"),
+        "symbol": transaction.get("symbol"),
+        "status": transaction.get("status", "completed"),
+        "description": transaction.get("description"),
+        "reference": transaction.get("reference"),
+        "createdAt": transaction["created_at"].isoformat()
+    }
+
 
 @router.get("")
 async def get_transactions(
@@ -24,10 +84,9 @@ async def get_transactions(
     
     # Build query
     query = {"user_id": user_id}
-    if type:
-        if type not in ["deposit", "withdrawal", "trade", "fee"]:
-            raise HTTPException(status_code=400, detail="Invalid transaction type")
-        query["type"] = type
+    type_filter = normalize_type_filter(type)
+    if type_filter:
+        query.update(type_filter)
     
     # Get transactions
     transactions = await transactions_collection.find(
@@ -37,20 +96,7 @@ async def get_transactions(
     total = await transactions_collection.count_documents(query)
     
     return {
-        "transactions": [
-            {
-                "id": tx["id"],
-                "type": tx["type"],
-                "amount": tx["amount"],
-                "currency": tx.get("currency", "USD"),
-                "symbol": tx.get("symbol"),
-                "status": tx.get("status", "completed"),
-                "description": tx.get("description"),
-                "reference": tx.get("reference"),
-                "createdAt": tx["created_at"].isoformat()
-            }
-            for tx in transactions
-        ],
+        "transactions": [format_transaction(tx) for tx in transactions],
         "total": total,
         "skip": skip,
         "limit": limit
@@ -75,17 +121,7 @@ async def get_transaction(
         raise HTTPException(status_code=404, detail="Transaction not found")
     
     return {
-        "transaction": {
-            "id": transaction["id"],
-            "type": transaction["type"],
-            "amount": transaction["amount"],
-            "currency": transaction.get("currency", "USD"),
-            "symbol": transaction.get("symbol"),
-            "status": transaction.get("status", "completed"),
-            "description": transaction.get("description"),
-            "reference": transaction.get("reference"),
-            "createdAt": transaction["created_at"].isoformat()
-        }
+        "transaction": format_transaction(transaction)
     }
 
 
