@@ -24,7 +24,7 @@ services:
       - key: JWT_SECRET
         generateValue: false
       - key: CORS_ORIGINS
-        value: https://cryptovault.financial,https://www.cryptovault.financial,http://localhost:300, http://10.0.1.97:3000
+        value: https://cryptovault.financial,https://www.cryptovault.financial,https://cryptovault.vercel.app,https://cryptovault-git-main-blackhatdawn.vercel.app,http://localhost:3000
       - key: EMAIL_SERVICE
         value: sendgrid
       - key: SENDGRID_API_KEY

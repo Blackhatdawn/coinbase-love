@@ -41,15 +41,15 @@ class EnvironmentValidationError(Exception):
 # Update these to match your actual deployment URLs
 
 PRODUCTION_CORS_ORIGINS = [
+    "https://cryptovault.financial",
+    "https://www.cryptovault.financial",
     "https://cryptovault.vercel.app",
-    "https://cryptovault-*.vercel.app",  # Preview deployments
-    "https://www.cryptovault.com",
-    "https://cryptovault.com",
+    "https://cryptovault-git-main-blackhatdawn.vercel.app",
 ]
 
 STAGING_CORS_ORIGINS = [
+    "https://staging.cryptovault.financial",
     "https://cryptovault-staging.vercel.app",
-    "https://cryptovault-*-staging.vercel.app",
 ]
 
 DEVELOPMENT_CORS_ORIGINS = [
@@ -94,8 +94,8 @@ class Settings(BaseSettings):
     # Server Configuration
     # HOST: Always bind to 0.0.0.0 for container deployments
     host: str = "0.0.0.0"
-    # PORT: Use $PORT env var (required by Render, Heroku, etc.) or default to 8000
-    port: int = int(os.environ.get("PORT", "8000"))
+    # PORT: Use $PORT env var (required by Render, Heroku, etc.) or default to 8001
+    port: int = int(os.environ.get("PORT", "8001"))
     environment: str = "development"
     
     # Performance & Security

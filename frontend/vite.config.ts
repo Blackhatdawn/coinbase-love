@@ -7,14 +7,14 @@ import { componentTagger } from "lovable-tagger";
 // VITE CONFIGURATION - CryptoVault Frontend
 // ============================================
 // This config enables:
-// 1. Development proxy to local backend (localhost:8000)
+// 1. Development proxy to local backend (localhost:8001)
 // 2. WebSocket proxy for real-time price feeds
 // 3. Production build optimizations
 // ============================================
 
 // Backend URL for development proxy
 // In production, Vercel rewrites handle this via vercel.json
-const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8001";
 
 export default defineConfig(({ mode }) => ({
   define: {
