@@ -22,9 +22,9 @@ services:
       - key: DB_NAME
         value: cryptovault_db
       - key: JWT_SECRET
-        generateValue: true
+        generateValue: false
       - key: CORS_ORIGINS
-        value: https://cryptovault.financial,https://www.cryptovault.financial,https://cryptovault-dash.preview.emergentagent.com
+        value: https://cryptovault.financial,https://www.cryptovault.financial,http://localhost:300, http://10.0.1.97:3000
       - key: EMAIL_SERVICE
         value: sendgrid
       - key: SENDGRID_API_KEY

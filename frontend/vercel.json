@@ -11,16 +11,11 @@
     "silent": true,
     "autoJobCancelation": true
   },
-  
   "rewrites": [
-    
-    
     {
       "source": "/api",
       "destination": "https://cryptovault-api.onrender.com/"
     },
-    
-    
     {
       "source": "/api/docs",
       "destination": "https://cryptovault-api.onrender.com/api/docs"
@@ -29,57 +24,31 @@
       "source": "/api/docs/:path*",
       "destination": "https://cryptovault-api.onrender.com/api/docs/:path*"
     },
-
-    
     {
       "source": "/api/redoc",
       "destination": "https://cryptovault-api.onrender.com/api/redoc"
     },
-
-    
     {
       "source": "/api/health",
-      "destination": "https://cryptovault-api.onrender.com/health",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=30, stale-while-revalidate=60"
-        }
-      ]
+      "destination": "https://cryptovault-api.onrender.com/health"
     },
-
-    
     {
       "source": "/api/openapi.json",
       "destination": "https://cryptovault-api.onrender.com/api/openapi.json"
     },
-    
-    
-    
-    
     {
       "source": "/api/:path+",
       "destination": "https://cryptovault-api.onrender.com/:path+"
     },
-    
-    
     {
       "source": "/assets/:path*",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "destination": "/assets/:path*"
     },
-    
-    
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-  
   "redirects": [
     {
       "source": "/home",
@@ -97,9 +66,16 @@
       "permanent": true
     }
   ],
-  
   "headers": [
-    
+    {
+      "source": "/api/health",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=30, stale-while-revalidate=60"
+        }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
@@ -145,8 +121,6 @@
         }
       ]
     },
-    
-    
     {
       "source": "/api/:path*",
       "headers": [
@@ -180,8 +154,6 @@
         }
       ]
     },
-    
-    
     {
       "source": "/assets/:path*",
       "headers": [
@@ -195,9 +167,8 @@
         }
       ]
     },
-    
     {
-      "source": "/(.*\\.(js|css))",
+      "source": "/(.*\.(js|css))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -205,9 +176,8 @@
         }
       ]
     },
-    
     {
-      "source": "/(.*\\.(woff2|woff|ttf|eot))",
+      "source": "/(.*\.(woff2|woff|ttf|eot))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -219,10 +189,8 @@
         }
       ]
     },
-    
-    
     {
-      "source": "/(.*\\.html|/|/index\\.html)",
+      "source": "/(.*\.html|/|/index\.html)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -234,10 +202,8 @@
         }
       ]
     },
-    
-    
     {
-      "source": "/sw\\.js",
+      "source": "/sw\.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -253,10 +219,8 @@
         }
       ]
     },
-    
-    
     {
-      "source": "/manifest\\.json",
+      "source": "/manifest\.json",
       "headers": [
         {
           "key": "Content-Type",
@@ -268,10 +232,8 @@
         }
       ]
     },
-    
-    
     {
-      "source": "/(.*\\.(ico|png|jpg|jpeg|gif|svg|webp))",
+      "source": "/(.*\.(ico|png|jpg|jpeg|gif|svg|webp))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -280,7 +242,6 @@
       ]
     }
   ],
-  
   "functions": {
     "api/*.js": {
       "maxDuration": 10,
@@ -288,16 +249,15 @@
       "runtime": "nodejs18.x"
     }
   },
-  
   "crons": [
     {
       "path": "/api/health",
       "schedule": "*/5 * * * *"
     }
   ],
-  
-  "regions": ["iad1"],
-
+  "regions": [
+    "iad1"
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true,
@@ -305,7 +265,6 @@
     },
     "autoAlias": true
   },
-
   "env": {
     "NEXT_PUBLIC_API_BASE": "/api"
   }
