@@ -540,6 +540,12 @@ const renderWidget = (widgetId: string, props: any) => {
       );
 
     case 'holdings':
+      // Create a map for quick crypto data lookup
+      const holdingsCryptoMap = (cryptoData || []).reduce((acc: Record<string, any>, crypto: any) => {
+        acc[crypto.symbol?.toLowerCase()] = crypto;
+        return acc;
+      }, {});
+      
       return (
         <DashboardCard
           title="Your Assets"
@@ -557,7 +563,8 @@ const renderWidget = (widgetId: string, props: any) => {
               {holdings.slice(0, 4).map((holding: any, i: number) => {
                 const wsPrice = prices[holding.symbol?.toLowerCase()];
                 const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
-                const change = Math.random() > 0.5 ? Math.random() * 5 : -Math.random() * 3; // Mock 24h change
+                const cryptoInfo = holdingsCryptoMap[holding.symbol?.toLowerCase()];
+                const change = cryptoInfo?.change_24h || 0;
 
                 return (
                   <HoldingRow
