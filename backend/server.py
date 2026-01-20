@@ -649,20 +649,33 @@ async def get_socketio_stats():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on startup."""
+    """Initialize services on startup with crash-safe environment validation."""
     global db_connection
     
-    logger.info("="*70)
-    logger.info("🚀 Starting CryptoVault API Server")
-    logger.info("="*70)
+    logger.info("=" * 70)
+    logger.info("🚀 CRYPTOVAULT API SERVER - STARTING")
+    logger.info("=" * 70)
+    logger.info(f"   Version: 1.0.0")
+    logger.info(f"   Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    logger.info(f"   Host: {settings.host}")
+    logger.info(f"   Port: {settings.port}")
+    logger.info("=" * 70)
 
     try:
-        # Validate environment configuration
+        # CRITICAL: Validate all required environment variables before proceeding
+        # This ensures crash-safe startup - fail fast if misconfigured
+        logger.info("📋 Validating environment configuration...")
         try:
-            validate_startup_environment()
-            logger.info("✅ Environment validation passed")
+            validation_result = validate_startup_environment()
+            if validation_result["status"] == "success":
+                logger.info("✅ Environment Validated - All required variables present")
+            else:
+                logger.error(f"❌ Environment validation failed: {validation_result}")
+                raise Exception("Environment validation failed")
         except Exception as e:
-            logger.error(f"❌ Environment validation failed: {str(e)}")
+            logger.critical(f"💥 FATAL: Environment validation failed: {str(e)}")
+            logger.critical("   Server cannot start without proper configuration.")
+            logger.critical("   Please check your .env file or environment variables.")
             raise
         
         # Connect to database

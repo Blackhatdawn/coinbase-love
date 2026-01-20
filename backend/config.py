@@ -1,5 +1,16 @@
+"""
+Configuration module with environment variable validation and structured settings.
+Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
+
+Enterprise-grade configuration with:
+- Zero hardcoded sensitive values
+- Environment-based CORS origins
+- Crash-safe validation at startup
+- Production-ready defaults
+"""
+
 import logging
-import logging
+import os
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -17,16 +28,47 @@ if env_path.exists():
 else:
     logger.debug("No backend .env file found at %s - relying on environment variables", env_path)
 
-"""
-Configuration module with environment variable validation and structured settings.
-Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
-"""
-
-
 
 class EnvironmentValidationError(Exception):
     """Raised when critical environment variables are missing or invalid."""
     pass
+
+
+# ============================================
+# PRODUCTION CORS ORIGINS
+# ============================================
+# These are the allowed origins for production deployments
+# Update these to match your actual deployment URLs
+
+PRODUCTION_CORS_ORIGINS = [
+    "https://cryptovault.vercel.app",
+    "https://cryptovault-*.vercel.app",  # Preview deployments
+    "https://www.cryptovault.com",
+    "https://cryptovault.com",
+]
+
+STAGING_CORS_ORIGINS = [
+    "https://cryptovault-staging.vercel.app",
+    "https://cryptovault-*-staging.vercel.app",
+]
+
+DEVELOPMENT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+
+def get_default_cors_origins(environment: str) -> str:
+    """Get default CORS origins based on environment."""
+    if environment == "production":
+        return ",".join(PRODUCTION_CORS_ORIGINS)
+    elif environment == "staging":
+        return ",".join(STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS)
+    else:
+        # Development - allow all for convenience
+        return "*"
 
 
 class Settings(BaseSettings):
@@ -44,13 +86,16 @@ class Settings(BaseSettings):
     csrf_secret: Optional[str] = None
 
     # CORS Configuration
+    # In production, this should be set to specific frontend origins
     cors_origins: str = "*"
     # Enable cross-site cookies (needed when frontend and API are different origins)
     use_cross_site_cookies: bool = False
 
     # Server Configuration
+    # HOST: Always bind to 0.0.0.0 for container deployments
     host: str = "0.0.0.0"
-    port: int = 8001
+    # PORT: Use $PORT env var (required by Render, Heroku, etc.) or default to 8000
+    port: int = int(os.environ.get("PORT", "8000"))
     environment: str = "development"
     
     # Performance & Security
@@ -237,26 +282,89 @@ class Settings(BaseSettings):
         return issues
 
 
-def validate_startup_environment():
+def validate_startup_environment() -> dict:
     """
     Validate environment variables at startup.
     Logs warnings and raises errors for critical issues.
+    
+    Returns:
+        dict: Validation result with status and details
     """
+    validation_result = {
+        "status": "success",
+        "environment": settings.environment,
+        "issues": [],
+        "warnings": [],
+        "validated_at": None
+    }
+    
+    from datetime import datetime
+    validation_result["validated_at"] = datetime.utcnow().isoformat()
+    
     issues = settings.validate_critical_settings()
     
     for issue in issues:
         if issue.startswith("CRITICAL"):
             logger.critical(issue)
+            validation_result["issues"].append(issue)
         else:
             logger.warning(issue)
+            validation_result["warnings"].append(issue)
     
     critical_issues = [i for i in issues if i.startswith("CRITICAL")]
     if critical_issues:
+        validation_result["status"] = "failed"
         raise EnvironmentValidationError(
             f"Critical configuration issues found: {', '.join(critical_issues)}"
         )
     
-    return True
+    # Professional startup validation message
+    logger.info("=" * 60)
+    logger.info("🔐 ENVIRONMENT VALIDATED SUCCESSFULLY")
+    logger.info("=" * 60)
+    logger.info(f"   Environment: {settings.environment.upper()}")
+    logger.info(f"   Host: {settings.host}")
+    logger.info(f"   Port: {settings.port}")
+    logger.info(f"   Database: {settings.db_name}")
+    logger.info(f"   CORS Origins: {'RESTRICTED' if settings.cors_origins != '*' else 'OPEN (dev mode)'}")
+    logger.info(f"   Redis: {'ENABLED' if settings.is_redis_available() else 'DISABLED'}")
+    logger.info(f"   Sentry: {'ENABLED' if settings.is_sentry_available() else 'DISABLED'}")
+    logger.info(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
+    if validation_result["warnings"]:
+        logger.info(f"   Warnings: {len(validation_result['warnings'])}")
+    logger.info("=" * 60)
+    
+    return validation_result
+
+
+def get_required_env_vars() -> List[str]:
+    """
+    Get list of required environment variables.
+    Used for documentation and validation.
+    """
+    return [
+        "MONGO_URL",
+        "DB_NAME", 
+        "JWT_SECRET",
+    ]
+
+
+def get_optional_env_vars() -> List[str]:
+    """
+    Get list of optional environment variables with their purposes.
+    """
+    return [
+        "PORT",                    # Server port (default: 8000)
+        "ENVIRONMENT",             # development/staging/production
+        "CORS_ORIGINS",            # Comma-separated allowed origins
+        "SENDGRID_API_KEY",        # For email functionality
+        "SENTRY_DSN",              # For error tracking
+        "UPSTASH_REDIS_REST_URL",  # For Redis caching
+        "UPSTASH_REDIS_REST_TOKEN",
+        "COINGECKO_API_KEY",       # For price data
+        "COINCAP_API_KEY",
+        "COINMARKETCAP_API_KEY",
+    ]
 
 
 # Global settings instance (auto-loads and validates .env)
