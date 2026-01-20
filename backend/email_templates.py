@@ -581,3 +581,285 @@ def kyc_status_update(name: str, status: str, level: int, message: Optional[str]
         </table>
     '''
     return get_base_template(content, f"KYC Verification {status.title()} - Level {level}")
+
+
+def p2p_transfer_sent(
+    sender_name: str,
+    recipient_name: str,
+    recipient_email: str,
+    amount: str,
+    asset: str,
+    gas_fee: str,
+    transaction_id: str,
+    note: Optional[str] = None
+) -> str:
+    """P2P transfer sent confirmation email"""
+    content = f'''
+        <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #ffffff;">
+            Transfer Sent Successfully ✓
+        </h2>
+        <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #9ca3af;">
+            Hi {sender_name}, your transfer to {recipient_name} has been completed.
+        </p>
+        
+        <!-- Transaction Details -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 24px; background-color: #1f1f1f; border-radius: 12px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Amount Sent</p>
+                                <p style="margin: 4px 0 0; font-size: 24px; font-weight: 700; color: #EF4444;">
+                                    -{amount} {asset}
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Network Fee</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #9ca3af;">
+                                    {gas_fee}
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Recipient</p>
+                                <p style="margin: 4px 0 0; font-size: 16px; color: #ffffff;">{recipient_name}</p>
+                                <p style="margin: 2px 0 0; font-size: 12px; color: #6b7280;">{recipient_email}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Transaction ID</p>
+                                <p style="margin: 4px 0 0; font-size: 12px; color: #FBBF24; word-break: break-all; font-family: monospace;">
+                                    {transaction_id}
+                                </p>
+                            </td>
+                        </tr>
+                        {f'<tr><td style="padding: 12px 0; border-top: 1px solid #374151;"><p style="margin: 0; font-size: 12px; color: #6b7280;">Note</p><p style="margin: 4px 0 0; font-size: 14px; color: #ffffff; font-style: italic;">"{note}"</p></td></tr>' if note else ''}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- CTA Button -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 32px 0 0;">
+                    <a href="{SITE_URL}/transactions" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #0a0a0a; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                        View Transaction History
+                    </a>
+                </td>
+            </tr>
+        </table>
+    '''
+    return get_base_template(content, f"You sent {amount} {asset} to {recipient_name}")
+
+
+def p2p_transfer_received(
+    recipient_name: str,
+    sender_name: str,
+    sender_email: str,
+    amount: str,
+    asset: str,
+    transaction_id: str,
+    note: Optional[str] = None
+) -> str:
+    """P2P transfer received notification email"""
+    content = f'''
+        <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #ffffff;">
+            You Received {asset}! 🎉
+        </h2>
+        <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #9ca3af;">
+            Hi {recipient_name}, you just received a transfer from {sender_name}.
+        </p>
+        
+        <!-- Transaction Details -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 24px; background-color: #1f1f1f; border-radius: 12px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Amount Received</p>
+                                <p style="margin: 4px 0 0; font-size: 28px; font-weight: 700; color: #10B981;">
+                                    +{amount} {asset}
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">From</p>
+                                <p style="margin: 4px 0 0; font-size: 16px; color: #ffffff;">{sender_name}</p>
+                                <p style="margin: 2px 0 0; font-size: 12px; color: #6b7280;">{sender_email}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Transaction ID</p>
+                                <p style="margin: 4px 0 0; font-size: 12px; color: #FBBF24; word-break: break-all; font-family: monospace;">
+                                    {transaction_id}
+                                </p>
+                            </td>
+                        </tr>
+                        {f'<tr><td style="padding: 12px 0; border-top: 1px solid #374151;"><p style="margin: 0; font-size: 12px; color: #6b7280;">Note from sender</p><p style="margin: 4px 0 0; font-size: 14px; color: #ffffff; font-style: italic;">"{note}"</p></td></tr>' if note else ''}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- CTA Button -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 32px 0 0;">
+                    <a href="{SITE_URL}/dashboard" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #0a0a0a; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                        View Your Balance
+                    </a>
+                </td>
+            </tr>
+        </table>
+    '''
+    return get_base_template(content, f"You received {amount} {asset} from {sender_name}")
+
+
+def price_alert_triggered(
+    name: str,
+    asset: str,
+    current_price: str,
+    target_price: str,
+    condition: str,
+    alert_id: str
+) -> str:
+    """Price alert triggered notification email"""
+    condition_text = "reached" if condition == "above" else "dropped below"
+    arrow = "↑" if condition == "above" else "↓"
+    color = "#10B981" if condition == "above" else "#EF4444"
+    
+    content = f'''
+        <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #ffffff;">
+            🔔 Price Alert Triggered
+        </h2>
+        <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #9ca3af;">
+            Hi {name}, {asset} has {condition_text} your target price.
+        </p>
+        
+        <!-- Price Details -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 24px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px;">
+                    <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">{asset}</p>
+                    <p style="margin: 0; font-size: 36px; font-weight: 700; color: {color};">
+                        {arrow} {current_price}
+                    </p>
+                    <p style="margin: 8px 0 0; font-size: 14px; color: #9ca3af;">
+                        Target: {target_price}
+                    </p>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- CTA Buttons -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 32px 0 0;">
+                    <a href="{SITE_URL}/trade?asset={asset.lower()}" style="display: inline-block; padding: 14px 24px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #0a0a0a; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; margin-right: 12px;">
+                        Trade Now
+                    </a>
+                    <a href="{SITE_URL}/alerts" style="display: inline-block; padding: 14px 24px; background-color: #1f1f1f; border: 1px solid #374151; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                        Manage Alerts
+                    </a>
+                </td>
+            </tr>
+        </table>
+    '''
+    return get_base_template(content, f"Price Alert: {asset} {condition_text} {target_price}")
+
+
+def login_new_device(
+    name: str,
+    device: str,
+    browser: str,
+    ip_address: str,
+    location: str,
+    login_time: str
+) -> str:
+    """New device login notification email"""
+    content = f'''
+        <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #ffffff;">
+            New Login Detected
+        </h2>
+        <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #9ca3af;">
+            Hi {name}, we detected a new login to your CryptoVault account.
+        </p>
+        
+        <!-- Login Details -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 24px; background-color: #1f1f1f; border-radius: 12px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Device</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff;">{device}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Browser</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff;">{browser}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">IP Address</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff; font-family: monospace;">{ip_address}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #374151;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Location</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff;">{location}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0;">
+                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Time</p>
+                                <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff;">{login_time}</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Security Warning -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
+            <tr>
+                <td style="padding: 16px; background-color: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <p style="margin: 0; font-size: 14px; color: #EF4444; font-weight: 600;">
+                        Was this you?
+                    </p>
+                    <p style="margin: 8px 0 0; font-size: 13px; color: #9ca3af;">
+                        If you don't recognize this login, please secure your account immediately by changing your password and enabling 2FA.
+                    </p>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- CTA Buttons -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 32px 0 0;">
+                    <a href="{SITE_URL}/dashboard?security=true" style="display: inline-block; padding: 14px 24px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #0a0a0a; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; margin-right: 12px;">
+                        Secure Account
+                    </a>
+                    <a href="{SITE_URL}/help" style="display: inline-block; padding: 14px 24px; background-color: #1f1f1f; border: 1px solid #374151; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                        Report Suspicious Activity
+                    </a>
+                </td>
+            </tr>
+        </table>
+    '''
+    return get_base_template(content, f"New login to your CryptoVault account from {location}")

@@ -1,24 +1,63 @@
 """
-P2P Transfer Validation Schemas
+P2P Transfer Validation Schemas with Smart Gas Fee Support
+Enterprise-grade validation for peer-to-peer transfers
 """
 
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
+from typing import Optional, Literal
 from decimal import Decimal
 
 
+# Valid priority levels for fee calculation
+VALID_PRIORITIES = ("low", "medium", "high", "urgent")
+
+# Supported currencies
+SUPPORTED_CURRENCIES = {
+    # Cryptocurrencies
+    "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "AVAX", "DOT", "LINK",
+    "DOGE", "SHIB", "MATIC", "LTC", "UNI",
+    # Stablecoins
+    "USDT", "USDC", "DAI", "BUSD",
+    # Fiat
+    "USD", "EUR", "GBP",
+}
+
+
 class P2PTransferRequest(BaseModel):
-    """Peer-to-peer transfer request"""
+    """Peer-to-peer transfer request with smart gas fee support"""
     recipient_email: EmailStr = Field(..., description="Recipient email address")
-    cryptocurrency: str = Field(..., min_length=2, max_length=10, description="Cryptocurrency symbol")
+    currency: str = Field(
+        default="USD",
+        min_length=2, 
+        max_length=10, 
+        description="Currency code (BTC, ETH, USD, etc.)"
+    )
     amount: Decimal = Field(..., gt=0, description="Transfer amount")
-    message: Optional[str] = Field(None, max_length=200, description="Optional message")
-    two_fa_code: Optional[str] = Field(None, min_length=6, max_length=8, description="2FA code if enabled")
+    note: Optional[str] = Field(
+        None, 
+        max_length=500, 
+        description="Optional transfer note"
+    )
+    priority: Literal["low", "medium", "high", "urgent"] = Field(
+        default="medium",
+        description="Fee priority level (affects confirmation time and gas fee)"
+    )
+    two_fa_code: Optional[str] = Field(
+        None, 
+        min_length=6, 
+        max_length=8, 
+        description="2FA code if enabled"
+    )
     
-    @validator('cryptocurrency')
-    def validate_cryptocurrency(cls, v):
-        """Normalize cryptocurrency symbol"""
-        return v.strip().upper()
+    @validator('currency')
+    def validate_currency(cls, v):
+        """Normalize and validate currency code"""
+        v = v.strip().upper()
+        if v not in SUPPORTED_CURRENCIES:
+            raise ValueError(
+                f'Unsupported currency: {v}. Supported: {", ".join(sorted(SUPPORTED_CURRENCIES))}'
+            )
+        return v
     
     @validator('amount')
     def validate_amount(cls, v):
@@ -29,9 +68,9 @@ class P2PTransferRequest(BaseModel):
             raise ValueError('Amount too small (minimum 0.00000001)')
         return v
     
-    @validator('message')
-    def validate_message(cls, v):
-        """Sanitize message"""
+    @validator('note')
+    def validate_note(cls, v):
+        """Sanitize note/message"""
         if v:
             v = v.strip()
             # Remove multiple spaces
@@ -46,12 +85,37 @@ class P2PTransferRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "recipient_email": "recipient@example.com",
-                "cryptocurrency": "BTC",
+                "currency": "BTC",
                 "amount": "0.001",
-                "message": "Thanks for dinner!"
+                "note": "Thanks for dinner!",
+                "priority": "medium"
+            }
+        }
+
+
+class FeeEstimateRequest(BaseModel):
+    """Fee estimation request for transfer preview"""
+    amount: Decimal = Field(..., gt=0, description="Transfer amount")
+    currency: str = Field(
+        default="USD",
+        min_length=2,
+        max_length=10,
+        description="Currency code"
+    )
+    
+    @validator('currency')
+    def validate_currency(cls, v):
+        """Normalize currency code"""
+        return v.strip().upper()
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "amount": "0.01",
+                "currency": "BTC"
             }
         }
 

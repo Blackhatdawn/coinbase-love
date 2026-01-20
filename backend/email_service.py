@@ -1,18 +1,32 @@
 """
-CryptoVault Email Service with SendGrid Integration
-Supports 6-digit OTP verification with 5-minute expiry
-Production-ready with SOC 2 compliance logging
+CryptoVault Enterprise Email Service with SendGrid Integration
+Enterprise-grade email system with:
+- SendGrid integration for production email delivery
+- Retry logic with exponential backoff
+- Rate limiting awareness
+- SOC 2 compliance logging
+- Beautiful HTML templates
+- 6-digit OTP verification with 5-minute expiry
 """
 import random
 import secrets
 import string
+import asyncio
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any
 import logging
 
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for email sending
+EMAIL_RETRY_CONFIG = {
+    "max_retries": 3,
+    "base_delay": 1.0,  # seconds
+    "max_delay": 30.0,  # seconds
+    "exponential_base": 2.0,
+}
 
 # Try to import SendGrid
 try:
@@ -314,16 +328,64 @@ CryptoVault Financial, Inc.
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: str
+        text_content: str,
+        retry: bool = True
     ) -> bool:
         """
-        Send email via SendGrid or mock.
-        Returns True if successful.
+        Send email via SendGrid or mock with retry logic.
+        
+        Args:
+            to_email: Recipient email address
+            subject: Email subject line
+            html_content: HTML email body
+            text_content: Plain text email body
+            retry: Whether to retry on failure
+            
+        Returns:
+            True if successful, False otherwise
         """
         if self.mode == 'sendgrid' and self.client:
+            if retry:
+                return await self._send_with_retry(to_email, subject, html_content, text_content)
             return await self._send_sendgrid(to_email, subject, html_content, text_content)
         else:
             return await self._send_mock(to_email, subject)
+    
+    async def _send_with_retry(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: str
+    ) -> bool:
+        """Send email with exponential backoff retry logic."""
+        last_error = None
+        
+        for attempt in range(EMAIL_RETRY_CONFIG["max_retries"]):
+            try:
+                success = await self._send_sendgrid(to_email, subject, html_content, text_content)
+                if success:
+                    if attempt > 0:
+                        logger.info(f"✅ Email sent after {attempt + 1} attempts to {to_email}")
+                    return True
+                    
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ Email attempt {attempt + 1} failed: {str(e)}")
+            
+            # Calculate backoff delay
+            if attempt < EMAIL_RETRY_CONFIG["max_retries"] - 1:
+                delay = min(
+                    EMAIL_RETRY_CONFIG["base_delay"] * (EMAIL_RETRY_CONFIG["exponential_base"] ** attempt),
+                    EMAIL_RETRY_CONFIG["max_delay"]
+                )
+                logger.info(f"⏳ Retrying email in {delay:.1f}s...")
+                await asyncio.sleep(delay)
+        
+        logger.error(f"❌ Email failed after {EMAIL_RETRY_CONFIG['max_retries']} attempts to {to_email}")
+        if last_error:
+            logger.error(f"   Last error: {str(last_error)}")
+        return False
     
     async def _send_sendgrid(
         self,
@@ -353,13 +415,152 @@ CryptoVault Financial, Inc.
                 
         except Exception as e:
             logger.error(f"❌ SendGrid exception: {str(e)}")
-            return False
+            raise  # Re-raise for retry logic
     
     async def _send_mock(self, to_email: str, subject: str) -> bool:
         """Mock email sending for development/testing."""
         logger.info(f"📧 [MOCK] Email to {to_email}")
         logger.info(f"📧 [MOCK] Subject: {subject}")
         return True
+    
+    # ============================================
+    # ENTERPRISE EMAIL METHODS
+    # ============================================
+    
+    async def send_p2p_transfer_sent(
+        self,
+        to_email: str,
+        sender_name: str,
+        recipient_name: str,
+        recipient_email: str,
+        amount: str,
+        asset: str,
+        gas_fee: str,
+        transaction_id: str,
+        note: Optional[str] = None
+    ) -> bool:
+        """Send P2P transfer confirmation to sender."""
+        from email_templates import p2p_transfer_sent
+        
+        subject = f"✅ Transfer Sent: {amount} {asset} to {recipient_name}"
+        html_content = p2p_transfer_sent(
+            sender_name=sender_name,
+            recipient_name=recipient_name,
+            recipient_email=recipient_email,
+            amount=amount,
+            asset=asset,
+            gas_fee=gas_fee,
+            transaction_id=transaction_id,
+            note=note
+        )
+        text_content = f"You sent {amount} {asset} to {recipient_name} ({recipient_email}). Transaction ID: {transaction_id}"
+        
+        return await self.send_email(to_email, subject, html_content, text_content)
+    
+    async def send_p2p_transfer_received(
+        self,
+        to_email: str,
+        recipient_name: str,
+        sender_name: str,
+        sender_email: str,
+        amount: str,
+        asset: str,
+        transaction_id: str,
+        note: Optional[str] = None
+    ) -> bool:
+        """Send P2P transfer notification to recipient."""
+        from email_templates import p2p_transfer_received
+        
+        subject = f"🎉 You Received {amount} {asset} from {sender_name}"
+        html_content = p2p_transfer_received(
+            recipient_name=recipient_name,
+            sender_name=sender_name,
+            sender_email=sender_email,
+            amount=amount,
+            asset=asset,
+            transaction_id=transaction_id,
+            note=note
+        )
+        text_content = f"You received {amount} {asset} from {sender_name} ({sender_email}). Transaction ID: {transaction_id}"
+        
+        return await self.send_email(to_email, subject, html_content, text_content)
+    
+    async def send_price_alert(
+        self,
+        to_email: str,
+        name: str,
+        asset: str,
+        current_price: str,
+        target_price: str,
+        condition: str,
+        alert_id: str
+    ) -> bool:
+        """Send price alert notification."""
+        from email_templates import price_alert_triggered
+        
+        condition_text = "reached" if condition == "above" else "dropped below"
+        subject = f"🔔 {asset} {condition_text} {target_price}"
+        html_content = price_alert_triggered(
+            name=name,
+            asset=asset,
+            current_price=current_price,
+            target_price=target_price,
+            condition=condition,
+            alert_id=alert_id
+        )
+        text_content = f"{asset} has {condition_text} your target price of {target_price}. Current price: {current_price}"
+        
+        return await self.send_email(to_email, subject, html_content, text_content)
+    
+    async def send_new_device_login(
+        self,
+        to_email: str,
+        name: str,
+        device: str,
+        browser: str,
+        ip_address: str,
+        location: str,
+        login_time: str
+    ) -> bool:
+        """Send new device login notification."""
+        from email_templates import login_new_device
+        
+        subject = f"🔐 New Login to Your CryptoVault Account"
+        html_content = login_new_device(
+            name=name,
+            device=device,
+            browser=browser,
+            ip_address=ip_address,
+            location=location,
+            login_time=login_time
+        )
+        text_content = f"New login detected from {device} ({browser}) in {location}. IP: {ip_address}. Time: {login_time}"
+        
+        return await self.send_email(to_email, subject, html_content, text_content)
+    
+    async def send_security_alert(
+        self,
+        to_email: str,
+        name: str,
+        alert_type: str,
+        details: str,
+        ip_address: str,
+        location: str
+    ) -> bool:
+        """Send security alert notification."""
+        from email_templates import security_alert
+        
+        subject = f"🔐 Security Alert: {alert_type}"
+        html_content = security_alert(
+            name=name,
+            alert_type=alert_type,
+            details=details,
+            ip_address=ip_address,
+            location=location
+        )
+        text_content = f"Security Alert: {alert_type}. {details}. IP: {ip_address}. Location: {location}"
+        
+        return await self.send_email(to_email, subject, html_content, text_content)
 
 
 # Global email service instance

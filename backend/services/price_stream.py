@@ -1,14 +1,13 @@
 """
 PriceStreamService
-Real-time cryptocurrency price streaming service via WebSocket.
+Real-time cryptocurrency price streaming service via CoinCap WebSocket.
 
-NOTE: CoinCap WebSocket requires an API key for authenticated access.
-This service is DISABLED by default. The websocket_feed.py uses CoinCap REST API instead.
+CoinCap provides FREE WebSocket access for real-time price data.
+An API key is optional but provides higher rate limits.
 
-To enable WebSocket streaming:
-1. Get API key from https://coincap.io/api-key
-2. Set COINCAP_API_KEY in .env
-3. Service will auto-enable
+Configuration:
+- COINCAP_API_KEY: Optional API key for higher rate limits
+- Service auto-starts when websockets library is available
 """
 
 import asyncio
@@ -57,9 +56,12 @@ class PriceStreamService:
     ]
     
     def __init__(self):
-        # Check for API key
+        # API key is optional - CoinCap WebSocket works without it
         self.api_key = settings.coincap_api_key
-        self.is_enabled = bool(self.api_key) and WEBSOCKETS_AVAILABLE
+        
+        # Service is enabled if websockets library is available
+        # API key is optional but provides higher rate limits
+        self.is_enabled = WEBSOCKETS_AVAILABLE
         
         # Connection management
         self.state = ConnectionState.DISABLED if not self.is_enabled else ConnectionState.DISCONNECTED
@@ -68,12 +70,12 @@ class PriceStreamService:
         
         # Reconnection strategy
         self.reconnect_attempt = 0
-        self.max_reconnect_attempts = 3
-        self.base_backoff = 30
-        self.max_backoff = 300
+        self.max_reconnect_attempts = 5
+        self.base_backoff = 10
+        self.max_backoff = 120
         self.last_reconnect_time = 0
         
-        # WebSocket endpoint (requires API key header now)
+        # WebSocket endpoint - CoinCap provides free public WebSocket
         self.COINCAP_WS = f"wss://ws.coincap.io/prices?assets={','.join(self.TRACKED_ASSETS)}"
         
         # Price tracking
@@ -105,13 +107,11 @@ class PriceStreamService:
         self._task: Optional[asyncio.Task] = None
         
         if not self.is_enabled:
-            if not self.api_key:
-                logger.info("ℹ️ PriceStreamService disabled - COINCAP_API_KEY not set")
-                logger.info("ℹ️ Using CoinCap REST API via websocket_feed instead")
-            elif not WEBSOCKETS_AVAILABLE:
-                logger.warning("⚠️ PriceStreamService disabled - websockets not available")
+            logger.warning("⚠️ PriceStreamService disabled - websockets library not available")
         else:
-            logger.info("🚀 PriceStreamService initialized (tracking %d assets)", len(self.TRACKED_ASSETS))
+            api_status = "with API key" if self.api_key else "without API key (free tier)"
+            logger.info("🚀 PriceStreamService initialized %s (tracking %d assets)", 
+                       api_status, len(self.TRACKED_ASSETS))
     
     async def start(self) -> None:
         """Start the price stream service"""

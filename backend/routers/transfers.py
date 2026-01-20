@@ -1,15 +1,27 @@
-"""P2P Transfer endpoints for peer-to-peer cryptocurrency transfers."""
+"""
+P2P Transfer Endpoints with Smart Gas Fees
+Enterprise-grade peer-to-peer cryptocurrency transfers.
+
+Features:
+- Dynamic gas fee calculation using smart crypto data analysis
+- BTC fees in SATs (satoshis)
+- Email notifications for both sender and recipient
+- Audit logging for compliance
+- Real-time balance validation
+"""
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 import uuid
 import logging
 
 from dependencies import get_current_user_id, get_db, get_limiter
 from models import Transaction
 from config import settings
+from services.gas_fees import gas_fee_service
+from email_service import email_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transfers", tags=["transfers"])
@@ -20,11 +32,26 @@ router = APIRouter(prefix="/transfers", tags=["transfers"])
 # ============================================
 
 class P2PTransferRequest(BaseModel):
-    """P2P Transfer request model"""
-    recipient_email: str
-    amount: float
-    currency: str = "USD"
-    note: Optional[str] = None
+    """P2P Transfer request model with smart gas fee support"""
+    recipient_email: str = Field(..., description="Recipient's CryptoVault email")
+    amount: float = Field(..., gt=0, description="Transfer amount")
+    currency: str = Field(default="USD", description="Currency code (BTC, ETH, USD, etc.)")
+    note: Optional[str] = Field(None, max_length=500, description="Optional transfer note")
+    priority: Literal["low", "medium", "high", "urgent"] = Field(
+        default="medium", 
+        description="Fee priority level (affects confirmation time)"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "recipient_email": "user@example.com",
+                "amount": 0.01,
+                "currency": "BTC",
+                "note": "Payment for services",
+                "priority": "medium"
+            }
+        }
 
 
 class P2PTransferResponse(BaseModel):
@@ -34,8 +61,25 @@ class P2PTransferResponse(BaseModel):
     currency: str
     recipient_email: str
     recipient_name: Optional[str] = None
+    gas_fee: float
+    gas_fee_display: str
+    total_deducted: float
     status: str
     created_at: str
+
+
+class FeeEstimateRequest(BaseModel):
+    """Fee estimation request model"""
+    amount: float = Field(..., gt=0, description="Transfer amount")
+    currency: str = Field(default="USD", description="Currency code")
+
+
+class FeeEstimateResponse(BaseModel):
+    """Fee estimation response model"""
+    amount: float
+    currency: str
+    estimates: dict
+    recommended: str
 
 
 # ============================================
@@ -72,6 +116,31 @@ async def log_audit(db, user_id: str, action: str, resource: Optional[str] = Non
 # P2P TRANSFER ENDPOINTS
 # ============================================
 
+@router.get("/fee-estimate")
+async def estimate_transfer_fee(
+    amount: float,
+    currency: str = "USD",
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get fee estimates for a P2P transfer at all priority levels.
+    
+    **Query Parameters:**
+    - `amount`: Transfer amount
+    - `currency`: Currency code (BTC, ETH, USD, etc.)
+    
+    **Response:**
+    Returns fee estimates for low, medium, high, and urgent priorities.
+    For BTC, fees are also shown in SATs (satoshis).
+    """
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    estimates = gas_fee_service.get_fee_estimate(amount, currency)
+    
+    return estimates
+
+
 @router.post("/p2p")
 async def create_p2p_transfer(
     transfer: P2PTransferRequest,
@@ -81,16 +150,23 @@ async def create_p2p_transfer(
     limiter = Depends(get_limiter)
 ):
     """
-    Create an instant P2P transfer between CryptoVault users.
-    Validates sender balance and executes off-chain ledger update.
+    Create an instant P2P transfer between CryptoVault users with smart gas fees.
+    
+    **Features:**
+    - Dynamic gas fee calculation based on currency and priority
+    - BTC fees displayed in SATs for precision
+    - Email notifications to both sender and recipient
+    - Real-time balance validation
+    - Audit logging for compliance
     
     **Request Body:**
     ```json
     {
         "recipient_email": "user@example.com",
-        "amount": 100.0,
-        "currency": "USD",
-        "note": "Payment for services"
+        "amount": 0.01,
+        "currency": "BTC",
+        "note": "Payment for services",
+        "priority": "medium"
     }
     ```
     
@@ -100,10 +176,13 @@ async def create_p2p_transfer(
         "message": "Transfer completed successfully",
         "transfer": {
             "id": "uuid",
-            "amount": 100.0,
-            "currency": "USD",
+            "amount": 0.01,
+            "currency": "BTC",
             "recipient_email": "user@example.com",
             "recipient_name": "John Doe",
+            "gas_fee": 0.00001,
+            "gas_fee_display": "1,000 SATs",
+            "total_deducted": 0.01001,
             "status": "completed",
             "created_at": "2026-01-16T12:00:00"
         }
@@ -136,6 +215,24 @@ async def create_p2p_transfer(
         logger.warning(f"Self-transfer attempted by {user_id}")
         raise HTTPException(status_code=400, detail="Cannot transfer to yourself")
 
+    # Calculate smart gas fee
+    fee_waived = gas_fee_service.is_fee_waived(transfer.currency, transfer.amount)
+    
+    if fee_waived:
+        gas_fee = 0.0
+        gas_fee_display = "Waived"
+    else:
+        fee_info = gas_fee_service.calculate_fee(
+            transfer.amount, 
+            transfer.currency, 
+            transfer.priority,
+            include_breakdown=True
+        )
+        gas_fee = fee_info["fee"]
+        gas_fee_display = fee_info["fee_display"]
+    
+    total_to_deduct = transfer.amount + gas_fee
+
     # Get current balances (from wallets collection)
     wallets_collection = db.get_collection("wallets")
     sender_wallet = await wallets_collection.find_one({"user_id": user_id})
@@ -153,23 +250,23 @@ async def create_p2p_transfer(
 
     sender_balance = sender_wallet.get("balances", {}).get(transfer.currency, 0.0)
 
-    # Validate balance
-    if sender_balance < transfer.amount:
+    # Validate balance (including gas fee)
+    if sender_balance < total_to_deduct:
         logger.warning(
             f"Insufficient balance: user {user_id} has {sender_balance} {transfer.currency}, "
-            f"trying to transfer {transfer.amount}"
+            f"needs {total_to_deduct} (amount: {transfer.amount}, fee: {gas_fee})"
         )
-        raise HTTPException(status_code=400, detail="Insufficient balance")
-
-    # Validate amount
-    if transfer.amount <= 0:
-        raise HTTPException(status_code=400, detail="Transfer amount must be positive")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient balance. You need {total_to_deduct:.8f} {transfer.currency} "
+                   f"(amount + gas fee)"
+        )
 
     # Generate transfer ID
     transfer_id = str(uuid.uuid4())
     timestamp = datetime.utcnow()
 
-    # Create sender transaction (debit)
+    # Create sender transaction (debit - amount + fee)
     sender_txn = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
@@ -182,13 +279,35 @@ async def create_p2p_transfer(
             "recipient_id": recipient["id"],
             "recipient_email": recipient["email"],
             "recipient_name": recipient.get("name", "CryptoVault User"),
-            "note": transfer.note
+            "note": transfer.note,
+            "gas_fee": gas_fee,
+            "gas_fee_display": gas_fee_display,
+            "priority": transfer.priority
         },
         "created_at": timestamp,
         "updated_at": timestamp
     }
 
-    # Create recipient transaction (credit)
+    # Create fee transaction (if applicable)
+    fee_txn = None
+    if gas_fee > 0:
+        fee_txn = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": "gas_fee",
+            "amount": -gas_fee,
+            "currency": transfer.currency,
+            "status": "completed",
+            "metadata": {
+                "transfer_id": transfer_id,
+                "fee_type": "p2p_transfer",
+                "priority": transfer.priority
+            },
+            "created_at": timestamp,
+            "updated_at": timestamp
+        }
+
+    # Create recipient transaction (credit - full amount, no fee deducted)
     recipient_txn = {
         "id": str(uuid.uuid4()),
         "user_id": recipient["id"],
@@ -209,10 +328,13 @@ async def create_p2p_transfer(
 
     try:
         # Execute atomic transfer
-        await transactions_collection.insert_many([sender_txn, recipient_txn])
+        txns_to_insert = [sender_txn, recipient_txn]
+        if fee_txn:
+            txns_to_insert.append(fee_txn)
+        await transactions_collection.insert_many(txns_to_insert)
 
-        # Update sender wallet balance
-        new_sender_balance = sender_balance - transfer.amount
+        # Update sender wallet balance (deduct amount + fee)
+        new_sender_balance = sender_balance - total_to_deduct
         await wallets_collection.update_one(
             {"user_id": user_id},
             {"$set": {
@@ -221,7 +343,7 @@ async def create_p2p_transfer(
             }}
         )
 
-        # Update recipient wallet balance
+        # Update recipient wallet balance (credit full amount)
         recipient_wallet = await wallets_collection.find_one({"user_id": recipient["id"]})
         if not recipient_wallet:
             recipient_wallet = {
@@ -254,7 +376,9 @@ async def create_p2p_transfer(
                 "transfer_id": transfer_id,
                 "amount": transfer.amount,
                 "currency": transfer.currency,
-                "recipient": recipient["email"]
+                "recipient": recipient["email"],
+                "gas_fee": gas_fee,
+                "priority": transfer.priority
             }
         )
 
@@ -266,9 +390,40 @@ async def create_p2p_transfer(
                 "recipient_id": recipient["id"],
                 "amount": transfer.amount,
                 "currency": transfer.currency,
+                "gas_fee": gas_fee,
                 "transfer_id": transfer_id
             }
         )
+
+        # Send email notifications (async, non-blocking)
+        try:
+            # Email to sender
+            await email_service.send_p2p_transfer_sent(
+                to_email=sender["email"],
+                sender_name=sender.get("name", "CryptoVault User"),
+                recipient_name=recipient.get("name", "CryptoVault User"),
+                recipient_email=recipient["email"],
+                amount=f"{transfer.amount:.8f}".rstrip('0').rstrip('.'),
+                asset=transfer.currency,
+                gas_fee=gas_fee_display,
+                transaction_id=transfer_id,
+                note=transfer.note
+            )
+            
+            # Email to recipient
+            await email_service.send_p2p_transfer_received(
+                to_email=recipient["email"],
+                recipient_name=recipient.get("name", "CryptoVault User"),
+                sender_name=sender.get("name", "CryptoVault User"),
+                sender_email=sender["email"],
+                amount=f"{transfer.amount:.8f}".rstrip('0').rstrip('.'),
+                asset=transfer.currency,
+                transaction_id=transfer_id,
+                note=transfer.note
+            )
+        except Exception as email_error:
+            # Log but don't fail the transfer
+            logger.warning(f"Failed to send transfer emails: {str(email_error)}")
 
         return {
             "message": "Transfer completed successfully",
@@ -278,6 +433,9 @@ async def create_p2p_transfer(
                 "currency": transfer.currency,
                 "recipient_email": recipient["email"],
                 "recipient_name": recipient.get("name"),
+                "gas_fee": gas_fee,
+                "gas_fee_display": gas_fee_display,
+                "total_deducted": total_to_deduct,
                 "status": "completed",
                 "created_at": timestamp.isoformat()
             }

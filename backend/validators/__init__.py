@@ -24,7 +24,7 @@ from .alert_validators import (
     CreateAlertRequest, UpdateAlertRequest, DeleteAlertRequest
 )
 from .transfer_validators import (
-    P2PTransferRequest, AcceptTransferRequest, RejectTransferRequest
+    P2PTransferRequest, AcceptTransferRequest, RejectTransferRequest, FeeEstimateRequest
 )
 
 __all__ = [
@@ -49,5 +49,5 @@ __all__ = [
     'CreateAlertRequest', 'UpdateAlertRequest', 'DeleteAlertRequest',
     
     # Transfers
-    'P2PTransferRequest', 'AcceptTransferRequest', 'RejectTransferRequest',
+    'P2PTransferRequest', 'AcceptTransferRequest', 'RejectTransferRequest', 'FeeEstimateRequest',
 ]
