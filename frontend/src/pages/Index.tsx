@@ -7,19 +7,29 @@ import CTASection from "@/components/CTASection";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
 import { Helmet } from 'react-helmet-async';
+import { getRuntimeConfig, resolveAppUrl, resolveSupportEmail } from "@/lib/runtimeConfig";
 
 const Index = () => {
+  const runtimeConfig = getRuntimeConfig();
+  const appUrl = runtimeConfig?.appUrl || resolveAppUrl();
+  const branding = runtimeConfig?.branding;
+  const siteName = branding?.siteName || "CryptoVault Financial";
+  const logoUrl = branding?.logoUrl || `${appUrl}/logo.svg`;
+  const supportEmail = branding?.supportEmail || resolveSupportEmail();
+  const ogImageUrl = `${appUrl}/og-image.jpg`;
+  const twitterImageUrl = `${appUrl}/twitter-image.jpg`;
+
   // Schema markup for SEO
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "FinancialService",
-    "name": "CryptoVault Financial",
+    "name": siteName,
     "description": "Institutional-grade digital asset custody and management. Multi-jurisdiction cold storage, real-time proof of reserves, and zero security breaches since 2019.",
-    "url": "https://cryptovault.financial",
-    "logo": "https://cryptovault.financial/logo.svg",
-    "image": "https://cryptovault.financial/og-image.jpg",
+    "url": appUrl,
+    "logo": logoUrl,
+    "image": ogImageUrl,
     "telephone": "+1-302-555-0100",
-    "email": "support@cryptovault.financial",
+    "email": supportEmail,
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "1201 Market Street, Suite 101",
@@ -55,7 +65,7 @@ const Index = () => {
     "serviceType": "Digital Asset Custody",
     "provider": {
       "@type": "Organization",
-      "name": "CryptoVault Financial"
+      "name": siteName
     },
     "areaServed": "Worldwide",
     "hasOfferCatalog": {
@@ -137,7 +147,7 @@ const Index = () => {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://cryptovault.financial"
+        "item": appUrl
       }
     ]
   };
@@ -153,18 +163,18 @@ const Index = () => {
         <meta property="og:title" content="CryptoVault Financial | Institutional Digital Asset Custody" />
         <meta property="og:description" content="The custody solution institutions trust with $10B+. Multi-jurisdiction storage, real-time proof of reserves." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://cryptovault.financial" />
-        <meta property="og:image" content="https://cryptovault.financial/og-image.jpg" />
+        <meta property="og:url" content={appUrl} />
+        <meta property="og:image" content={ogImageUrl} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@CryptoVaultFin" />
         <meta name="twitter:title" content="CryptoVault Financial | Institutional Custody" />
         <meta name="twitter:description" content="Trusted by 250+ institutions. Zero breaches since 2019." />
-        <meta name="twitter:image" content="https://cryptovault.financial/twitter-image.jpg" />
+        <meta name="twitter:image" content={twitterImageUrl} />
         
         {/* Canonical */}
-        <link rel="canonical" href="https://cryptovault.financial" />
+        <link rel="canonical" href={appUrl} />
         
         {/* Schema.org markup */}
         <script type="application/ld+json">

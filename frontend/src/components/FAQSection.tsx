@@ -5,6 +5,7 @@
 import { HelpCircle, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { resolveSupportEmail } from '@/lib/runtimeConfig';
 
 interface FAQItem {
   id: number;
@@ -127,6 +128,7 @@ const FAQCard = ({ faq, isOpen, onToggle }: { faq: FAQItem; isOpen: boolean; onT
 );
 
 const FAQSection = () => {
+  const supportEmail = resolveSupportEmail();
   const [openId, setOpenId] = useState<number | null>(1);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
@@ -211,7 +213,7 @@ const FAQSection = () => {
               Contact Support
             </a>
             <a 
-              href="mailto:support@cryptovault.financial"
+              href={`mailto:${supportEmail}`}
               className="inline-flex items-center justify-center px-6 py-3 border border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-foreground rounded-lg transition-all duration-300 touch-target"
             >
               Email Us

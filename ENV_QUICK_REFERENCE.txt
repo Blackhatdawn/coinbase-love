@@ -23,12 +23,13 @@
 
   Variable                | Current Value
   ────────────────────────┼────────────────────────────────────────────
-  VITE_API_BASE_URL       | https://cryptovault-api.onrender.com
-  REACT_APP_BACKEND_URL   | https://cleanup-maestro.preview.emerge...
-  WDS_SOCKET_PORT         | 443
-  ENABLE_HEALTH_CHECK     | false                                      
+  VITE_API_BASE_URL       | (optional) Backend URL for bootstrap only
+  VITE_SENTRY_DSN         | (optional) Deprecated in favor of PUBLIC_SENTRY_DSN
+  VITE_ENABLE_SENTRY      | (optional) Deprecated in favor of PUBLIC_SENTRY_DSN
+  VITE_APP_VERSION        | (optional) Build/version label
 
-  ⚠️  REACT_APP_BACKEND_URL is platform-managed - DO NOT MODIFY
+  ✅ Runtime config now served from backend: /api/config
+  ✅ Prefer backend .env PUBLIC_* variables as single source of truth
   📝 Example file location: /app/frontend/.env.example
   🔄 Restart after changes: sudo supervisorctl restart frontend
 

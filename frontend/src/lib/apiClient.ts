@@ -5,9 +5,11 @@
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { create } from 'zustand';
+import { resolveApiBaseUrl } from './runtimeConfig';
 
 // Get base URL from environment or use proxy in development
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const resolveBaseUrl = () => resolveApiBaseUrl();
+const BASE_URL = resolveBaseUrl();
 
 // Log API configuration in development
 if (import.meta.env.DEV) {
@@ -16,8 +18,8 @@ if (import.meta.env.DEV) {
   );
   if (!BASE_URL) {
     console.warn(
-      '[API Client] VITE_API_BASE_URL is not configured. Using relative paths. ' +
-      'Make sure your backend is running and accessible.'
+      '[API Client] API base URL not configured. Using relative paths. ' +
+      'Ensure /api/config responds or set VITE_API_BASE_URL for bootstrap.'
     );
   }
 }
@@ -135,6 +137,9 @@ class APIClient {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
+        // Update base URL at request time (runtime config override)
+        config.baseURL = resolveBaseUrl() || config.baseURL;
+
         // Add CSRF token header for mutating requests (POST, PUT, PATCH, DELETE)
         const mutatingMethods = ['post', 'put', 'patch', 'delete'];
         if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {

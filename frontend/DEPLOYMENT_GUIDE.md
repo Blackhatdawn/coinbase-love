@@ -34,6 +34,7 @@ In your Vercel project settings, add these environment variables:
 
 #### Required Variables
 ```bash
+# Optional if using Vercel rewrites + /api/config (recommended)
 VITE_API_BASE_URL=https://cryptovault-api.onrender.com
 VITE_APP_NAME=CryptoVault
 VITE_APP_VERSION=1.0.0
@@ -44,6 +45,7 @@ VITE_ENABLE_SENTRY=true
 #### Optional (Recommended)
 ```bash
 # Sentry Error Tracking (get from https://sentry.io)
+# Prefer backend PUBLIC_SENTRY_DSN via /api/config; this is a fallback.
 VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 
 # Google Analytics (if needed)

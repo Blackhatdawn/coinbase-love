@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { resolveWsBaseUrl } from '@/lib/runtimeConfig';
 
 export interface PriceUpdate {
   type: 'price_update' | 'status' | 'connection' | 'pong' | 'keep_alive';
@@ -36,13 +37,14 @@ interface UsePriceWebSocketOptions {
   verbose?: boolean;
 }
 
-const DEFAULT_URL = import.meta.env.PROD
-  ? 'wss://cryptovault-api.onrender.com/ws/prices'
-  : 'ws://localhost:8000/ws/prices';
+const getDefaultUrl = (): string => {
+  const wsBaseUrl = resolveWsBaseUrl();
+  return wsBaseUrl ? `${wsBaseUrl}/ws/prices` : 'ws://localhost:8000/ws/prices';
+};
 
 export function usePriceWebSocket(options: UsePriceWebSocketOptions = {}) {
   const {
-    url = DEFAULT_URL,
+    url = getDefaultUrl(),
     autoReconnect = true,
     maxReconnectAttempts = 10,
     reconnectDelay = 1000,

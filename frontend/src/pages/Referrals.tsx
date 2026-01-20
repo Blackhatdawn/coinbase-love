@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveAppUrl } from '@/lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 
@@ -49,7 +50,7 @@ const Referrals = () => {
   const [copied, setCopied] = useState(false);
 
   const referralCode = 'CV' + (user?.id?.slice(-6)?.toUpperCase() || 'VAULT');
-  const referralLink = `https://cryptovault.financial/auth?ref=${referralCode}`;
+  const referralLink = `${resolveAppUrl()}/auth?ref=${referralCode}`;
 
   const handleCopy = async (text: string, type: 'code' | 'link') => {
     await navigator.clipboard.writeText(text);
