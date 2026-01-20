@@ -35,16 +35,16 @@ class TestPortfolioEndpoints:
         token = response.cookies.get("access_token")
         return {"Authorization": f"Bearer {token}"} if token else {}
     
-    def test_add_holding_success(self, test_client, auth_headers, mock_coingecko_service):
+    def test_add_holding_success(self, test_client, auth_headers, mock_coincap_service):
         """
         Test successful holding creation.
         Validates that POST /api/portfolio/holding correctly:
-        - Imports coingecko_service
+        - Imports coincap_service
         - Extracts price from 'price' key (not 'current_price')
         - Creates holding with valid value calculation
         """
-        # Mock coingecko_service.get_prices() to return proper structure
-        mock_coingecko_service.return_value = [
+        # Mock coincap_service.get_prices() to return proper structure
+        mock_coincap_service.return_value = [
             {
                 "id": "bitcoin",
                 "symbol": "BTC",
@@ -80,12 +80,12 @@ class TestPortfolioEndpoints:
         # Verify value calculation: 0.5 BTC * $45000.50 = $22500.25
         assert abs(holding["value"] - 22500.25) < 0.01
     
-    def test_add_holding_missing_price(self, test_client, auth_headers, mock_coingecko_service):
+    def test_add_holding_missing_price(self, test_client, auth_headers, mock_coincap_service):
         """
         Test holding creation fails when price is missing or invalid.
         Validates error handling for unavailable price data.
         """
-        mock_coingecko_service.return_value = [
+        mock_coincap_service.return_value = [
             {
                 "id": "bitcoin",
                 "symbol": "BTC",
@@ -111,11 +111,11 @@ class TestPortfolioEndpoints:
         data = response.json()
         assert "price" in data.get("detail", "").lower() or "unavailable" in data.get("detail", "").lower()
     
-    def test_add_holding_crypto_not_found(self, test_client, auth_headers, mock_coingecko_service):
+    def test_add_holding_crypto_not_found(self, test_client, auth_headers, mock_coincap_service):
         """
         Test holding creation fails when cryptocurrency is not found.
         """
-        mock_coingecko_service.return_value = []  # No coins returned
+        mock_coincap_service.return_value = []  # No coins returned
         
         response = test_client.post(
             "/api/portfolio/holding",
@@ -404,8 +404,8 @@ def valid_user():
 
 
 @pytest.fixture
-def mock_coingecko_service(monkeypatch):
-    """Mock CoinGecko service for testing."""
+def mock_coincap_service(monkeypatch):
+    """Mock CoinCap service for testing."""
     # Implement based on your mocking strategy
     pass
 

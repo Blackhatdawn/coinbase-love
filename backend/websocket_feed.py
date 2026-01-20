@@ -1,13 +1,13 @@
 """
 WebSocket Price Feed Service
 Real-time cryptocurrency price updates via WebSocket
-Uses CoinGecko API with proper rate limiting and caching
+Uses CoinCap API with excellent rate limiting (200 req/min free tier)
 """
 import json
 import asyncio
 import logging
 from typing import Dict, Set, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 import httpx
 
 from config import settings
@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class PriceFeedManager:
-    """Manages WebSocket connections and price broadcasting"""
+    """
+    Manages WebSocket connections and price broadcasting.
+    Uses CoinCap API for reliable, rate-limit-friendly price data.
+    """
     
     def __init__(self):
         self.connections: Set = set()
@@ -24,11 +27,11 @@ class PriceFeedManager:
         self.last_update: Optional[datetime] = None
         self.last_api_call: Optional[datetime] = None
         
-        # RATE LIMITING - CoinGecko free tier allows ~10-30 calls/min
-        # With API key, we can be more aggressive
-        self.api_key = settings.coingecko_api_key
-        self.update_interval = 15 if self.api_key else 30  # Faster with API key
-        self.min_api_interval = 5 if self.api_key else 10  # Minimum interval
+        # CoinCap has generous rate limits (200 req/min free tier)
+        # With API key, even higher limits available
+        self.api_key = settings.coincap_api_key
+        self.update_interval = 10 if self.api_key else 15  # Faster updates with API key
+        self.min_api_interval = 3 if self.api_key else 5  # Minimum interval
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
         
@@ -37,12 +40,35 @@ class PriceFeedManager:
         self.max_consecutive_errors = 5
         self.backoff_multiplier = 1
         
-        # Top coins to track
+        # Top coins to track (using CoinCap IDs)
         self.tracked_coins = [
-            "bitcoin", "ethereum", "binancecoin", "solana", 
-            "ripple", "cardano", "dogecoin", "avalanche-2",
-            "polkadot", "chainlink", "polygon", "litecoin"
+            "bitcoin", "ethereum", "binance-coin", "solana", 
+            "xrp", "cardano", "dogecoin", "avalanche",
+            "polkadot", "chainlink", "polygon", "litecoin",
+            "uniswap", "stellar", "tron", "cosmos"
         ]
+        
+        # Symbol mapping
+        self.symbol_map = {
+            "bitcoin": "BTC",
+            "ethereum": "ETH",
+            "binance-coin": "BNB",
+            "solana": "SOL",
+            "xrp": "XRP",
+            "cardano": "ADA",
+            "dogecoin": "DOGE",
+            "avalanche": "AVAX",
+            "polkadot": "DOT",
+            "chainlink": "LINK",
+            "polygon": "MATIC",
+            "litecoin": "LTC",
+            "uniswap": "UNI",
+            "stellar": "XLM",
+            "tron": "TRX",
+            "cosmos": "ATOM",
+            "near-protocol": "NEAR",
+            "bitcoin-cash": "BCH",
+        }
     
     async def start(self):
         """Start the price feed background task"""
@@ -51,7 +77,7 @@ class PriceFeedManager:
         
         self.is_running = True
         self._task = asyncio.create_task(self._price_update_loop())
-        logger.info("📡 Price feed started (interval: %ds)", self.update_interval)
+        logger.info("📡 Price feed started (CoinCap API, interval: %ds)", self.update_interval)
     
     async def stop(self):
         """Stop the price feed"""
@@ -75,7 +101,7 @@ class PriceFeedManager:
         logger.info(f"📡 WebSocket disconnected (total: {len(self.connections)})")
     
     async def _fetch_prices(self) -> Dict[str, Any]:
-        """Fetch prices from CoinGecko API with rate limiting"""
+        """Fetch prices from CoinCap API with rate limiting"""
         # Enforce minimum interval between API calls
         if self.last_api_call:
             time_since_last = (datetime.now() - self.last_api_call).total_seconds()
@@ -88,18 +114,13 @@ class PriceFeedManager:
             # Use API key if available for higher rate limits
             headers = {}
             if self.api_key:
-                headers["x-cg-pro-api-key"] = self.api_key
+                headers["Authorization"] = f"Bearer {self.api_key}"
             
             async with httpx.AsyncClient(timeout=15) as client:
+                # CoinCap /assets endpoint returns all top cryptocurrencies
                 response = await client.get(
-                    "https://api.coingecko.com/api/v3/simple/price",
-                    params={
-                        "ids": ",".join(self.tracked_coins),
-                        "vs_currencies": "usd",
-                        "include_24hr_change": "true",
-                        "include_market_cap": "true",
-                        "include_24hr_vol": "true"
-                    },
+                    "https://api.coincap.io/v2/assets",
+                    params={"limit": 50},  # Get top 50 coins
                     headers=headers
                 )
                 
@@ -113,14 +134,14 @@ class PriceFeedManager:
                     # Rate limited - increase backoff
                     self.consecutive_errors += 1
                     self.backoff_multiplier = min(self.backoff_multiplier * 2, 8)
-                    logger.warning(f"⚠️ CoinGecko rate limited (429). Backoff: {self.backoff_multiplier}x")
+                    logger.warning(f"⚠️ CoinCap rate limited (429). Backoff: {self.backoff_multiplier}x")
                     return {}
                 else:
-                    logger.warning(f"CoinGecko API returned {response.status_code}")
+                    logger.warning(f"CoinCap API returned {response.status_code}")
                     return {}
                     
         except httpx.TimeoutException:
-            logger.warning("⏱️ CoinGecko API timeout")
+            logger.warning("⏱️ CoinCap API timeout")
             self.consecutive_errors += 1
             return {}
         except Exception as e:
@@ -134,18 +155,18 @@ class PriceFeedManager:
             try:
                 # Check if we have too many errors
                 if self.consecutive_errors >= self.max_consecutive_errors:
-                    logger.error(f"❌ Too many consecutive errors ({self.consecutive_errors}). Pausing for 5 minutes.")
-                    await asyncio.sleep(300)  # 5 minute pause
+                    logger.error(f"❌ Too many consecutive errors ({self.consecutive_errors}). Pausing for 2 minutes.")
+                    await asyncio.sleep(120)  # 2 minute pause (shorter than before)
                     self.consecutive_errors = 0
                     self.backoff_multiplier = 1
                     continue
                 
                 # Fetch new prices
-                raw_prices = await self._fetch_prices()
+                raw_data = await self._fetch_prices()
                 
-                if raw_prices:
+                if raw_data and raw_data.get("data"):
                     # Transform to our format
-                    formatted_prices = self._format_prices(raw_prices)
+                    formatted_prices = self._format_prices(raw_data["data"])
                     
                     # Detect changes
                     changes = self._detect_changes(formatted_prices)
@@ -159,7 +180,9 @@ class PriceFeedManager:
                         await self._broadcast({
                             "type": "price_update",
                             "data": formatted_prices,
+                            "prices": {k: str(v["price"]) for k, v in formatted_prices.items()},
                             "changes": changes,
+                            "source": "coincap",
                             "timestamp": self.last_update.isoformat()
                         })
                 
@@ -174,34 +197,28 @@ class PriceFeedManager:
                 logger.error(f"Price update loop error: {e}")
                 await asyncio.sleep(10)
     
-    def _format_prices(self, raw: Dict) -> Dict[str, Any]:
-        """Format raw CoinGecko data to our structure"""
-        symbol_map = {
-            "bitcoin": "BTC",
-            "ethereum": "ETH",
-            "binancecoin": "BNB",
-            "solana": "SOL",
-            "ripple": "XRP",
-            "cardano": "ADA",
-            "dogecoin": "DOGE",
-            "avalanche-2": "AVAX",
-            "polkadot": "DOT",
-            "chainlink": "LINK",
-            "polygon": "MATIC",
-            "litecoin": "LTC"
-        }
-        
+    def _format_prices(self, assets: list) -> Dict[str, Any]:
+        """Format raw CoinCap data to our structure"""
         formatted = {}
-        for coin_id, data in raw.items():
-            symbol = symbol_map.get(coin_id, coin_id.upper())
-            formatted[symbol] = {
-                "symbol": symbol,
-                "id": coin_id,
-                "price": data.get("usd", 0),
-                "change_24h": data.get("usd_24h_change", 0),
-                "market_cap": data.get("usd_market_cap", 0),
-                "volume_24h": data.get("usd_24h_vol", 0)
-            }
+        
+        for asset in assets:
+            try:
+                coin_id = asset.get("id", "")
+                symbol = asset.get("symbol", "").upper()
+                
+                # Use symbol as the key for easier frontend access
+                formatted[symbol.lower()] = {
+                    "symbol": symbol,
+                    "id": coin_id,
+                    "name": asset.get("name", ""),
+                    "price": float(asset.get("priceUsd", 0)),
+                    "change_24h": float(asset.get("changePercent24Hr", 0) or 0),
+                    "market_cap": float(asset.get("marketCapUsd", 0) or 0),
+                    "volume_24h": float(asset.get("volumeUsd24Hr", 0) or 0),
+                    "rank": int(asset.get("rank", 0)),
+                }
+            except (ValueError, TypeError):
+                continue
         
         return formatted
     
@@ -253,7 +270,20 @@ class PriceFeedManager:
         """Get current cached prices"""
         return {
             "prices": self.prices,
-            "last_update": self.last_update.isoformat() if self.last_update else None
+            "last_update": self.last_update.isoformat() if self.last_update else None,
+            "source": "coincap"
+        }
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get service status"""
+        return {
+            "is_running": self.is_running,
+            "connected_clients": len(self.connections),
+            "prices_cached": len(self.prices),
+            "last_update": self.last_update.isoformat() if self.last_update else None,
+            "consecutive_errors": self.consecutive_errors,
+            "backoff_multiplier": self.backoff_multiplier,
+            "source": "coincap"
         }
 
 

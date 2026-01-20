@@ -21,7 +21,9 @@ import {
   Percent,
   Clock,
   ExternalLink,
-  GripVertical
+  GripVertical,
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -44,6 +46,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { api } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceWebSocket } from '@/hooks/usePriceWebSocket';
+import { useCryptoData } from '@/hooks/useCryptoData';
 import { resolveAppUrl } from '@/lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -66,8 +69,8 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
 };
 
-// Default widget order
-const DEFAULT_WIDGET_ORDER = ['balance', 'security', 'holdings', 'earn', 'referrals', 'transactions'];
+// Default widget order - market widget added for better user experience
+const DEFAULT_WIDGET_ORDER = ['balance', 'market', 'security', 'holdings', 'earn', 'referrals', 'transactions'];
 
 // Sortable Widget Wrapper
 const SortableWidget = ({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) => {
@@ -111,6 +114,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { prices, status: priceStatus } = usePriceWebSocket();
+  const { data: cryptoData, isLoading: cryptoLoading } = useCryptoData({ refreshInterval: 30000 });
   const [showWelcome, setShowWelcome] = useState(false);
   const [copiedReferral, setCopiedReferral] = useState(false);
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
@@ -281,7 +285,9 @@ const Dashboard = () => {
             {widgetOrder.map((widgetId) => {
               // Determine grid span class based on widget type
               const spanClass = widgetId === 'balance' 
-                ? 'md:col-span-2 lg:col-span-2 xl:col-span-3' 
+                ? 'md:col-span-2 lg:col-span-2 xl:col-span-2' 
+                : widgetId === 'market'
+                ? 'md:col-span-2 lg:col-span-2 xl:col-span-2'
                 : widgetId === 'holdings' || widgetId === 'transactions'
                 ? 'md:col-span-2'
                 : '';
@@ -301,6 +307,8 @@ const Dashboard = () => {
                     copiedReferral,
                     refetchPortfolio,
                     handleCopyReferral,
+                    cryptoData,
+                    cryptoLoading,
                   })}
                 </SortableWidget>
               );
@@ -327,6 +335,8 @@ const renderWidget = (widgetId: string, props: any) => {
     copiedReferral,
     refetchPortfolio,
     handleCopyReferral,
+    cryptoData,
+    cryptoLoading,
   } = props;
 
   switch (widgetId) {
@@ -389,6 +399,118 @@ const renderWidget = (widgetId: string, props: any) => {
         </DashboardCard>
       );
 
+    case 'market':
+      // Sort by 24h change for top movers
+      const sortedCrypto = [...(cryptoData || [])].sort((a, b) => Math.abs(b.change_24h || 0) - Math.abs(a.change_24h || 0));
+      const topGainers = sortedCrypto.filter(c => (c.change_24h || 0) > 0).slice(0, 3);
+      const topLosers = sortedCrypto.filter(c => (c.change_24h || 0) < 0).slice(0, 3);
+      
+      return (
+        <DashboardCard
+          title="Market Overview"
+          icon={<BarChart3 className="h-5 w-5" />}
+          action={
+            <Link to="/markets" className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1">
+              All Markets <ExternalLink className="h-3 w-3" />
+            </Link>
+          }
+          className="h-full"
+          glowColor="blue"
+        >
+          {cryptoLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 p-2 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-white/5" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-16 bg-white/5 rounded" />
+                    <div className="h-2 w-12 bg-white/5 rounded" />
+                  </div>
+                  <div className="h-4 w-14 bg-white/5 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Top Gainers */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-400" />
+                  <span className="text-xs font-semibold text-emerald-400 uppercase">Top Gainers</span>
+                </div>
+                <div className="space-y-2">
+                  {topGainers.length > 0 ? topGainers.map((crypto) => (
+                    <Link
+                      key={crypto.id}
+                      to={`/trade?coin=${crypto.id}`}
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center text-xs font-bold text-emerald-400">
+                          {crypto.symbol?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{crypto.symbol}</p>
+                          <p className="text-[10px] text-gray-500">${crypto.price?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-400">
+                        +{crypto.change_24h?.toFixed(2)}%
+                      </span>
+                    </Link>
+                  )) : (
+                    <p className="text-xs text-gray-500 text-center py-2">No gainers today</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Losers */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingDown className="h-4 w-4 text-red-400" />
+                  <span className="text-xs font-semibold text-red-400 uppercase">Top Losers</span>
+                </div>
+                <div className="space-y-2">
+                  {topLosers.length > 0 ? topLosers.map((crypto) => (
+                    <Link
+                      key={crypto.id}
+                      to={`/trade?coin=${crypto.id}`}
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-400/20 to-red-600/20 flex items-center justify-center text-xs font-bold text-red-400">
+                          {crypto.symbol?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{crypto.symbol}</p>
+                          <p className="text-[10px] text-gray-500">${crypto.price?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-red-400">
+                        {crypto.change_24h?.toFixed(2)}%
+                      </span>
+                    </Link>
+                  )) : (
+                    <p className="text-xs text-gray-500 text-center py-2">No losers today</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Trade CTA */}
+              <Link to="/markets" className="block">
+                <div className="p-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm font-medium text-white">Explore All Markets</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Trade 100+ cryptocurrencies with real-time prices</p>
+                </div>
+              </Link>
+            </div>
+          )}
+        </DashboardCard>
+      );
+
     case 'security':
       return (
         <DashboardCard
@@ -418,6 +540,12 @@ const renderWidget = (widgetId: string, props: any) => {
       );
 
     case 'holdings':
+      // Create a map for quick crypto data lookup
+      const holdingsCryptoMap = (cryptoData || []).reduce((acc: Record<string, any>, crypto: any) => {
+        acc[crypto.symbol?.toLowerCase()] = crypto;
+        return acc;
+      }, {});
+      
       return (
         <DashboardCard
           title="Your Assets"
@@ -435,7 +563,8 @@ const renderWidget = (widgetId: string, props: any) => {
               {holdings.slice(0, 4).map((holding: any, i: number) => {
                 const wsPrice = prices[holding.symbol?.toLowerCase()];
                 const currentValue = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
-                const change = Math.random() > 0.5 ? Math.random() * 5 : -Math.random() * 3; // Mock 24h change
+                const cryptoInfo = holdingsCryptoMap[holding.symbol?.toLowerCase()];
+                const change = cryptoInfo?.change_24h || 0;
 
                 return (
                   <HoldingRow

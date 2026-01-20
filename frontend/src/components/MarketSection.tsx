@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * MarketSection - Live market prices section for homepage
- * Displays real-time prices from CoinGecko via backend proxy
+ * Displays real-time prices from CoinCap via backend proxy
  * NO HARDCODED DATA - All prices are fetched live
  */
 const MarketSection = () => {
@@ -177,7 +177,7 @@ const MarketSection = () => {
 
         {/* Data Source Attribution */}
         <p className="text-xs text-muted-foreground text-center mt-8">
-          Market data provided by CoinGecko API • Prices update every 60 seconds
+          Market data provided by CoinCap API • Prices update in real-time
         </p>
       </div>
     </section>

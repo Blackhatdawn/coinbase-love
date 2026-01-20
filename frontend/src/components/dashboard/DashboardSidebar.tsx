@@ -45,11 +45,11 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/markets', icon: TrendingUp, label: 'Markets', isNew: true },
   { path: '/portfolio', icon: PieChart, label: 'Portfolio' },
-  { path: '/trade', icon: TrendingUp, label: 'Trade' },
+  { path: '/trade', icon: ArrowRightLeft, label: 'Trade' },
   { path: '/earn', icon: Percent, label: 'Earn', badge: 'APY 12%' },
-  { path: '/wallet/deposit', icon: Wallet, label: 'Deposit' },
-  { path: '/wallet/withdraw', icon: ArrowRightLeft, label: 'Withdraw' },
+  { path: '/wallet/deposit', icon: Wallet, label: 'Wallet' },
 ];
 
 const secondaryNavItems: NavItem[] = [

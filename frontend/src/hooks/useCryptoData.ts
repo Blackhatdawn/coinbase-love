@@ -2,7 +2,7 @@
  * useCryptoData - React hook for fetching live cryptocurrency data
  * 
  * Features:
- * - Fetches from backend (which proxies CoinGecko with caching)
+ * - Fetches from backend (which proxies CoinCap API with caching)
  * - Auto-refresh every 60 seconds
  * - Loading, error, and data states
  * - Retry mechanism with exponential backoff

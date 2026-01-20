@@ -21,6 +21,7 @@ import {
 import { api } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriceWebSocket } from '@/hooks/usePriceWebSocket';
+import { useCryptoData } from '@/hooks/useCryptoData';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -45,7 +46,14 @@ const itemVariants = {
 const Portfolio = () => {
   const { user } = useAuth();
   const { prices } = usePriceWebSocket();
+  const { data: cryptoData } = useCryptoData({ refreshInterval: 30000 });
   const [selectedTimeframe, setSelectedTimeframe] = useState<'24h' | '7d' | '30d' | '1y' | 'all'>('7d');
+
+  // Create a map for quick lookup of crypto data
+  const cryptoMap = (cryptoData || []).reduce((acc: Record<string, any>, crypto: any) => {
+    acc[crypto.symbol?.toLowerCase()] = crypto;
+    return acc;
+  }, {});
 
   // Fetch portfolio data
   const { data: portfolioData, isLoading: portfolioLoading, refetch: refetchPortfolio } = useQuery({
@@ -72,10 +80,6 @@ const Portfolio = () => {
     ? ((totalValue - originalTotalValue) / originalTotalValue) * 100
     : 0;
 
-  // Calculate 24h change (mock for now)
-  const change24h = Math.random() * 10 - 5; // -5% to +5%
-  const profit24h = totalValue * (change24h / 100);
-
   // Calculate asset allocation
   const totalAllocation = holdings.reduce((sum: number, holding: any) => {
     const wsPrice = prices[holding.symbol?.toLowerCase()];
@@ -87,11 +91,21 @@ const Portfolio = () => {
     const wsPrice = prices[holding.symbol?.toLowerCase()];
     const value = wsPrice ? parseFloat(wsPrice) * holding.amount : holding.value;
     const allocation = totalAllocation > 0 ? (value / totalAllocation) * 100 : 0;
-    return { ...holding, value, allocation };
+    const cryptoInfo = cryptoMap[holding.symbol?.toLowerCase()];
+    const change24h = cryptoInfo?.change_24h || 0;
+    return { ...holding, value, allocation, change24h };
   });
 
   // Sort by value
   const sortedHoldings = [...holdingsWithAllocation].sort((a, b) => b.value - a.value);
+
+  // Calculate portfolio 24h change based on holdings and their respective changes (weighted)
+  const change24h = sortedHoldings.reduce((weightedChange: number, holding: any) => {
+    const weight = totalAllocation > 0 ? (holding.value / totalAllocation) : 0;
+    return weightedChange + (holding.change24h * weight);
+  }, 0);
+  
+  const profit24h = totalValue * (change24h / 100);
 
   return (
     <div className="space-y-6">
@@ -287,7 +301,7 @@ const Portfolio = () => {
                   {sortedHoldings.map((holding: any) => {
                     const wsPrice = prices[holding.symbol?.toLowerCase()];
                     const currentPrice = wsPrice ? parseFloat(wsPrice) : holding.value / holding.amount;
-                    const change24h = Math.random() * 10 - 5; // Mock 24h change
+                    const holdingChange24h = holding.change24h || 0;
 
                     return (
                       <tr key={holding.symbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
@@ -318,20 +332,22 @@ const Portfolio = () => {
                         <td className="py-4 px-4 text-right">
                           <span className={cn(
                             'inline-flex items-center gap-1 text-sm font-medium',
-                            change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                            holdingChange24h >= 0 ? 'text-emerald-400' : 'text-red-400'
                           )}>
-                            {change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {change24h >= 0 ? '+' : ''}{change24h.toFixed(2)}%
+                            {holdingChange24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                            {holdingChange24h >= 0 ? '+' : ''}{holdingChange24h.toFixed(2)}%
                           </span>
                         </td>
                         <td className="py-4 px-4 text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="hover:bg-red-500/10 hover:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Link to={`/trade?coin=${holding.symbol?.toLowerCase()}`}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="hover:bg-gold-500/10 hover:text-gold-400"
+                            >
+                              <TrendingUp className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         </td>
                       </tr>
                     );

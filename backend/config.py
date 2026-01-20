@@ -138,16 +138,12 @@ class Settings(BaseSettings):
     public_support_email: Optional[str] = None
     public_sentry_dsn: Optional[str] = None
 
-    # CoinGecko API Configuration
-    coingecko_api_key: Optional[str] = None
-    coingecko_rate_limit: int = 50
-    use_mock_prices: bool = False
-    
-    # CoinCap API Configuration
+    # Cryptocurrency Price API Configuration
+    # CoinCap is the primary source (200 req/min free tier)
     coincap_api_key: Optional[str] = None
     
-    # CoinMarketCap API Configuration
-    coinmarketcap_api_key: Optional[str] = None
+    # Use mock prices for development/testing
+    use_mock_prices: bool = False
     
     # NowPayments Configuration
     nowpayments_api_key: Optional[str] = None
@@ -370,9 +366,7 @@ def get_optional_env_vars() -> List[str]:
         "SENTRY_DSN",              # For error tracking
         "UPSTASH_REDIS_REST_URL",  # For Redis caching
         "UPSTASH_REDIS_REST_TOKEN",
-        "COINGECKO_API_KEY",       # For price data
-        "COINCAP_API_KEY",
-        "COINMARKETCAP_API_KEY",
+        "COINCAP_API_KEY",         # For cryptocurrency price data (primary source)
         "PUBLIC_API_URL",          # Base URL exposed to frontend
         "PUBLIC_WS_URL",           # WebSocket base URL exposed to frontend
         "PUBLIC_SOCKET_IO_PATH",   # Socket.IO path exposed to frontend
@@ -396,7 +390,7 @@ try:
     logger.debug(f"Rate Limit: {settings.rate_limit_per_minute} req/min")
     logger.debug(f"Email Service: {settings.email_service}")
     logger.debug(f"App URL: {settings.app_url}")
-    logger.debug(f"CoinGecko API: {'configured' if settings.coingecko_api_key else 'not configured'}")
+    logger.debug(f"CoinCap API: {'configured' if settings.coincap_api_key else 'not configured (using free tier)'}")
     logger.debug(f"Use Mock Prices: {settings.use_mock_prices}")
     redis_status = "enabled" if settings.is_redis_available() else "disabled"
     logger.debug(f"Redis: {redis_status}")

@@ -1,11 +1,11 @@
 """
 PriceStreamService
-Real-time cryptocurrency price streaming service.
+Real-time cryptocurrency price streaming service via WebSocket.
 
-NOTE: CoinCap WebSocket now requires an API key (free tier limited).
-This service is DISABLED by default. Use the CoinGecko-based websocket_feed instead.
+NOTE: CoinCap WebSocket requires an API key for authenticated access.
+This service is DISABLED by default. The websocket_feed.py uses CoinCap REST API instead.
 
-To enable with CoinCap API key:
+To enable WebSocket streaming:
 1. Get API key from https://coincap.io/api-key
 2. Set COINCAP_API_KEY in .env
 3. Service will auto-enable
@@ -107,7 +107,7 @@ class PriceStreamService:
         if not self.is_enabled:
             if not self.api_key:
                 logger.info("ℹ️ PriceStreamService disabled - COINCAP_API_KEY not set")
-                logger.info("ℹ️ Using CoinGecko API via websocket_feed instead")
+                logger.info("ℹ️ Using CoinCap REST API via websocket_feed instead")
             elif not WEBSOCKETS_AVAILABLE:
                 logger.warning("⚠️ PriceStreamService disabled - websockets not available")
         else:

@@ -26,9 +26,9 @@ from database import DatabaseConnection
 from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config
 
 # Services
-from coingecko_service import coingecko_service
 from websocket_feed import price_feed
 from services import price_stream_service
+from coincap_service import coincap_service
 
 # Enhanced services
 from socketio_server import socketio_manager
@@ -710,12 +710,11 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Price stream service failed to start: {str(e)}")
 
-        # Start WebSocket price feed (SECONDARY - CoinGecko REST API)
-        # This fetches from CoinGecko API for clients that connect via our WebSocket
-        # NOTE: Only starts if there are WebSocket connections (lazy loading)
+        # Start WebSocket price feed (CoinCap REST API for HTTP polling)
+        # This fetches from CoinCap API for clients that connect via our WebSocket
         try:
             await price_feed.start()
-            logger.info("✅ WebSocket price feed started (CoinGecko API, 30s interval)")
+            logger.info("✅ WebSocket price feed started (CoinCap API)")
         except Exception as e:
             logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
 
