@@ -436,18 +436,17 @@ app.add_middleware(
 # COMPRESSION MIDDLEWARE
 # ============================================
 
-# Add Brotli compression for better compression ratios
+# Add GZip compression for response compression
+# Using correct Starlette import path
 try:
-    from fastapi.middleware.gzip import GZipMiddleware
-    # import brotli  # Optional: for Brotli compression
+    from starlette.middleware.gzip import GZipMiddleware
     
-    # Note: Brotli is preferred over GZip for better compression
-    # Most modern browsers support Brotli (br encoding)
-    # GZip is kept as fallback
+    # GZip compression for API responses
+    # Minimum size prevents compressing tiny responses (overhead > benefit)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     logger.info("✅ GZip compression middleware enabled (min size: 1000 bytes)")
-except ImportError:
-    logger.warning("⚠️ Compression middleware not available")
+except ImportError as e:
+    logger.warning(f"⚠️ GZip compression middleware not available: {e}")
 
 # ============================================
 # CUSTOM MIDDLEWARE
