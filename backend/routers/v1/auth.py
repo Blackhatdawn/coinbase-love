@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status, Depends
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
+from urllib.parse import quote_plus
 import uuid
 import bcrypt
 from typing import Optional
@@ -115,6 +116,7 @@ async def signup(
     """Register a new user with email verification."""
     users_collection = db.get_collection("users")
     portfolios_collection = db.get_collection("portfolios")
+    wallets_collection = db.get_collection("wallets")
 
     existing_user = await users_collection.find_one({"email": user_data.email})
     if existing_user:
@@ -139,9 +141,12 @@ async def signup(
 
     await users_collection.insert_one(user.dict())
 
-    from models import Portfolio
+    from models import Portfolio, Wallet
     portfolio = Portfolio(user_id=user.id)
     await portfolios_collection.insert_one(portfolio.dict())
+    
+    wallet = Wallet(user_id=user.id, balances={"USD": 0.0})
+    await wallets_collection.insert_one(wallet.dict())
 
     app_url = settings.app_url
     subject, html_content, text_content = email_service.get_verification_email(
@@ -656,9 +661,15 @@ async def setup_2fa(
         {"$set": {"two_factor_secret": secret}}
     )
 
+    otp_auth_url = f"otpauth://totp/CryptoVault:{user_id}?secret={secret}&issuer=CryptoVault"
+    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?data={quote_plus(otp_auth_url)}&size=200x200"
+
     return {
         "secret": secret,
-        "qr_code_url": f"otpauth://totp/CryptoVault:{user_id}?secret={secret}&issuer=CryptoVault"
+        "qr_code_url": otp_auth_url,  # Backward compatibility
+        "otp_auth_url": otp_auth_url,
+        "qrCode": qr_image_url,
+        "backupCodes": []
     }
 
 
@@ -698,7 +709,8 @@ async def verify_2fa(
 
     return {
         "message": "2FA enabled successfully",
-        "backup_codes": backup_codes
+        "backup_codes": backup_codes,
+        "backupCodes": backup_codes
     }
 
 
@@ -749,4 +761,4 @@ async def get_backup_codes(
         {"$set": {"backup_codes": backup_codes}}
     )
 
-    return {"codes": backup_codes}
+    return {"codes": backup_codes, "backupCodes": backup_codes}

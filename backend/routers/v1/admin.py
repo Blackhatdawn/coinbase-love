@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 import uuid
 import csv
 from io import StringIO
@@ -11,6 +11,22 @@ from io import StringIO
 from dependencies import get_current_user_id, get_db
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def percent_change(previous: float, current: float) -> float:
+    """Calculate percentage change with zero-safe handling."""
+    if previous == 0:
+        return 0.0 if current == 0 else 100.0
+    return ((current - previous) / previous) * 100
+
+
+def normalize_audit_log(log: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize audit log fields for consistent export/response."""
+    if "_id" in log:
+        log["_id"] = str(log["_id"])
+    if "timestamp" not in log and "created_at" in log:
+        log["timestamp"] = log["created_at"]
+    return log
 
 
 @router.post("/setup-first-admin")
@@ -82,14 +98,16 @@ async def get_admin_stats(
     """Get platform statistics for admin dashboard."""
     users_collection = db.get_collection("users")
     orders_collection = db.get_collection("orders")
-    portfolios_collection = db.get_collection("portfolios")
+    alerts_collection = db.get_collection("price_alerts")
     
     # Get user stats
     total_users = await users_collection.count_documents({})
     verified_users = await users_collection.count_documents({"email_verified": True})
     
     # Get trading stats (last 24h)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    now = datetime.utcnow()
+    yesterday = now - timedelta(days=1)
+    day_before = now - timedelta(days=2)
     trades_24h = await orders_collection.count_documents({
         "created_at": {"$gte": yesterday}
     })
@@ -102,13 +120,49 @@ async def get_admin_stats(
     volume_result = await orders_collection.aggregate(pipeline).to_list(1)
     volume_24h = volume_result[0]["total"] if volume_result else 0
     
+    # Calculate previous 24h volume for change percentage
+    previous_volume_pipeline = [
+        {
+            "$match": {
+                "created_at": {
+                    "$gte": day_before,
+                    "$lt": yesterday
+                }
+            }
+        },
+        {"$group": {"_id": None, "total": {"$sum": {"$multiply": ["$amount", "$price"]}}}}
+    ]
+    previous_volume_result = await orders_collection.aggregate(previous_volume_pipeline).to_list(1)
+    previous_volume_24h = previous_volume_result[0]["total"] if previous_volume_result else 0
+
     # Active users (logged in last 7 days)
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = now - timedelta(days=7)
     active_users = await users_collection.count_documents({
         "last_login": {"$gte": week_ago}
     })
+
+    # User growth (last 7 days vs previous 7 days)
+    previous_week = now - timedelta(days=14)
+    new_users_current = await users_collection.count_documents({
+        "created_at": {"$gte": week_ago}
+    })
+    new_users_previous = await users_collection.count_documents({
+        "created_at": {"$gte": previous_week, "$lt": week_ago}
+    })
+
+    # Active alerts
+    total_alerts = await alerts_collection.count_documents({"is_active": True})
+
+    user_growth = percent_change(new_users_previous, new_users_current)
+    volume_change = percent_change(previous_volume_24h, volume_24h)
     
     return {
+        "totalUsers": total_users,
+        "activeUsers": active_users,
+        "volume24h": round(volume_24h, 2),
+        "totalAlerts": total_alerts,
+        "userGrowth": round(user_growth, 2),
+        "volumeChange": round(volume_change, 2),
         "users": {
             "total": total_users,
             "verified": verified_users,
@@ -118,7 +172,7 @@ async def get_admin_stats(
             "trades_24h": trades_24h,
             "volume_24h": round(volume_24h, 2)
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": now.isoformat()
     }
 
 
@@ -131,6 +185,7 @@ async def get_users(
 ):
     """Get list of users (paginated)."""
     users_collection = db.get_collection("users")
+    wallets_collection = db.get_collection("wallets")
     
     users = await users_collection.find(
         {},
@@ -138,9 +193,43 @@ async def get_users(
     ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     
     total = await users_collection.count_documents({})
+
+    user_ids = [user.get("id") for user in users if user.get("id")]
+    wallets = []
+    if user_ids:
+        wallets = await wallets_collection.find({"user_id": {"$in": user_ids}}).to_list(len(user_ids))
+    wallets_by_user = {wallet.get("user_id"): wallet for wallet in wallets}
+
+    formatted_users = []
+    now = datetime.utcnow()
+    for user in users:
+        wallet = wallets_by_user.get(user.get("id"), {})
+        balances = wallet.get("balances", {}) if wallet else {}
+        usd_balance = balances.get("USD", 0.0)
+
+        status = "active"
+        if not user.get("email_verified"):
+            status = "pending"
+        locked_until = user.get("locked_until")
+        if locked_until and locked_until > now:
+            status = "suspended"
+
+        created_at = user.get("created_at")
+        last_login = user.get("last_login")
+
+        formatted_users.append({
+            "id": user.get("id"),
+            "email": user.get("email"),
+            "name": user.get("name", ""),
+            "status": status,
+            "balance": float(usd_balance) if usd_balance is not None else 0.0,
+            "joinedAt": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
+            "lastLogin": last_login.isoformat() if hasattr(last_login, "isoformat") else None,
+            "is_admin": user.get("is_admin", False)
+        })
     
     return {
-        "users": users,
+        "users": formatted_users,
         "total": total,
         "skip": skip,
         "limit": limit
@@ -156,12 +245,39 @@ async def get_trades(
 ):
     """Get list of recent trades (paginated)."""
     orders_collection = db.get_collection("orders")
+    users_collection = db.get_collection("users")
     
     trades = await orders_collection.find({}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total = await orders_collection.count_documents({})
+
+    user_ids = [trade.get("user_id") for trade in trades if trade.get("user_id")]
+    users = []
+    if user_ids:
+        users = await users_collection.find(
+            {"id": {"$in": list(set(user_ids))}},
+            {"id": 1, "email": 1}
+        ).to_list(len(set(user_ids)))
+    users_by_id = {user.get("id"): user.get("email") for user in users}
+
+    formatted_trades = []
+    for trade in trades:
+        trading_pair = trade.get("trading_pair", "")
+        symbol = trading_pair.split("/")[0] if trading_pair else None
+        created_at = trade.get("created_at")
+        formatted_trades.append({
+            "id": trade.get("id"),
+            "userId": trade.get("user_id"),
+            "userEmail": users_by_id.get(trade.get("user_id")),
+            "type": (trade.get("side") or "").lower(),
+            "symbol": symbol,
+            "amount": trade.get("amount"),
+            "price": trade.get("price"),
+            "status": trade.get("status", "filled"),
+            "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else None
+        })
     
     return {
-        "trades": trades,
+        "trades": formatted_trades,
         "total": total,
         "skip": skip,
         "limit": limit
@@ -199,7 +315,8 @@ async def get_audit_logs(
     # For export, fetch all matching records (or up to 10000 for safety)
     if export:
         export_limit = min(limit, 10000) if limit else 10000
-        logs = await audit_collection.find(query).sort("timestamp", -1).to_list(export_limit)
+        logs = await audit_collection.find(query).sort("created_at", -1).to_list(export_limit)
+        logs = [normalize_audit_log(log) for log in logs]
 
         # Generate CSV
         if not logs:
@@ -251,7 +368,8 @@ async def get_audit_logs(
         )
 
     # Standard JSON response
-    logs = await audit_collection.find(query).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    logs = await audit_collection.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    logs = [normalize_audit_log(log) for log in logs]
     total = await audit_collection.count_documents(query)
 
     return {

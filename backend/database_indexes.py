@@ -344,6 +344,19 @@ async def create_indexes(db: AsyncIOMotorDatabase):
         logger.info("✅ Login attempts indexes created")
         
         # ============================================
+        # BLACKLISTED TOKENS COLLECTION
+        # ============================================
+        blacklisted_tokens_collection = db.get_collection("blacklisted_tokens")
+        
+        await blacklisted_tokens_collection.create_index([("token", ASCENDING)], unique=True)
+        await blacklisted_tokens_collection.create_index(
+            [("expires_at", ASCENDING)],
+            expireAfterSeconds=0
+        )
+        
+        logger.info("✅ Blacklisted tokens indexes created")
+        
+        # ============================================
         # SESSIONS COLLECTION
         # ============================================
         sessions_collection = db.get_collection("sessions")
@@ -397,8 +410,8 @@ if __name__ == "__main__":
     
     async def main():
         db_conn = await initialize_database(
-            mongo_url=settings.mongodb_url,
-            db_name=settings.mongodb_db_name
+            mongo_url=settings.mongo_url,
+            db_name=settings.db_name
         )
         
         await create_indexes(db_conn.db)
