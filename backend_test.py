@@ -115,25 +115,25 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Get Bitcoin Details", False, f"Failed to get Bitcoin details: {data}")
 
-    def test_coingecko_api_key_integration(self):
-        """Test CoinGecko API key integration and price feed functionality"""
-        # Test if price endpoint is working (should use CoinGecko API)
+    def test_coincap_api_integration(self):
+        """Test CoinCap API integration and price feed functionality"""
+        # Test if price endpoint is working (should use CoinCap API)
         success, data = self.make_request('GET', '/crypto')
         if success and 'cryptocurrencies' in data:
             cryptocurrencies = data.get('cryptocurrencies', [])
             if cryptocurrencies:
-                self.log_test("CoinGecko API Integration", True, f"Price data retrieved successfully with {len(cryptocurrencies)} cryptocurrencies")
+                self.log_test("CoinCap API Integration", True, f"Price data retrieved successfully with {len(cryptocurrencies)} cryptocurrencies")
                 
                 # Check if we have realistic price data (not mock)
                 btc_data = next((c for c in cryptocurrencies if c.get('symbol') == 'BTC'), None)
                 if btc_data and btc_data.get('price', 0) > 20000:  # Realistic BTC price
-                    self.log_test("CoinGecko Real Data", True, f"BTC price: ${btc_data['price']:,.2f} (appears to be real data)")
+                    self.log_test("CoinCap Real Data", True, f"BTC price: ${btc_data['price']:,.2f} (appears to be real data)")
                 else:
-                    self.log_test("CoinGecko Real Data", False, "Price data appears to be mock or unrealistic")
+                    self.log_test("CoinCap Real Data", False, "Price data appears to be mock or unrealistic")
             else:
-                self.log_test("CoinGecko API Integration", False, "No cryptocurrency data returned")
+                self.log_test("CoinCap API Integration", False, "No cryptocurrency data returned")
         else:
-            self.log_test("CoinGecko API Integration", False, f"Failed to get cryptocurrency data: {data}")
+            self.log_test("CoinCap API Integration", False, f"Failed to get cryptocurrency data: {data}")
 
     def test_price_feed_status_logic(self):
         """Test price feed status and last update tracking"""
@@ -537,7 +537,7 @@ class CryptoVaultAPITester:
                 data = response.json()
                 
                 # Check for expected circuit breakers
-                expected_breakers = ["coingecko", "coincap", "nowpayments", "sendgrid"]
+                expected_breakers = ["coincap", "coinpaprika", "nowpayments", "sendgrid"]
                 found_breakers = []
                 
                 for breaker_name in expected_breakers:
@@ -742,8 +742,8 @@ class CryptoVaultAPITester:
         self.test_health_check()
         
         # CryptoVault Dashboard Enhancement Tests
-        print("\n🔑 Testing CoinGecko API Key Integration...")
-        self.test_coingecko_api_key_integration()
+        print("\n🔑 Testing CoinCap API Integration...")
+        self.test_coincap_api_integration()
         
         print("\n📊 Testing Price Feed Status Logic...")
         self.test_price_feed_status_logic()
