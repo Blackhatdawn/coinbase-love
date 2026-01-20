@@ -3,7 +3,19 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
-// https://vitejs.dev/config/
+// ============================================
+// VITE CONFIGURATION - CryptoVault Frontend
+// ============================================
+// This config enables:
+// 1. Development proxy to local backend (localhost:8000)
+// 2. WebSocket proxy for real-time price feeds
+// 3. Production build optimizations
+// ============================================
+
+// Backend URL for development proxy
+// In production, Vercel rewrites handle this via vercel.json
+const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8000";
+
 export default defineConfig(({ mode }) => ({
   define: {
     __VERSION__: JSON.stringify(process.env.npm_package_version),
@@ -69,9 +81,43 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     host: '0.0.0.0',
     allowedHosts: true,
+    // ============================================
+    // DEVELOPMENT PROXY CONFIGURATION
+    // ============================================
+    // Routes /api/* and /socket.io/* to local backend
+    // In production, Vercel handles this via rewrites
+    // ============================================
     proxy: {
+      // API endpoints proxy
       "/api": {
-        target: "http://localhost:8000",
+        target: BACKEND_URL,
+        changeOrigin: true,
+        secure: false,
+        // Rewrite is not needed since backend expects /api prefix
+        // rewrite: (path) => path.replace(/^\/api/, '/api'),
+      },
+      // WebSocket proxy for Socket.IO
+      "/socket.io": {
+        target: BACKEND_URL,
+        changeOrigin: true,
+        secure: false,
+        ws: true, // Enable WebSocket proxy
+      },
+      // Health check proxy
+      "/health": {
+        target: BACKEND_URL,
+        changeOrigin: true,
+        secure: false,
+      },
+      // Ping endpoint proxy
+      "/ping": {
+        target: BACKEND_URL,
+        changeOrigin: true,
+        secure: false,
+      },
+      // CSRF token endpoint proxy
+      "/csrf": {
+        target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
       },
