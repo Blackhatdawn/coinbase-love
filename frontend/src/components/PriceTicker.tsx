@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 /**
  * PriceTicker - Real-time cryptocurrency price ticker
- * Displays live prices from CoinGecko via backend proxy
+ * Displays live prices from CoinCap via backend proxy
  * Mobile-first responsive design with smooth animations
  */
 const PriceTicker = () => {

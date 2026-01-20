@@ -1,8 +1,10 @@
 """
 Multi-Source Cryptocurrency Data Service
-Primary sources: CoinPaprika, CoinMarketCap
-Fallback source: CoinGecko
+Primary source: CoinCap (best free tier - 200 req/min)
+Secondary source: CoinPaprika (free, no auth needed)
 Provides redundant data fetching with automatic fallback
+
+Note: CoinGecko has been removed due to strict rate limiting issues.
 """
 import httpx
 import logging
@@ -10,7 +12,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime
 from config import settings
 from redis_cache import redis_cache
-from coingecko_service import coingecko_service
+from coincap_service import coincap_service
 
 logger = logging.getLogger(__name__)
 
@@ -18,42 +20,54 @@ logger = logging.getLogger(__name__)
 class MultiSourceCryptoService:
     """
     Fetches cryptocurrency data from multiple sources with automatic fallback.
-    Priority order: CoinPaprika → CoinMarketCap → CoinGecko
+    Priority order: CoinCap (primary) → CoinPaprika (fallback)
+    
+    Why this order:
+    - CoinCap: 200 req/min free, reliable, good WebSocket support
+    - CoinPaprika: No auth required, good fallback
     """
     
     def __init__(self):
         # API Configuration
         self.coinpaprika_base = "https://api.coinpaprika.com/v1"
-        self.coinmarketcap_base = "https://pro-api.coinmarketcap.com/v1"
-        self.coinmarketcap_key = settings.coinmarketcap_api_key
         
         # Timeout for API calls
-        self.timeout = 10  # seconds
+        self.timeout = 15  # seconds
         
         # Coin ID mappings (CoinPaprika uses different IDs)
         self.coin_id_map = {
-            "bitcoin": {"paprika": "btc-bitcoin", "cmc": "BTC"},
-            "ethereum": {"paprika": "eth-ethereum", "cmc": "ETH"},
-            "binancecoin": {"paprika": "bnb-binance-coin", "cmc": "BNB"},
-            "cardano": {"paprika": "ada-cardano", "cmc": "ADA"},
-            "solana": {"paprika": "sol-solana", "cmc": "SOL"},
-            "ripple": {"paprika": "xrp-xrp", "cmc": "XRP"},
-            "polkadot": {"paprika": "dot-polkadot", "cmc": "DOT"},
-            "dogecoin": {"paprika": "doge-dogecoin", "cmc": "DOGE"},
-            "avalanche-2": {"paprika": "avax-avalanche", "cmc": "AVAX"},
-            "polygon": {"paprika": "matic-polygon", "cmc": "MATIC"},
+            "bitcoin": {"paprika": "btc-bitcoin", "symbol": "BTC"},
+            "ethereum": {"paprika": "eth-ethereum", "symbol": "ETH"},
+            "binance-coin": {"paprika": "bnb-binance-coin", "symbol": "BNB"},
+            "cardano": {"paprika": "ada-cardano", "symbol": "ADA"},
+            "solana": {"paprika": "sol-solana", "symbol": "SOL"},
+            "xrp": {"paprika": "xrp-xrp", "symbol": "XRP"},
+            "polkadot": {"paprika": "dot-polkadot", "symbol": "DOT"},
+            "dogecoin": {"paprika": "doge-dogecoin", "symbol": "DOGE"},
+            "avalanche": {"paprika": "avax-avalanche", "symbol": "AVAX"},
+            "polygon": {"paprika": "matic-polygon", "symbol": "MATIC"},
+            "chainlink": {"paprika": "link-chainlink", "symbol": "LINK"},
+            "litecoin": {"paprika": "ltc-litecoin", "symbol": "LTC"},
+            "uniswap": {"paprika": "uni-uniswap", "symbol": "UNI"},
+            "stellar": {"paprika": "xlm-stellar", "symbol": "XLM"},
+            "tron": {"paprika": "trx-tron", "symbol": "TRX"},
+            "cosmos": {"paprika": "atom-cosmos", "symbol": "ATOM"},
+            "near-protocol": {"paprika": "near-near-protocol", "symbol": "NEAR"},
+            "bitcoin-cash": {"paprika": "bch-bitcoin-cash", "symbol": "BCH"},
+            "algorand": {"paprika": "algo-algorand", "symbol": "ALGO"},
+            "vechain": {"paprika": "vet-vechain", "symbol": "VET"},
         }
         
         # Popular cryptocurrencies to track
         self.tracked_coins = list(self.coin_id_map.keys())
         
         logger.info("🌐 Multi-Source Crypto Service initialized")
-        logger.info("📊 Sources: CoinPaprika (primary) → CoinMarketCap (secondary) → CoinGecko (fallback)")
+        logger.info("📊 Sources: CoinCap (primary) → CoinPaprika (fallback)")
     
     async def get_prices(self, coin_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Fetch current prices for specified coins with multi-source fallback.
-        Tries CoinPaprika first, then CoinMarketCap, finally CoinGecko.
+        Tries CoinCap first, then CoinPaprika as fallback.
         """
         coins_to_fetch = coin_ids or self.tracked_coins
         
@@ -63,9 +77,20 @@ class MultiSourceCryptoService:
             logger.info("✅ Using cached prices")
             return cached_prices
         
-        # Try CoinPaprika first (PRIMARY)
+        # Try CoinCap first (PRIMARY - best rate limits)
         try:
-            logger.info("📊 Attempting to fetch from CoinPaprika (primary)...")
+            logger.info("📊 Fetching from CoinCap (primary)...")
+            prices = await coincap_service.get_prices(coins_to_fetch)
+            if prices:
+                logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinCap")
+                await redis_cache.cache_prices(prices)
+                return prices
+        except Exception as e:
+            logger.warning(f"⚠️ CoinCap failed: {str(e)}")
+        
+        # Try CoinPaprika (FALLBACK)
+        try:
+            logger.info("📊 Falling back to CoinPaprika...")
             prices = await self._fetch_from_coinpaprika(coins_to_fetch)
             if prices:
                 logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinPaprika")
@@ -74,28 +99,9 @@ class MultiSourceCryptoService:
         except Exception as e:
             logger.warning(f"⚠️ CoinPaprika failed: {str(e)}")
         
-        # Try CoinMarketCap (SECONDARY)
-        try:
-            logger.info("📊 Attempting to fetch from CoinMarketCap (secondary)...")
-            prices = await self._fetch_from_coinmarketcap(coins_to_fetch)
-            if prices:
-                logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinMarketCap")
-                await redis_cache.cache_prices(prices)
-                return prices
-        except Exception as e:
-            logger.warning(f"⚠️ CoinMarketCap failed: {str(e)}")
-        
-        # Fallback to CoinGecko (FALLBACK)
-        try:
-            logger.info("📊 Falling back to CoinGecko...")
-            prices = await coingecko_service.get_prices(coins_to_fetch)
-            logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinGecko (fallback)")
-            await redis_cache.cache_prices(prices)
-            return prices
-        except Exception as e:
-            logger.error(f"❌ All sources failed. Using mock data. Error: {str(e)}")
-            # Return mock data as last resort
-            return coingecko_service._get_mock_prices(coins_to_fetch)
+        # Return mock data as last resort
+        logger.error("❌ All sources failed. Using mock data.")
+        return coincap_service._get_mock_prices(coins_to_fetch)
     
     async def _fetch_from_coinpaprika(self, coin_ids: List[str]) -> List[Dict[str, Any]]:
         """Fetch prices from CoinPaprika API (no authentication required)."""
@@ -107,26 +113,32 @@ class MultiSourceCryptoService:
                     # Get CoinPaprika ID
                     paprika_id = self.coin_id_map.get(coin_id, {}).get("paprika")
                     if not paprika_id:
-                        logger.warning(f"⚠️ No CoinPaprika ID mapping for {coin_id}")
-                        continue
+                        # Try direct ID as fallback
+                        paprika_id = coin_id
                     
                     # Fetch ticker data
                     url = f"{self.coinpaprika_base}/tickers/{paprika_id}"
                     response = await client.get(url)
-                    response.raise_for_status()
+                    
+                    if response.status_code != 200:
+                        continue
+                    
                     data = response.json()
                     
                     # Extract price data
                     quote = data.get("quotes", {}).get("USD", {})
+                    symbol = data.get("symbol", "").upper()
+                    
                     prices.append({
                         "id": coin_id,
-                        "symbol": data.get("symbol", "").upper(),
+                        "symbol": symbol,
                         "name": data.get("name", ""),
                         "price": quote.get("price", 0),
                         "market_cap": quote.get("market_cap", 0),
                         "volume_24h": quote.get("volume_24h", 0),
                         "change_24h": quote.get("percent_change_24h", 0),
-                        "image": "",  # CoinPaprika doesn't provide images
+                        "rank": data.get("rank", 0),
+                        "image": f"https://assets.coincap.io/assets/icons/{symbol.lower()}@2x.png",
                         "last_updated": data.get("last_updated", datetime.now().isoformat()),
                         "source": "coinpaprika"
                     })
@@ -136,83 +148,30 @@ class MultiSourceCryptoService:
         
         return prices
     
-    async def _fetch_from_coinmarketcap(self, coin_ids: List[str]) -> List[Dict[str, Any]]:
-        """Fetch prices from CoinMarketCap API (requires API key)."""
-        if not self.coinmarketcap_key:
-            logger.warning("⚠️ CoinMarketCap API key not configured")
-            raise Exception("CoinMarketCap API key not configured")
-        
-        # Convert coin IDs to CMC symbols
-        symbols = []
-        for coin_id in coin_ids:
-            cmc_symbol = self.coin_id_map.get(coin_id, {}).get("cmc")
-            if cmc_symbol:
-                symbols.append(cmc_symbol)
-        
-        if not symbols:
-            raise Exception("No valid symbols for CoinMarketCap")
-        
-        prices = []
-        
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                url = f"{self.coinmarketcap_base}/cryptocurrency/quotes/latest"
-                headers = {
-                    "Accepts": "application/json",
-                    "X-CMC_PRO_API_KEY": self.coinmarketcap_key
-                }
-                params = {
-                    "symbol": ",".join(symbols),
-                    "convert": "USD"
-                }
-                
-                response = await client.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                # Parse response
-                for coin_id in coin_ids:
-                    cmc_symbol = self.coin_id_map.get(coin_id, {}).get("cmc")
-                    if not cmc_symbol or cmc_symbol not in data.get("data", {}):
-                        continue
-                    
-                    coin_data = data["data"][cmc_symbol][0]
-                    quote = coin_data.get("quote", {}).get("USD", {})
-                    
-                    prices.append({
-                        "id": coin_id,
-                        "symbol": coin_data.get("symbol", ""),
-                        "name": coin_data.get("name", ""),
-                        "price": quote.get("price", 0),
-                        "market_cap": quote.get("market_cap", 0),
-                        "volume_24h": quote.get("volume_24h", 0),
-                        "change_24h": quote.get("percent_change_24h", 0),
-                        "image": "",  # CMC doesn't provide images in this endpoint
-                        "last_updated": quote.get("last_updated", datetime.now().isoformat()),
-                        "source": "coinmarketcap"
-                    })
-            except Exception as e:
-                logger.warning(f"⚠️ CoinMarketCap error: {str(e)}")
-                raise
-        
-        return prices
-    
     async def get_coin_details(self, coin_id: str) -> Optional[Dict[str, Any]]:
         """
         Get detailed information about a specific cryptocurrency.
-        Tries multiple sources with fallback.
+        Tries CoinCap first, then CoinPaprika as fallback.
         """
-        # Try CoinPaprika first
+        # Try CoinCap first
         try:
-            paprika_id = self.coin_id_map.get(coin_id, {}).get("paprika")
-            if paprika_id:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    url = f"{self.coinpaprika_base}/tickers/{paprika_id}"
-                    response = await client.get(url)
-                    response.raise_for_status()
+            details = await coincap_service.get_coin_details(coin_id)
+            if details:
+                return details
+        except Exception as e:
+            logger.warning(f"⚠️ CoinCap details failed: {str(e)}")
+        
+        # Fallback to CoinPaprika
+        try:
+            paprika_id = self.coin_id_map.get(coin_id, {}).get("paprika", coin_id)
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = f"{self.coinpaprika_base}/tickers/{paprika_id}"
+                response = await client.get(url)
+                
+                if response.status_code == 200:
                     data = response.json()
-                    
                     quote = data.get("quotes", {}).get("USD", {})
+                    
                     return {
                         "id": coin_id,
                         "symbol": data.get("symbol", "").upper(),
@@ -230,21 +189,28 @@ class MultiSourceCryptoService:
         except Exception as e:
             logger.warning(f"⚠️ CoinPaprika details failed: {str(e)}")
         
-        # Fallback to CoinGecko
-        return await coingecko_service.get_coin_details(coin_id)
+        return None
     
     async def get_price_history(self, coin_id: str, days: int = 7) -> List[Dict[str, Any]]:
         """
         Get historical price data.
-        CoinPaprika supports up to 1 year for free tier.
-        Falls back to CoinGecko if needed.
+        CoinCap provides good free historical data.
+        Falls back to CoinPaprika if needed.
         """
-        # Try CoinPaprika first
+        # Try CoinCap first (better historical data)
         try:
-            paprika_id = self.coin_id_map.get(coin_id, {}).get("paprika")
-            if paprika_id and days <= 365:  # Free tier limit
+            history = await coincap_service.get_price_history(coin_id, days)
+            if history:
+                return history
+        except Exception as e:
+            logger.warning(f"⚠️ CoinCap history failed: {str(e)}")
+        
+        # Fallback to CoinPaprika
+        try:
+            paprika_id = self.coin_id_map.get(coin_id, {}).get("paprika", coin_id)
+            
+            if days <= 365:  # Free tier limit
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    # Calculate start date
                     from datetime import timedelta
                     start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
                     
@@ -255,24 +221,40 @@ class MultiSourceCryptoService:
                     }
                     
                     response = await client.get(url, params=params)
-                    response.raise_for_status()
-                    data = response.json()
                     
-                    # Convert to our format
-                    history = []
-                    for point in data:
-                        timestamp = int(datetime.fromisoformat(point["time_close"].replace("Z", "+00:00")).timestamp())
-                        history.append({
-                            "timestamp": timestamp,
-                            "price": point.get("close", 0)
-                        })
-                    
-                    return history
+                    if response.status_code == 200:
+                        data = response.json()
+                        history = []
+                        for point in data:
+                            timestamp = int(datetime.fromisoformat(
+                                point["time_close"].replace("Z", "+00:00")
+                            ).timestamp())
+                            history.append({
+                                "timestamp": timestamp,
+                                "price": point.get("close", 0)
+                            })
+                        return history
         except Exception as e:
             logger.warning(f"⚠️ CoinPaprika history failed: {str(e)}")
         
-        # Fallback to CoinGecko
-        return await coingecko_service.get_price_history(coin_id, days)
+        # Return mock history as last resort
+        return coincap_service._get_mock_history(coin_id, days)
+    
+    async def search_assets(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Search for cryptocurrency assets by name or symbol."""
+        try:
+            return await coincap_service.search_assets(query, limit)
+        except Exception as e:
+            logger.warning(f"⚠️ Search failed: {str(e)}")
+            return []
+    
+    async def get_markets(self, coin_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get market/exchange data for a specific coin."""
+        try:
+            return await coincap_service.get_markets(coin_id, limit)
+        except Exception as e:
+            logger.warning(f"⚠️ Markets fetch failed: {str(e)}")
+            return []
 
 
 # Global instance

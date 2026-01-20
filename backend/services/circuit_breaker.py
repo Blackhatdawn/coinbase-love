@@ -171,17 +171,17 @@ class CircuitBreakerOpenError(Exception):
 # GLOBAL CIRCUIT BREAKERS
 # ============================================
 
-# CoinGecko API
-coingecko_breaker = CircuitBreaker(
-    name="coingecko",
+# CoinCap API (Primary price source - 200 req/min free tier)
+coincap_breaker = CircuitBreaker(
+    name="coincap",
     failure_threshold=5,
     recovery_timeout=60,
     expected_exception=Exception
 )
 
-# CoinCap API
-coincap_breaker = CircuitBreaker(
-    name="coincap",
+# CoinPaprika API (Fallback price source - free, no auth)
+coinpaprika_breaker = CircuitBreaker(
+    name="coinpaprika",
     failure_threshold=5,
     recovery_timeout=60,
     expected_exception=Exception
@@ -211,8 +211,8 @@ sendgrid_breaker = CircuitBreaker(
 def get_all_breakers() -> dict:
     """Get state of all circuit breakers"""
     return {
-        "coingecko": coingecko_breaker.get_state(),
         "coincap": coincap_breaker.get_state(),
+        "coinpaprika": coinpaprika_breaker.get_state(),
         "nowpayments": nowpayments_breaker.get_state(),
         "sendgrid": sendgrid_breaker.get_state(),
     }
@@ -221,8 +221,8 @@ def get_all_breakers() -> dict:
 async def reset_breaker(name: str) -> bool:
     """Manually reset a circuit breaker"""
     breakers = {
-        "coingecko": coingecko_breaker,
         "coincap": coincap_breaker,
+        "coinpaprika": coinpaprika_breaker,
         "nowpayments": nowpayments_breaker,
         "sendgrid": sendgrid_breaker,
     }

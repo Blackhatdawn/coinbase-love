@@ -9,7 +9,7 @@ from models import Portfolio, Holding, HoldingCreate
 from dependencies import get_current_user_id, get_db
 from redis_cache import redis_cache
 from services import price_stream_service
-from coingecko_service import coingecko_service
+from coincap_service import coincap_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -147,7 +147,7 @@ async def add_holding(
     else:
         holdings = portfolio_doc.get("holdings", [])
 
-    prices = await coingecko_service.get_prices()
+    prices = await coincap_service.get_prices()
     crypto = next((c for c in prices if c["symbol"].upper() == holding_data.symbol.upper()), None)
     if not crypto:
         raise HTTPException(status_code=404, detail="Cryptocurrency not found")
