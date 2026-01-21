@@ -23,7 +23,16 @@ export const initSentry = () => {
       
       // Performance monitoring
       integrations: [
-        Sentry.browserTracingIntegration(),
+        Sentry.browserTracingIntegration({
+          // Only trace requests to our own API - prevents CSP issues with external APIs
+          // This setting controls which URLs Sentry adds trace headers to
+          tracePropagationTargets: [
+            'localhost',
+            /^https:\/\/cryptovault\.financial/,
+            /^https:\/\/cryptovault-api\.onrender\.com/,
+            /^\/api\//,  // Relative API paths
+          ],
+        }),
       ],
       
       // Performance monitoring sample rate (10% of transactions)
