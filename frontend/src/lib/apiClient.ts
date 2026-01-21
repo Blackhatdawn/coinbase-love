@@ -5,7 +5,7 @@
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { create } from 'zustand';
-import { resolveApiBaseUrl } from './runtimeConfig';
+import { resolveApiBaseUrl } from '@/lib/runtimeConfig';
 
 // Get base URL from environment or use proxy in development
 const resolveBaseUrl = () => resolveApiBaseUrl();

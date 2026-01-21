@@ -1,6 +1,7 @@
 import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { resolveSupportEmail } from "@/lib/runtimeConfig";
+import { getSocialLinks } from "@/config/socialLinks";
 
 const Footer = () => {
   const links = {
@@ -35,6 +36,7 @@ const Footer = () => {
   };
 
   const supportEmail = resolveSupportEmail();
+  const socialLinks = getSocialLinks();
 
   return (
     <footer className="border-t border-gold-500/10 bg-background/95" data-testid="footer">
@@ -44,9 +46,9 @@ const Footer = () => {
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-4 w-fit group">
               <div className="relative">
-                <img 
-                  src="/favicon.svg" 
-                  alt="CryptoVault" 
+                <img
+                  src="/favicon.svg"
+                  alt="CryptoVault"
                   className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/20 blur-lg transition-all duration-500 -z-10" />
@@ -62,14 +64,14 @@ const Footer = () => {
               </div>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs mb-6">
-              Institutional-grade digital asset custody and management. 
+              Institutional-grade digital asset custody and management.
               Secure, compliant, and trusted by individuals and enterprises worldwide.
             </p>
-            
+
             {/* Contact Info */}
             <div className="space-y-2 mb-6">
-              <a 
-                href={`mailto:${supportEmail}`} 
+              <a
+                href={`mailto:${supportEmail}`}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-400 transition-colors"
                 data-testid="footer-email"
               >
@@ -84,46 +86,54 @@ const Footer = () => {
 
             {/* Social Links */}
             <div className="flex gap-4">
-              <a 
-                href="https://twitter.com/CryptoVaultFin" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
-                title="X (Twitter)"
-                data-testid="social-twitter"
-              >
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://linkedin.com/company/cryptovault-financial" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
-                title="LinkedIn"
-                data-testid="social-linkedin"
-              >
-                <Linkedin className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://discord.gg/cryptovault" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
-                title="Discord"
-                data-testid="social-discord"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://t.me/cryptovaultfinancial" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
-                title="Telegram"
-                data-testid="social-telegram"
-              >
-                <Send className="h-5 w-5" />
-              </a>
+              {socialLinks.twitter && (
+                <a
+                  href={socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                  title="X (Twitter)"
+                  data-testid="social-twitter"
+                >
+                  <Twitter className="h-5 w-5" />
+                </a>
+              )}
+              {socialLinks.linkedin && (
+                <a
+                  href={socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                  title="LinkedIn"
+                  data-testid="social-linkedin"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </a>
+              )}
+              {socialLinks.discord && (
+                <a
+                  href={socialLinks.discord}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                  title="Discord"
+                  data-testid="social-discord"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </a>
+              )}
+              {socialLinks.telegram && (
+                <a
+                  href={socialLinks.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-gold-500/5 text-muted-foreground hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                  title="Telegram"
+                  data-testid="social-telegram"
+                >
+                  <Send className="h-5 w-5" />
+                </a>
+              )}
             </div>
           </div>
 

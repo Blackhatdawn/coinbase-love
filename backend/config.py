@@ -1,451 +1,516 @@
 """
-Configuration module with environment variable validation and structured settings.
-Modern Pydantic V2 style using pydantic-settings for auto-loading, type safety, and no deprecations.
+Environment Configuration Management for CryptoVault Backend
 
-Enterprise-grade configuration with:
-- Zero hardcoded sensitive values
-- Environment-based CORS origins
-- Crash-safe validation at startup
-- Production-ready defaults
+This module loads and validates environment variables from .env file.
+Uses python-dotenv to load from .env, with fallback to OS environment variables.
+
+Usage:
+    from config import settings
+    
+    print(settings.DATABASE_URL)
+    print(settings.REDIS_URL)
+    print(settings.JWT_SECRET)
 """
 
-import logging
 import os
-import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
-from dotenv import load_dotenv
-from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-logger = logging.getLogger(__name__)
-
-# Load environment variables from .env file in backend directory
-env_path = Path(__file__).parent / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
-else:
-    logger.debug("No backend .env file found at %s - relying on environment variables", env_path)
-
-
-class EnvironmentValidationError(Exception):
-    """Raised when critical environment variables are missing or invalid."""
-    pass
-
-
-# ============================================
-# PRODUCTION CORS ORIGINS
-# ============================================
-# These are the allowed origins for production deployments
-# Update these to match your actual deployment URLs
-
-# ============================================
-# CORS ORIGINS - Enterprise Configuration
-# ============================================
-# Production origins: All verified production domains
-PRODUCTION_CORS_ORIGINS = [
-    "https://cryptovault.financial",
-    "https://www.cryptovault.financial",
-    "https://app.cryptovault.financial",
-    "https://cryptovault.vercel.app",
-    "https://cryptovault-git-main-blackhatdawn.vercel.app",
-    # Add Render internal health checks (uses internal domain)
-    "https://cryptovault-api.onrender.com",
-]
-
-# Staging origins: Pre-production environments
-STAGING_CORS_ORIGINS = [
-    "https://staging.cryptovault.financial",
-    "https://cryptovault-staging.vercel.app",
-    "https://cryptovault-preview.vercel.app",
-]
-
-# Development origins: Local development servers
-DEVELOPMENT_CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8080",
-]
-
-# All allowed origins for reference (used by Socket.IO)
-def get_all_cors_origins(environment: str) -> List[str]:
-    """Get all CORS origins for the given environment."""
-    if environment == "production":
-        return PRODUCTION_CORS_ORIGINS
-    elif environment == "staging":
-        return STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS
-    else:
-        return DEVELOPMENT_CORS_ORIGINS
-
-
-def get_default_cors_origins(environment: str) -> str:
-    """Get default CORS origins based on environment as comma-separated string."""
-    if environment == "production":
-        return ",".join(PRODUCTION_CORS_ORIGINS)
-    elif environment == "staging":
-        return ",".join(STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS)
-    else:
-        # Development - allow all for convenience
-        return "*"
-
-
-def get_cors_origins_for_socketio(environment: str, cors_origins_str: str) -> List[str]:
-    """
-    Get CORS origins list for Socket.IO configuration.
-    Socket.IO requires a list, not a string.
-    """
-    if cors_origins_str == "*":
-        if environment == "production":
-            # Production should never use wildcard
-            return PRODUCTION_CORS_ORIGINS
-        elif environment == "staging":
-            return STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS
-        else:
-            # Development: return wildcard as list for Socket.IO
-            return ["*"]
-    
-    return [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
-
-
-class Settings(BaseSettings):
-    """Application settings with validation and defaults."""
-
-    # MongoDB Configuration
-    mongo_url: str
-    db_name: str
-
-    # Security Configuration
-    jwt_secret: str
-    jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 7
-    csrf_secret: Optional[str] = None
-
-    # CORS Configuration
-    # In production, this should be set to specific frontend origins
-    cors_origins: str = "*"
-    # Enable cross-site cookies (needed when frontend and API are different origins)
-    use_cross_site_cookies: bool = False
-
-    # Server Configuration
-    # HOST: Always bind to 0.0.0.0 for container deployments
-    host: str = "0.0.0.0"
-    # PORT: Use $PORT env var (required by Render, Heroku, etc.) or default to 8001
-    port: int = int(os.environ.get("PORT", "8001"))
-    environment: str = "development"
-    
-    # Performance & Security
-    request_timeout_seconds: int = 30
-    max_request_size_mb: int = 10
-    enable_compression: bool = True
-    enable_https_redirect: bool = False
-    
-    # Feature Flags
-    enable_email_verification: bool = True
-    enable_2fa: bool = False
-    enable_api_docs: bool = True
-
-    # MongoDB Connection Pool Settings
-    mongo_max_pool_size: int = 50
-    mongo_min_pool_size: int = 10
-    mongo_server_selection_timeout_ms: int = 5000
-
-    # Rate Limiting
-    rate_limit_per_minute: int = 60  # Default rate limit for general endpoints
-    rate_limit_auth_per_minute: int = 5  # Stricter limit for authentication endpoints
-    rate_limit_signup_per_minute: int = 3  # Very strict limit for signup to prevent abuse
-    rate_limit_password_reset_per_minute: int = 2  # Strict limit for password reset
-    request_timeout_seconds: int = 30  # Request timeout in seconds
-    max_request_size_mb: int = 10  # Maximum request size in MB
-
-    # Email Configuration
-    email_service: str = "mock"
-    sendgrid_api_key: Optional[str] = None
-    email_from: str = "noreply@cryptovault.com"
-    email_from_name: str = "CryptoVault"
-    app_url: str = "http://localhost:3000"
-
-    # Public Runtime Configuration (exposed via /api/config)
-    public_api_url: Optional[str] = None
-    public_ws_url: Optional[str] = None
-    public_socket_io_path: str = "/socket.io/"
-    public_site_name: str = "CryptoVault"
-    public_logo_url: Optional[str] = None
-    public_support_email: Optional[str] = None
-    public_sentry_dsn: Optional[str] = None
-
-    # Cryptocurrency Price API Configuration
-    # CoinCap is the primary source (200 req/min free tier)
-    coincap_api_key: Optional[str] = None
-    
-    # Use mock prices for development/testing
-    use_mock_prices: bool = False
-    
-    # NowPayments Configuration
-    nowpayments_api_key: Optional[str] = None
-    nowpayments_ipn_secret: Optional[str] = None
-    nowpayments_sandbox: bool = True
-    
-    # Firebase Configuration
-    firebase_credentials_path: Optional[str] = None
-    
-    # Email Configuration
-    email_verification_url: Optional[str] = None
-
-    # Redis Configuration (Upstash)
-    use_redis: bool = True
-    upstash_redis_rest_url: Optional[str] = None
-    upstash_redis_rest_token: Optional[str] = None
-
-    # Sentry Configuration (Error Tracking)
-    sentry_dsn: Optional[str] = None
-    sentry_traces_sample_rate: float = 0.1
-    sentry_profiles_sample_rate: float = 0.1
-    sentry_environment: str = "development"
-
-    model_config = SettingsConfigDict(
-        env_file=str(env_path),
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",  # Ignore unknown env vars
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    raise ImportError(
+        "python-dotenv is required. Install with: pip install python-dotenv"
     )
 
-    @field_validator('jwt_secret')
-    @classmethod
-    def validate_jwt_secret(cls, v: str) -> str:
-        """Ensure JWT secret is sufficiently long for security."""
-        if len(v) < 32:
-            raise ValueError('JWT_SECRET must be at least 32 characters long for security')
-        return v
 
-    @field_validator('mongo_url')
-    @classmethod
-    def validate_mongo_url(cls, v: str) -> str:
-        """Ensure MongoDB URL is valid."""
-        if not v or not (v.startswith('mongodb://') or v.startswith('mongodb+srv://')):
-            raise ValueError('MONGO_URL must be a valid MongoDB connection string')
-        return v
+class Settings:
+    """
+    Application settings loaded from environment variables.
+    
+    Priority order:
+    1. .env file in project root or backend directory
+    2. Environment variables
+    3. Hardcoded defaults (for development only)
+    """
 
-    @model_validator(mode='after')
-    def validate_environment_configuration(self):
-        """Validate environment-specific configurations."""
-        if self.environment == 'production':
-            # CRITICAL: Prevent wildcard CORS with credential-based auth
-            if self.cors_origins == '*':
-                raise ValueError(
-                    "🛑 PRODUCTION ERROR: CORS_ORIGINS cannot be '*' when using credential-based authentication. "
-                    "Browsers will reject credentialed requests with wildcard CORS. "
-                    "Set CORS_ORIGINS to specific frontend origin(s) in production. "
-                    "Example: CORS_ORIGINS=https://app.my-domain.com,https://app-staging.my-domain.com"
-                )
+    def __init__(self):
+        """Initialize settings by loading .env file"""
+        self._load_env_file()
+        self._validate_required_vars()
 
-            if not self.sentry_dsn:
-                logger.warning("⚠️ Sentry DSN not configured in production - error tracking will be disabled")
+    def _load_env_file(self) -> None:
+        """
+        Load environment variables from .env file.
+        
+        Searches in order:
+        1. ./backend/.env
+        2. ./.env
+        3. ~/.env (home directory)
+        """
+        env_paths = [
+            Path(__file__).parent / ".env",  # backend/.env
+            Path.cwd() / ".env",  # project root .env
+            Path.home() / ".env",  # home directory .env
+        ]
 
-            if self.use_mock_prices:
-                logger.warning("⚠️ Mock prices enabled in production - should use real data")
+        loaded_from = None
+        for env_path in env_paths:
+            if env_path.exists():
+                print(f"✅ Loading environment from: {env_path}")
+                load_dotenv(env_path, override=True)
+                loaded_from = env_path
+                break
 
-            if self.email_service == 'mock':
-                raise ValueError(
-                    "🛑 PRODUCTION ERROR: EMAIL_SERVICE cannot be 'mock'. Configure SendGrid or disable email workflows."
-                )
-
-            if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
-                raise ValueError(
-                    "🛑 PRODUCTION ERROR: SENDGRID_API_KEY must be set when EMAIL_SERVICE=sendgrid."
-                )
-
-            if self.use_redis and not self.is_redis_available():
-                raise ValueError(
-                    "🛑 PRODUCTION ERROR: Redis caching is enabled but UPSTASH credentials are missing. "
-                    "Set USE_REDIS=false or provide UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN."
-                )
-
-            if not self.app_url.startswith("https://"):
-                logger.warning("⚠️ APP_URL should use https:// in production environments")
-
-        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
-            logger.warning(
-                "⚠️ EMAIL_SERVICE is set to sendgrid but SENDGRID_API_KEY is missing - defaulting to mock mode"
+        if loaded_from is None:
+            print(
+                "⚠️ Warning: No .env file found. Using system environment variables or defaults."
             )
-
-        # Development environment defaults
-        if self.environment == 'development' and self.cors_origins == '*':
-            logger.info("✅ CORS set to '*' for development - this allows all origins")
-
-        return self
-
-    def is_redis_available(self) -> bool:
-        """Check if Redis is properly configured and should be used."""
-        return self.use_redis and bool(self.upstash_redis_rest_url) and bool(self.upstash_redis_rest_token)
-
-    def is_sentry_available(self) -> bool:
-        """Check if Sentry is properly configured."""
-        return bool(self.sentry_dsn)
-
-    def get_cors_origins_list(self) -> List[str]:
-        """Parse CORS origins string into list."""
-        if not self.cors_origins:
-            return []
-        if self.cors_origins == "*":
-            return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-
-    def get_socketio_cors_origins(self) -> List[str]:
-        """
-        Get CORS origins for Socket.IO.
-        Socket.IO requires explicit origins list for credential-based auth.
-        Never returns wildcard in production.
-        """
-        return get_cors_origins_for_socketio(self.environment, self.cors_origins)
-
-    def validate_critical_settings(self) -> List[str]:
-        """
-        Validate critical settings on startup.
-        Returns list of warnings/errors.
-        """
-        issues = []
-        
-        # Check MongoDB
-        if not self.mongo_url:
-            issues.append("CRITICAL: MONGO_URL is not set")
-        
-        # Check JWT
-        if not self.jwt_secret:
-            issues.append("CRITICAL: JWT_SECRET is not set")
-        elif len(self.jwt_secret) < 32:
-            issues.append("WARNING: JWT_SECRET should be at least 32 characters")
-        
-        # Email configuration
-        if self.email_service == 'sendgrid' and not self.sendgrid_api_key:
-            issues.append("CRITICAL: SENDGRID_API_KEY is required when EMAIL_SERVICE=sendgrid")
-
-        # Redis configuration
-        if self.use_redis and not self.is_redis_available():
-            issues.append("WARNING: Redis is enabled but UPSTASH credentials are missing")
-
-        # Check environment
-        if self.environment not in ['development', 'staging', 'production']:
-            issues.append(f"WARNING: Unknown environment '{self.environment}'")
-
-        return issues
-
-
-def validate_startup_environment() -> dict:
-    """
-    Validate environment variables at startup.
-    Logs warnings and raises errors for critical issues.
-    
-    Returns:
-        dict: Validation result with status and details
-    """
-    validation_result = {
-        "status": "success",
-        "environment": settings.environment,
-        "issues": [],
-        "warnings": [],
-        "validated_at": None
-    }
-    
-    from datetime import datetime
-    validation_result["validated_at"] = datetime.utcnow().isoformat()
-    
-    issues = settings.validate_critical_settings()
-    
-    for issue in issues:
-        if issue.startswith("CRITICAL"):
-            logger.critical(issue)
-            validation_result["issues"].append(issue)
         else:
-            logger.warning(issue)
-            validation_result["warnings"].append(issue)
-    
-    critical_issues = [i for i in issues if i.startswith("CRITICAL")]
-    if critical_issues:
-        validation_result["status"] = "failed"
-        raise EnvironmentValidationError(
-            f"Critical configuration issues found: {', '.join(critical_issues)}"
+            print(f"✅ Environment loaded from: {loaded_from}")
+
+    def _validate_required_vars(self) -> None:
+        """Validate that required environment variables are set"""
+        required_vars = [
+            "DATABASE_URL",
+            "REDIS_URL",
+            "JWT_SECRET",
+            "CORS_ORIGINS",
+        ]
+
+        missing_vars = []
+        for var in required_vars:
+            if not os.getenv(var):
+                missing_vars.append(var)
+
+        if missing_vars and os.getenv("ENVIRONMENT", "development") == "production":
+            raise ValueError(
+                f"Missing required environment variables: {', '.join(missing_vars)}\n"
+                f"Please set these in your .env file or environment."
+            )
+        elif missing_vars:
+            print(f"⚠️ Missing optional variables: {', '.join(missing_vars)}")
+
+    # ============================================
+    # APPLICATION SETTINGS
+    # ============================================
+
+    @property
+    def APP_NAME(self) -> str:
+        return os.getenv("APP_NAME", "CryptoVault")
+
+    @property
+    def APP_VERSION(self) -> str:
+        return os.getenv("APP_VERSION", "2.0.0")
+
+    @property
+    def ENVIRONMENT(self) -> str:
+        """Current environment: development, staging, production"""
+        return os.getenv("ENVIRONMENT", "development")
+
+    @property
+    def DEBUG(self) -> bool:
+        """Debug mode flag"""
+        return os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+
+    @property
+    def IS_PRODUCTION(self) -> bool:
+        """Check if running in production"""
+        return self.ENVIRONMENT == "production"
+
+    @property
+    def IS_DEVELOPMENT(self) -> bool:
+        """Check if running in development"""
+        return self.ENVIRONMENT == "development"
+
+    # ============================================
+    # SERVER CONFIGURATION
+    # ============================================
+
+    @property
+    def HOST(self) -> str:
+        return os.getenv("HOST", "0.0.0.0")
+
+    @property
+    def PORT(self) -> int:
+        return int(os.getenv("PORT", "8000"))
+
+    @property
+    def WORKERS(self) -> int:
+        return int(os.getenv("WORKERS", "4"))
+
+    @property
+    def SERVER_URL(self) -> str:
+        return os.getenv("SERVER_URL", f"http://{self.HOST}:{self.PORT}")
+
+    @property
+    def PUBLIC_SERVER_URL(self) -> str:
+        return os.getenv(
+            "PUBLIC_SERVER_URL", "https://api.cryptovault.com"
         )
-    
-    # Professional startup validation message
-    logger.info("=" * 60)
-    logger.info("🔐 ENVIRONMENT VALIDATED SUCCESSFULLY")
-    logger.info("=" * 60)
-    logger.info(f"   Environment: {settings.environment.upper()}")
-    logger.info(f"   Host: {settings.host}")
-    logger.info(f"   Port: {settings.port}")
-    logger.info(f"   Database: {settings.db_name}")
-    logger.info(f"   CORS Origins: {'RESTRICTED' if settings.cors_origins != '*' else 'OPEN (dev mode)'}")
-    logger.info(f"   Redis: {'ENABLED' if settings.is_redis_available() else 'DISABLED'}")
-    logger.info(f"   Sentry: {'ENABLED' if settings.is_sentry_available() else 'DISABLED'}")
-    logger.info(f"   Rate Limit: {settings.rate_limit_per_minute} req/min")
-    if validation_result["warnings"]:
-        logger.info(f"   Warnings: {len(validation_result['warnings'])}")
-    logger.info("=" * 60)
-    
-    return validation_result
+
+    # ============================================
+    # DATABASE CONFIGURATION
+    # ============================================
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """PostgreSQL connection URL"""
+        return os.getenv(
+            "DATABASE_URL",
+            "postgresql://user:password@localhost:5432/cryptovault",
+        )
+
+    @property
+    def DB_POOL_SIZE(self) -> int:
+        return int(os.getenv("DB_POOL_SIZE", "20"))
+
+    @property
+    def DB_MAX_OVERFLOW(self) -> int:
+        return int(os.getenv("DB_MAX_OVERFLOW", "10"))
+
+    @property
+    def DB_POOL_TIMEOUT(self) -> int:
+        return int(os.getenv("DB_POOL_TIMEOUT", "30"))
+
+    # ============================================
+    # REDIS / CACHE CONFIGURATION
+    # ============================================
+
+    @property
+    def REDIS_URL(self) -> str:
+        """Redis connection URL"""
+        return os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    @property
+    def REDIS_PREFIX(self) -> str:
+        return os.getenv("REDIS_PREFIX", "cryptovault:")
+
+    # ============================================
+    # SECURITY & AUTHENTICATION
+    # ============================================
+
+    @property
+    def JWT_SECRET(self) -> str:
+        """JWT secret key for signing tokens"""
+        jwt_secret = os.getenv("JWT_SECRET")
+        if not jwt_secret and self.IS_PRODUCTION:
+            raise ValueError(
+                "JWT_SECRET must be set in .env or environment for production"
+            )
+        return jwt_secret or "change-me-in-production"
+
+    @property
+    def JWT_EXPIRATION_HOURS(self) -> int:
+        return int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+
+    @property
+    def JWT_REFRESH_EXPIRATION_DAYS(self) -> int:
+        return int(os.getenv("JWT_REFRESH_EXPIRATION_DAYS", "7"))
+
+    @property
+    def CSRF_SECRET(self) -> str:
+        """CSRF secret for token generation"""
+        csrf_secret = os.getenv("CSRF_SECRET")
+        if not csrf_secret and self.IS_PRODUCTION:
+            raise ValueError(
+                "CSRF_SECRET must be set in .env or environment for production"
+            )
+        return csrf_secret or "change-me-in-production"
+
+    @property
+    def PASSWORD_ALGORITHM(self) -> str:
+        return os.getenv("PASSWORD_ALGORITHM", "bcrypt")
+
+    # ============================================
+    # CORS CONFIGURATION
+    # ============================================
+
+    @property
+    def CORS_ORIGINS(self) -> list[str]:
+        """List of allowed CORS origins"""
+        origins_str = os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000",
+        )
+        return [origin.strip() for origin in origins_str.split(",")]
+
+    # ============================================
+    # EMAIL CONFIGURATION
+    # ============================================
+
+    @property
+    def SMTP_HOST(self) -> str:
+        return os.getenv("SMTP_HOST", "smtp.gmail.com")
+
+    @property
+    def SMTP_PORT(self) -> int:
+        return int(os.getenv("SMTP_PORT", "587"))
+
+    @property
+    def SMTP_USERNAME(self) -> str:
+        return os.getenv("SMTP_USERNAME", "")
+
+    @property
+    def SMTP_PASSWORD(self) -> str:
+        return os.getenv("SMTP_PASSWORD", "")
+
+    @property
+    def EMAIL_FROM(self) -> str:
+        return os.getenv("EMAIL_FROM", "noreply@cryptovault.com")
+
+    @property
+    def EMAIL_SUPPORT(self) -> str:
+        return os.getenv("EMAIL_SUPPORT", "support@cryptovault.com")
+
+    # ============================================
+    # SENTRY CONFIGURATION
+    # ============================================
+
+    @property
+    def SENTRY_DSN(self) -> Optional[str]:
+        return os.getenv("SENTRY_DSN")
+
+    @property
+    def SENTRY_ENVIRONMENT(self) -> str:
+        return os.getenv("SENTRY_ENVIRONMENT", self.ENVIRONMENT)
+
+    @property
+    def SENTRY_TRACES_SAMPLE_RATE(self) -> float:
+        return float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+
+    # ============================================
+    # EXTERNAL SERVICES
+    # ============================================
+
+    @property
+    def CRYPTO_API_KEY(self) -> str:
+        return os.getenv("CRYPTO_API_KEY", "")
+
+    @property
+    def CRYPTO_API_BASE_URL(self) -> str:
+        return os.getenv(
+            "CRYPTO_API_BASE_URL", "https://api.coingecko.com/api/v3"
+        )
+
+    @property
+    def ETH_RPC_URL(self) -> str:
+        return os.getenv("ETH_RPC_URL", "https://mainnet.infura.io/v3/")
+
+    @property
+    def POLYGON_RPC_URL(self) -> str:
+        return os.getenv("POLYGON_RPC_URL", "https://polygon-rpc.com")
+
+    @property
+    def SEPOLIA_RPC_URL(self) -> str:
+        return os.getenv("SEPOLIA_RPC_URL", "https://sepolia.infura.io/v3/")
+
+    # ============================================
+    # FEATURE FLAGS
+    # ============================================
+
+    @property
+    def FEATURE_2FA_ENABLED(self) -> bool:
+        return os.getenv("FEATURE_2FA_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def FEATURE_DEPOSITS_ENABLED(self) -> bool:
+        return os.getenv("FEATURE_DEPOSITS_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def FEATURE_WITHDRAWALS_ENABLED(self) -> bool:
+        return os.getenv("FEATURE_WITHDRAWALS_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def FEATURE_TRADING_ENABLED(self) -> bool:
+        return os.getenv("FEATURE_TRADING_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def FEATURE_STAKING_ENABLED(self) -> bool:
+        return os.getenv("FEATURE_STAKING_ENABLED", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    # ============================================
+    # RATE LIMITING
+    # ============================================
+
+    @property
+    def RATE_LIMIT_ENABLED(self) -> bool:
+        return os.getenv("RATE_LIMIT_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def RATE_LIMIT_REQUESTS_PER_MINUTE(self) -> int:
+        return int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "60"))
+
+    @property
+    def RATE_LIMIT_REQUESTS_PER_HOUR(self) -> int:
+        return int(os.getenv("RATE_LIMIT_REQUESTS_PER_HOUR", "1000"))
+
+    # ============================================
+    # LOGGING CONFIGURATION
+    # ============================================
+
+    @property
+    def LOG_LEVEL(self) -> str:
+        return os.getenv("LOG_LEVEL", "INFO")
+
+    @property
+    def LOG_FORMAT(self) -> str:
+        return os.getenv("LOG_FORMAT", "json")
+
+    # ============================================
+    # WORKER / BACKGROUND JOBS
+    # ============================================
+
+    @property
+    def CELERY_BROKER_URL(self) -> str:
+        return os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+
+    @property
+    def CELERY_RESULT_BACKEND(self) -> str:
+        return os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
+
+    # ============================================
+    # MONITORING & OBSERVABILITY
+    # ============================================
+
+    @property
+    def HEALTH_CHECK_ENABLED(self) -> bool:
+        return os.getenv("HEALTH_CHECK_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def METRICS_ENABLED(self) -> bool:
+        return os.getenv("METRICS_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+    @property
+    def METRICS_PORT(self) -> int:
+        return int(os.getenv("METRICS_PORT", "9090"))
+
+    # ============================================
+    # UTILITY METHODS
+    # ============================================
+
+    def __repr__(self) -> str:
+        """String representation of settings"""
+        return (
+            f"<Settings environment={self.ENVIRONMENT} "
+            f"app={self.APP_NAME} v{self.APP_VERSION}>"
+        )
+
+    def to_dict(self) -> dict:
+        """
+        Convert settings to dictionary (excludes secrets).
+        
+        Useful for logging and debugging.
+        """
+        return {
+            "APP_NAME": self.APP_NAME,
+            "APP_VERSION": self.APP_VERSION,
+            "ENVIRONMENT": self.ENVIRONMENT,
+            "DEBUG": self.DEBUG,
+            "HOST": self.HOST,
+            "PORT": self.PORT,
+            "SERVER_URL": self.PUBLIC_SERVER_URL,
+            "CORS_ORIGINS": self.CORS_ORIGINS,
+            "LOG_LEVEL": self.LOG_LEVEL,
+            "RATE_LIMIT_ENABLED": self.RATE_LIMIT_ENABLED,
+            "SENTRY_ENABLED": bool(self.SENTRY_DSN),
+            # Secrets are intentionally excluded
+        }
 
 
-def get_required_env_vars() -> List[str]:
+# Create global settings instance
+settings = Settings()
+
+
+def test_env_loading():
     """
-    Get list of required environment variables.
-    Used for documentation and validation.
+    Test that environment variables are loaded correctly.
+    Run this to verify .env file setup.
     """
-    return [
-        "MONGO_URL",
-        "DB_NAME", 
-        "JWT_SECRET",
-    ]
+    print("\n" + "=" * 60)
+    print("ENVIRONMENT CONFIGURATION TEST")
+    print("=" * 60)
+    print(f"\nSettings instance: {settings}\n")
+
+    print("Application:")
+    print(f"  Name: {settings.APP_NAME}")
+    print(f"  Version: {settings.APP_VERSION}")
+    print(f"  Environment: {settings.ENVIRONMENT}")
+    print(f"  Debug: {settings.DEBUG}")
+
+    print("\nServer:")
+    print(f"  Host: {settings.HOST}")
+    print(f"  Port: {settings.PORT}")
+    print(f"  Public URL: {settings.PUBLIC_SERVER_URL}")
+
+    print("\nDatabase:")
+    print(f"  URL: {settings.DATABASE_URL[:50]}...")
+    print(f"  Pool Size: {settings.DB_POOL_SIZE}")
+
+    print("\nCache:")
+    print(f"  Redis URL: {settings.REDIS_URL[:50]}...")
+
+    print("\nSecurity:")
+    print(f"  JWT Secret: {'✓ Set' if settings.JWT_SECRET else '✗ Not set'}")
+    print(f"  JWT Expiration: {settings.JWT_EXPIRATION_HOURS} hours")
+
+    print("\nCORS:")
+    print(f"  Allowed Origins: {settings.CORS_ORIGINS}")
+
+    print("\nMonitoring:")
+    print(f"  Sentry: {'✓ Enabled' if settings.SENTRY_DSN else '✗ Disabled'}")
+    print(f"  Metrics: {'✓ Enabled' if settings.METRICS_ENABLED else '✗ Disabled'}")
+
+    print("\nFeatures:")
+    print(f"  2FA: {'✓ Enabled' if settings.FEATURE_2FA_ENABLED else '✗ Disabled'}")
+    print(
+        f"  Deposits: {'✓ Enabled' if settings.FEATURE_DEPOSITS_ENABLED else '✗ Disabled'}"
+    )
+    print(
+        f"  Withdrawals: {'✓ Enabled' if settings.FEATURE_WITHDRAWALS_ENABLED else '✗ Disabled'}"
+    )
+    print(
+        f"  Trading: {'✓ Enabled' if settings.FEATURE_TRADING_ENABLED else '✗ Disabled'}"
+    )
+    print(
+        f"  Staking: {'✓ Enabled' if settings.FEATURE_STAKING_ENABLED else '✗ Disabled'}"
+    )
+
+    print("\n" + "=" * 60 + "\n")
 
 
-def get_optional_env_vars() -> List[str]:
-    """
-    Get list of optional environment variables with their purposes.
-    """
-    return [
-        "PORT",                    # Server port (default: 8000)
-        "ENVIRONMENT",             # development/staging/production
-        "CORS_ORIGINS",            # Comma-separated allowed origins
-        "SENDGRID_API_KEY",        # For email functionality
-        "SENTRY_DSN",              # For error tracking
-        "UPSTASH_REDIS_REST_URL",  # For Redis caching
-        "UPSTASH_REDIS_REST_TOKEN",
-        "COINCAP_API_KEY",         # For cryptocurrency price data (primary source)
-        "PUBLIC_API_URL",          # Base URL exposed to frontend
-        "PUBLIC_WS_URL",           # WebSocket base URL exposed to frontend
-        "PUBLIC_SOCKET_IO_PATH",   # Socket.IO path exposed to frontend
-        "PUBLIC_SITE_NAME",        # Brand name for public config
-        "PUBLIC_LOGO_URL",         # Brand logo URL for public config
-        "PUBLIC_SUPPORT_EMAIL",    # Support email for public config
-        "PUBLIC_SENTRY_DSN",       # Frontend Sentry DSN (public)
-    ]
-
-
-# Global settings instance (auto-loads and validates .env)
-try:
-    settings = Settings()
-    logger.info("✅ Environment variables loaded and validated successfully")
-    logger.debug(f"MONGO_URL: {settings.mongo_url[:20]}...***")
-    logger.debug(f"DB_NAME: {settings.db_name}")
-    logger.debug(f"ENVIRONMENT: {settings.environment}")
-    logger.debug(f"CORS_ORIGINS: {settings.cors_origins}")
-    logger.debug(f"JWT_SECRET: ***[{len(settings.jwt_secret)} chars]***")
-    logger.debug(f"MongoDB Pool: {settings.mongo_min_pool_size}-{settings.mongo_max_pool_size}")
-    logger.debug(f"Rate Limit: {settings.rate_limit_per_minute} req/min")
-    logger.debug(f"Email Service: {settings.email_service}")
-    logger.debug(f"App URL: {settings.app_url}")
-    logger.debug(f"CoinCap API: {'configured' if settings.coincap_api_key else 'not configured (using free tier)'}")
-    logger.debug(f"Use Mock Prices: {settings.use_mock_prices}")
-    redis_status = "enabled" if settings.is_redis_available() else "disabled"
-    logger.debug(f"Redis: {redis_status}")
-    if settings.is_redis_available():
-        logger.debug(f"Redis URL: {settings.upstash_redis_rest_url[:30]}...***")
-    sentry_status = "enabled" if settings.is_sentry_available() else "disabled"
-    logger.debug(f"Sentry: {sentry_status}")
-except Exception as e:
-    logger.critical(f"❌ Failed to load/validate settings: {str(e)}")
-    raise
+if __name__ == "__main__":
+    # Run test when executed directly
+    test_env_loading()

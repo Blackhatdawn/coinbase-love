@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { resolveSupportEmail, resolveAppUrl } from "@/lib/runtimeConfig";
 
 const PrivacyPolicy = () => {
   return (
@@ -69,8 +70,8 @@ const PrivacyPolicy = () => {
                 If you have any questions about this Privacy Policy, please contact us at:
               </p>
               <ul className="list-disc list-inside space-y-2 mt-4">
-                <li>By email: privacy@cryptovault.com</li>
-                <li>By visiting this page on our website: https://cryptovault.com/contact</li>
+                <li>By email: <a href={`mailto:${resolveSupportEmail()}`} className="text-primary hover:underline">{resolveSupportEmail()}</a></li>
+                <li>By visiting this page on our website: <a href={`${resolveAppUrl()}/contact`} className="text-primary hover:underline">{resolveAppUrl()}/contact</a></li>
               </ul>
             </section>
 

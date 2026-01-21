@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { resolveSupportEmail } from "@/lib/runtimeConfig";
 import { Cookie, Info, Settings, Shield } from "lucide-react";
 
 const CookiePolicy = () => {
@@ -116,7 +117,7 @@ const CookiePolicy = () => {
                 If you have any questions about our use of cookies or this Cookie Policy, please contact us at:
               </p>
               <div className="mt-4 text-sm">
-                <p><strong>Email:</strong> privacy@cryptovault.financial</p>
+                <p><strong>Email:</strong> <a href={`mailto:${resolveSupportEmail()}`} className="text-primary hover:underline">{resolveSupportEmail()}</a></p>
                 <p><strong>Address:</strong> 1201 Market Street, Suite 101, Wilmington, DE 19801</p>
               </div>
             </section>

@@ -134,5 +134,27 @@ export default defineConfig(({ mode }) => ({
     esbuild: {
       drop: ['console', 'debugger'],
     },
+    // Enable compression reporting
+    reportCompressedSize: true,
+    // Better tree-shaking
+    rollupOptions: {
+      output: {
+        // Generate source maps for production error tracking
+        sourcemap: 'hidden', // Don't expose to users but available for error tracking
+      },
+    },
   }),
+
+  // Performance hints
+  rollupOptions: {
+    output: {
+      // Ensure predictable chunk names for caching
+      assetFileNames: 'assets/[name].[hash][extname]',
+      chunkFileNames: 'chunks/[name].[hash].js',
+      entryFileNames: 'js/[name].[hash].js',
+    },
+  },
+
+  // HTTP/2 Push configuration (automatically handled by Vercel)
+  // If using custom server, enable in production HTTP server config
 }));

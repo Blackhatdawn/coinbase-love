@@ -176,5 +176,5 @@ export function resolveSentryConfig(): RuntimeConfig['sentry'] {
 }
 
 export function resolveSupportEmail(): string {
-  return runtimeConfig?.branding?.supportEmail || 'support@cryptovault.financial';
+  return runtimeConfig?.branding?.supportEmail || 'support@example.com';
 }

@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Shield, Target, Eye, Users, Building2, Award } from "lucide-react";
+import { resolveSupportEmail } from "@/lib/runtimeConfig";
 
 const About = () => {
   return (
@@ -141,8 +142,8 @@ const About = () => {
                     <p>Wilmington, DE 19801</p>
                     <p>United States</p>
                     <p className="pt-2">
-                      <a href="mailto:contact@cryptovault.financial" className="text-primary hover:underline">
-                        contact@cryptovault.financial
+                      <a href={`mailto:${resolveSupportEmail()}`} className="text-primary hover:underline">
+                        {resolveSupportEmail()}
                       </a>
                     </p>
                   </address>
