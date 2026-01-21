@@ -47,14 +47,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             
             # Content Security Policy
             # Note: This is for API responses. Frontend CSP is set in vercel.json
+            # Keep in sync with frontend/vercel.json
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com data:; "
                 "img-src 'self' data: https: blob:; "
-                "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com "
-                "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io; "
+                "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com "
+                "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io "
+                "https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
+                "https://vercel.live wss://vercel.live https://*.vercel.live; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
                 "form-action 'self'; "
