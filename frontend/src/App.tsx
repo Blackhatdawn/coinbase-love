@@ -21,42 +21,42 @@ import DebugApiStatus from "@/components/DebugApiStatus";
 import { Analytics } from "@vercel/analytics/react";
 
 // Eager loaded pages (critical path)
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import { ResetRequest, ResetConfirm } from "./pages/PasswordReset";
+import Index from "@/pages/Index";
+import Auth from "@/pages/Auth";
+import NotFound from "@/pages/NotFound";
+import { ResetRequest, ResetConfirm } from "@/pages/PasswordReset";
 
 // Lazy loaded pages for performance
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Portfolio = lazy(() => import("./pages/Portfolio"));
-const TransactionHistory = lazy(() => import("./pages/TransactionHistory"));
-const Markets = lazy(() => import("./pages/Markets"));
-const Trade = lazy(() => import("./pages/Trade"));
-const EnhancedTrade = lazy(() => import("./pages/EnhancedTrade"));
-const Earn = lazy(() => import("./pages/Earn"));
-const Learn = lazy(() => import("./pages/Learn"));
-const Contact = lazy(() => import("./pages/Contact"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const About = lazy(() => import("./pages/About"));
-const Services = lazy(() => import("./pages/Services"));
-const Security = lazy(() => import("./pages/Security"));
-const FAQ = lazy(() => import("./pages/FAQ"));
-const Fees = lazy(() => import("./pages/Fees"));
-const Blog = lazy(() => import("./pages/Blog"));
-const Careers = lazy(() => import("./pages/Careers"));
-const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
-const AMLPolicy = lazy(() => import("./pages/AMLPolicy"));
-const HelpCenter = lazy(() => import("./pages/HelpCenter"));
-const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
-const WalletDeposit = lazy(() => import("./pages/WalletDeposit"));
-const WalletWithdraw = lazy(() => import("./pages/WalletWithdraw"));
-const P2PTransfer = lazy(() => import("./pages/P2PTransfer"));
-const PriceAlerts = lazy(() => import("./pages/PriceAlerts"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const Referrals = lazy(() => import("./pages/Referrals"));
-const Settings = lazy(() => import("./pages/Settings"));
-const DashboardSecurity = lazy(() => import("./pages/DashboardSecurity"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Portfolio = lazy(() => import("@/pages/Portfolio"));
+const TransactionHistory = lazy(() => import("@/pages/TransactionHistory"));
+const Markets = lazy(() => import("@/pages/Markets"));
+const Trade = lazy(() => import("@/pages/Trade"));
+const EnhancedTrade = lazy(() => import("@/pages/EnhancedTrade"));
+const Earn = lazy(() => import("@/pages/Earn"));
+const Learn = lazy(() => import("@/pages/Learn"));
+const Contact = lazy(() => import("@/pages/Contact"));
+const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
+const About = lazy(() => import("@/pages/About"));
+const Services = lazy(() => import("@/pages/Services"));
+const Security = lazy(() => import("@/pages/Security"));
+const FAQ = lazy(() => import("@/pages/FAQ"));
+const Fees = lazy(() => import("@/pages/Fees"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const Careers = lazy(() => import("@/pages/Careers"));
+const CookiePolicy = lazy(() => import("@/pages/CookiePolicy"));
+const AMLPolicy = lazy(() => import("@/pages/AMLPolicy"));
+const HelpCenter = lazy(() => import("@/pages/HelpCenter"));
+const RiskDisclosure = lazy(() => import("@/pages/RiskDisclosure"));
+const WalletDeposit = lazy(() => import("@/pages/WalletDeposit"));
+const WalletWithdraw = lazy(() => import("@/pages/WalletWithdraw"));
+const P2PTransfer = lazy(() => import("@/pages/P2PTransfer"));
+const PriceAlerts = lazy(() => import("@/pages/PriceAlerts"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const Referrals = lazy(() => import("@/pages/Referrals"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const DashboardSecurity = lazy(() => import("@/pages/DashboardSecurity"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
