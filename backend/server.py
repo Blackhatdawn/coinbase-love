@@ -19,7 +19,7 @@ import sys
 import json
 
 # Configuration and database
-from config import settings, validate_startup_environment
+from config import settings, validate_startup_environment, get_settings
 from database import DatabaseConnection
 
 # Routers
@@ -280,8 +280,8 @@ class RateLimitHeadersMiddleware:
                 
                 # Add rate limit headers
                 rate_limit_headers = [
-                    (b"x-ratelimit-limit", str(settings.rate_limit_per_minute).encode()),
-                    (b"x-ratelimit-policy", f"{settings.rate_limit_per_minute};w=60".encode()),
+                    (b"x-ratelimit-limit", str(settings.rate_limit_requests_per_minute).encode()),
+                    (b"x-ratelimit-policy", f"{settings.rate_limit_requests_per_minute};w=60".encode()),
                 ]
                 
                 # Append new headers (don't convert to dict which removes duplicates)
@@ -533,7 +533,7 @@ except ImportError as e:
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitHeadersMiddleware)
-app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
+app.add_middleware(TimeoutMiddleware, timeout_seconds=30)  # 30-second request timeout
 
 # Import and add advanced security middleware from middleware/security.py
 try:
@@ -546,7 +546,7 @@ try:
     # Add advanced rate limiter (with burst protection and IP blocking)
     app.add_middleware(
         AdvancedRateLimiter,
-        default_limit=settings.rate_limit_per_minute,
+        default_limit=settings.rate_limit_requests_per_minute,
         window_seconds=60,
         block_duration=15,  # Block IPs for 15 minutes on burst attack
         burst_threshold=10   # 10 requests in 1 second = burst
@@ -557,10 +557,10 @@ try:
     
     # Add CSRF protection middleware
     # Enable in production, can be disabled for testing
-    csrf_enabled = settings.environment != "development" or settings.use_cross_site_cookies
+    csrf_enabled = settings.is_production
     app.add_middleware(
         CSRFProtectionMiddleware,
-        secret_key=settings.csrf_secret or settings.jwt_secret,
+        secret_key=settings.csrf_secret.get_secret_value() if settings.csrf_secret else settings.jwt_secret.get_secret_value(),
         enabled=csrf_enabled
     )
     
@@ -765,8 +765,8 @@ async def get_csrf_token(request: Request):
     })
     
     # Cookie settings based on environment
-    same_site = "none" if settings.use_cross_site_cookies else "lax"
-    secure = (settings.environment == "production") or settings.use_cross_site_cookies
+    same_site = "lax"  # Standard CSRF protection setting
+    secure = settings.is_production  # HTTPS only in production
     
     # Set CSRF token cookie (HTTP-only for security)
     response.set_cookie(
@@ -836,12 +836,13 @@ async def startup_event():
             raise
         
         # Connect to database
+        # Note: DatabaseConnection uses DATABASE_URL (MongoDB connection string)
         db_connection = DatabaseConnection(
-            mongo_url=settings.mongo_url,
-            db_name=settings.db_name,
-            max_pool_size=settings.mongo_max_pool_size,
-            min_pool_size=settings.mongo_min_pool_size,
-            server_selection_timeout_ms=settings.mongo_server_selection_timeout_ms
+            mongo_url=settings.database_url,
+            db_name="cryptovault",
+            max_pool_size=20,
+            min_pool_size=10,
+            server_selection_timeout_ms=5000
         )
         await db_connection.connect()
         
@@ -877,11 +878,11 @@ async def startup_event():
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
         logger.info(f"📍 Environment: {settings.environment}")
-        logger.info(f"💾 Database: {settings.db_name}")
-        logger.info(f"🔐 JWT Algorithm: {settings.jwt_algorithm}")
-        logger.info(f"⏱️ Rate Limit: {settings.rate_limit_per_minute} req/min")
+        logger.info(f"💾 Database: cryptovault")
+        logger.info(f"🔐 JWT Algorithm: {settings.password_algorithm}")
+        logger.info(f"⏱️ Rate Limit: {settings.rate_limit_requests_per_minute} req/min")
         logger.info("🔌 Socket.IO: Enabled at /socket.io/")
-        logger.info("📦 Compression: GZip + Brotli enabled")
+        logger.info("📦 Compression: GZip enabled")
         logger.info("="*70)
 
     except Exception as e:

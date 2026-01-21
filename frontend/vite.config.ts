@@ -5,16 +5,25 @@ import { componentTagger } from "lovable-tagger";
 
 // ============================================
 // VITE CONFIGURATION - CryptoVault Frontend
+// Enterprise-Grade Production-Ready Setup
 // ============================================
 // This config enables:
-// 1. Development proxy to local backend (localhost:8001)
-// 2. WebSocket proxy for real-time price feeds
-// 3. Production build optimizations
+// 1. Development proxy to local backend (port 8001)
+// 2. WebSocket proxy for real-time price feeds (/socket.io)
+// 3. Production build optimizations and code splitting
+// 4. Zero-hardcoding of sensitive URLs (uses env vars)
+// 5. Proper error handling and fallbacks
 // ============================================
 
 // Backend URL for development proxy
-// In production, Vercel rewrites handle this via vercel.json
+// Falls back to localhost:8001 if VITE_BACKEND_URL not set
+// In production, Vercel rewrites handle all proxying via vercel.json
 const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8001";
+
+// Validate backend URL in development
+if (process.env.NODE_ENV === "development") {
+  console.log(`[Vite] Backend proxy configured for: ${BACKEND_URL}`);
+}
 
 export default defineConfig(({ mode }) => ({
   define: {
@@ -84,42 +93,66 @@ export default defineConfig(({ mode }) => ({
     // ============================================
     // DEVELOPMENT PROXY CONFIGURATION
     // ============================================
-    // Routes /api/* and /socket.io/* to local backend
-    // In production, Vercel handles this via rewrites
+    // Routes API requests to local backend (FastAPI)
+    // - /api/* → Backend API endpoints
+    // - /socket.io/* → Real-time WebSocket communication
+    // - /health, /ping, /csrf → Health checks & auth
+    //
+    // In production on Vercel, rewrites in vercel.json
+    // handle all proxying to the production backend URL
     // ============================================
     proxy: {
-      // API endpoints proxy
+      // API endpoints proxy - Main backend routes
       "/api": {
         target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
-        // Rewrite is not needed since backend expects /api prefix
-        // rewrite: (path) => path.replace(/^\/api/, '/api'),
+        // Preserve original path - backend expects /api prefix
+        logLevel: "warn",
+        onError: (err, req, res) => {
+          console.error(`[Proxy Error] ${req.method} ${req.path}:`, err.message);
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            error: {
+              code: "BACKEND_UNAVAILABLE",
+              message: "Backend API is not available. Ensure the dev server is running on " + BACKEND_URL,
+              request_id: req.headers["x-request-id"] || "unknown",
+            }
+          }));
+        },
       },
-      // WebSocket proxy for Socket.IO
+
+      // WebSocket proxy for Socket.IO - Real-time data
       "/socket.io": {
         target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
-        ws: true, // Enable WebSocket proxy
+        ws: true, // Enable WebSocket protocol
+        logLevel: "warn",
       },
-      // Health check proxy
+
+      // Health check endpoint - System monitoring
       "/health": {
         target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
+        logLevel: "warn",
       },
-      // Ping endpoint proxy
+
+      // Ping endpoint - Keep-alive and status checks
       "/ping": {
         target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
+        logLevel: "warn",
       },
-      // CSRF token endpoint proxy
+
+      // CSRF token endpoint - Security tokens
       "/csrf": {
         target: BACKEND_URL,
         changeOrigin: true,
         secure: false,
+        logLevel: "warn",
       },
     },
   },
