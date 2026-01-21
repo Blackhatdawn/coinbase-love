@@ -182,7 +182,11 @@ class RequestIDMiddleware:
 
 
 class SecurityHeadersMiddleware:
-    """Add security headers to all responses."""
+    """
+    Add security headers to all responses.
+    These are baseline security headers applied to every response.
+    More comprehensive headers are added by middleware/security.py for specific routes.
+    """
     
     def __init__(self, app):
         self.app = app
@@ -195,13 +199,20 @@ class SecurityHeadersMiddleware:
             if message["type"] == "http.response.start":
                 headers = dict(message.get("headers", []))
                 
+                # Baseline security headers - valid values per HTTP spec
                 security_headers = {
-                    b"strict-transport-security": b"max-age=31536000; includeSubDomains",
+                    # HSTS with preload - force HTTPS for 1 year
+                    b"strict-transport-security": b"max-age=31536000; includeSubDomains; preload",
+                    # Prevent clickjacking
                     b"x-frame-options": b"DENY",
+                    # Prevent MIME sniffing
                     b"x-content-type-options": b"nosniff",
+                    # Legacy XSS protection (modern browsers use CSP)
                     b"x-xss-protection": b"1; mode=block",
+                    # Control referrer information
                     b"referrer-policy": b"strict-origin-when-cross-origin",
-                    b"permissions-policy": b"geolocation=(), microphone=(), camera=()",
+                    # Disable unused browser features - valid directives only
+                    b"permissions-policy": b"geolocation=(), microphone=(), camera=(), payment=(), usb=()",
                 }
                 
                 headers.update(security_headers)
@@ -438,19 +449,22 @@ logger.info(f"   Max Age: 3600 seconds (preflight caching)")
 logger.info("=" * 60)
 
 # Define allowed headers explicitly for security
-# These headers are required for the frontend to communicate with the API
+# These are custom headers that the frontend may send
+# Note: Simple headers (Accept, Content-Type, etc.) are allowed by default
+# Note: "Origin" is a forbidden header name and handled by browser automatically
 ALLOWED_HEADERS = [
+    "Authorization",          # Bearer tokens (JWT)
     "Content-Type",           # Required for JSON payloads
-    "Authorization",          # Bearer tokens
-    "X-Requested-With",       # AJAX indicator
-    "X-CSRF-Token",           # CSRF protection
-    "X-Request-ID",           # Request correlation
     "Accept",                 # Content negotiation
     "Accept-Language",        # Localization
-    "Accept-Encoding",        # Compression
-    "Origin",                 # CORS origin
+    "Accept-Encoding",        # Compression negotiation
+    "X-Requested-With",       # XMLHttpRequest indicator
+    "X-CSRF-Token",           # CSRF protection token
+    "X-Request-ID",           # Request correlation/tracing
     "Cache-Control",          # Caching directives
-    "Pragma",                 # HTTP/1.0 caching
+    "Pragma",                 # HTTP/1.0 cache control
+    "If-Match",               # Conditional requests (ETags)
+    "If-None-Match",          # Conditional requests (ETags)
 ]
 
 # Define exposed headers (headers the browser can access)

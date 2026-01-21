@@ -46,28 +46,44 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Referrer-Policy": "strict-origin-when-cross-origin",
             
             # Content Security Policy
+            # Note: This is for API responses. Frontend CSP is set in vercel.json
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com data:; "
                 "img-src 'self' data: https: blob:; "
-                "connect-src 'self' https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io; "
+                "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com "
+                "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
-                "form-action 'self';"
+                "form-action 'self'; "
+                "upgrade-insecure-requests"
             ),
             
-            # Permissions policy
+            # Permissions policy - only valid directives
+            # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
             "Permissions-Policy": (
-                "geolocation=(), "
-                "microphone=(), "
+                "accelerometer=(), "
+                "autoplay=(), "
                 "camera=(), "
-                "payment=(), "
-                "usb=(), "
-                "magnetometer=(), "
+                "cross-origin-isolated=(), "
+                "display-capture=(), "
+                "encrypted-media=(), "
+                "fullscreen=(), "
+                "geolocation=(), "
                 "gyroscope=(), "
-                "speaker=()"
+                "keyboard-map=(), "
+                "magnetometer=(), "
+                "microphone=(), "
+                "midi=(), "
+                "payment=(), "
+                "picture-in-picture=(), "
+                "publickey-credentials-get=(), "
+                "screen-wake-lock=(), "
+                "sync-xhr=(), "
+                "usb=(), "
+                "xr-spatial-tracking=()"
             ),
             
             # Remove server header
