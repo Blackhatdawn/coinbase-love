@@ -15,6 +15,7 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster as HotToaster } from 'react-hot-toast';
+import { Analytics } from "@vercel/analytics/react";
 import { healthCheckService } from "@/services/healthCheck";
 import { api } from "@/lib/apiClient";
 import DebugApiStatus from "@/components/DebugApiStatus";
@@ -238,6 +239,7 @@ const App = () => (
               />
               <BrowserRouter>
                 <AppContent />
+                <Analytics />
               </BrowserRouter>
             </TooltipProvider>
           </SocketProvider>
