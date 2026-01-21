@@ -53,14 +53,27 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-API-Version"] = "1.0.0"
 
-        # Relaxed CSP for frontend compatibility (adjust for your domains)
+        # Production-ready CSP with explicit API domain
+        # Explicitly allow https://cryptovault-api.onrender.com for API connections
+        connect_sources = "'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com"
+        
+        # Add additional CORS origins if configured (non-wildcard)
+        cors_origins = settings.get_cors_origins_list()
+        if cors_origins and cors_origins != ['*']:
+            for origin in cors_origins[:3]:  # Limit to first 3 to keep CSP manageable
+                if origin not in connect_sources and origin.startswith('http'):
+                    connect_sources += f" {origin}"
+        
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' data:; "
-            f"connect-src 'self' {settings.get_cors_origins_list()[0] if settings.get_cors_origins_list() != ['*'] else '*'} wss: https:;"
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: https: blob:; "
+            f"connect-src {connect_sources} https://api.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
         )
         response.headers["Content-Security-Policy"] = csp
 

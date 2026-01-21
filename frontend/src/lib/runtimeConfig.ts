@@ -28,7 +28,21 @@ const CONFIG_ENDPOINT = '/api/config';
 
 let runtimeConfig: RuntimeConfig | null = null;
 
-const normalizeBaseUrl = (value: string): string => value.replace(/\/+$/, '');
+/**
+ * Normalize base URL by removing trailing slashes and sanitizing malformed characters.
+ * Handles common URL issues like spaces (%20), trailing commas, and whitespace.
+ */
+const normalizeBaseUrl = (value: string): string => {
+  if (!value) return '';
+  
+  return value
+    .trim()                          // Remove leading/trailing whitespace
+    .replace(/%20/g, '')             // Remove URL-encoded spaces
+    .replace(/\s+/g, '')             // Remove any whitespace characters
+    .replace(/,+$/, '')              // Remove trailing commas
+    .replace(/,+/g, '')              // Remove any embedded commas (malformed)
+    .replace(/\/+$/, '');            // Remove trailing slashes
+};
 
 const deriveWsBaseUrl = (baseUrl: string): string => {
   if (!baseUrl) {
@@ -89,9 +103,29 @@ const mergeConfig = (base: RuntimeConfig, incoming: Partial<RuntimeConfig>): Run
   return merged;
 };
 
+/**
+ * Build the config endpoint URL with proper validation.
+ * Ensures no malformed URLs with spaces, commas, or other invalid characters.
+ */
 const buildConfigUrl = (): string => {
   const baseUrl = getFallbackApiBaseUrl();
-  return `${baseUrl}${CONFIG_ENDPOINT}`;
+  const configUrl = `${baseUrl}${CONFIG_ENDPOINT}`;
+  
+  // Validate the URL is properly formed (no spaces, commas, or other issues)
+  try {
+    // If baseUrl is empty, we're using relative paths
+    if (!baseUrl) {
+      return CONFIG_ENDPOINT;
+    }
+    
+    // Validate it's a proper URL
+    const url = new URL(configUrl);
+    return url.toString();
+  } catch {
+    // Fallback to relative path if URL is malformed
+    console.warn('[RuntimeConfig] Malformed config URL detected, using relative path:', configUrl);
+    return CONFIG_ENDPOINT;
+  }
 };
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
