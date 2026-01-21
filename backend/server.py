@@ -557,10 +557,10 @@ try:
     
     # Add CSRF protection middleware
     # Enable in production, can be disabled for testing
-    csrf_enabled = settings.environment != "development" or settings.use_cross_site_cookies
+    csrf_enabled = settings.is_production
     app.add_middleware(
         CSRFProtectionMiddleware,
-        secret_key=settings.csrf_secret or settings.jwt_secret,
+        secret_key=settings.csrf_secret.get_secret_value() if settings.csrf_secret else settings.jwt_secret.get_secret_value(),
         enabled=csrf_enabled
     )
     
