@@ -28,7 +28,19 @@ const CONFIG_ENDPOINT = '/api/config';
 
 let runtimeConfig: RuntimeConfig | null = null;
 
-const normalizeBaseUrl = (value: string): string => value.replace(/\/+$/, '');
+const sanitizeBaseUrl = (value: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  const [first] = value.split(',');
+  return first.trim().replace(/%20/g, '');
+};
+
+const normalizeBaseUrl = (value: string): string => {
+  const sanitized = sanitizeBaseUrl(value);
+  return sanitized.replace(/\/+$/, '');
+};
 
 const deriveWsBaseUrl = (baseUrl: string): string => {
   if (!baseUrl) {
