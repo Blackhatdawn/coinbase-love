@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { resolveSupportEmail } from "@/lib/runtimeConfig";
 import { Shield, AlertTriangle, FileText, UserCheck, Ban, Flag } from "lucide-react";
 
 const AMLPolicy = () => {
@@ -127,7 +128,7 @@ const AMLPolicy = () => {
                 CryptoVault has appointed a dedicated Compliance Officer responsible for implementing and maintaining our AML/CTF program. For compliance-related inquiries, please contact:
               </p>
               <div className="mt-4 text-sm">
-                <p><strong>Email:</strong> compliance@cryptovault.financial</p>
+                <p><strong>Email:</strong> <a href={`mailto:${resolveSupportEmail()}`} className="text-primary hover:underline">{resolveSupportEmail()}</a></p>
                 <p><strong>Address:</strong> 1201 Market Street, Suite 101, Wilmington, DE 19801</p>
               </div>
             </section>
