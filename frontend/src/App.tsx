@@ -18,6 +18,7 @@ import { Toaster as HotToaster } from 'react-hot-toast';
 import { healthCheckService } from "@/services/healthCheck";
 import { api } from "@/lib/apiClient";
 import DebugApiStatus from "@/components/DebugApiStatus";
+import { Analytics } from "@vercel/analytics/react";
 
 // Eager loaded pages (critical path)
 import Index from "./pages/Index";
@@ -238,6 +239,7 @@ const App = () => (
               />
               <BrowserRouter>
                 <AppContent />
+                <Analytics />
               </BrowserRouter>
             </TooltipProvider>
           </SocketProvider>
