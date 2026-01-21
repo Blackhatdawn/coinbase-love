@@ -765,8 +765,8 @@ async def get_csrf_token(request: Request):
     })
     
     # Cookie settings based on environment
-    same_site = "none" if settings.use_cross_site_cookies else "lax"
-    secure = (settings.environment == "production") or settings.use_cross_site_cookies
+    same_site = "lax"  # Standard CSRF protection setting
+    secure = settings.is_production  # HTTPS only in production
     
     # Set CSRF token cookie (HTTP-only for security)
     response.set_cookie(
