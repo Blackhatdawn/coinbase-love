@@ -213,6 +213,21 @@ class SecurityHeadersMiddleware:
                     b"referrer-policy": b"strict-origin-when-cross-origin",
                     # Disable unused browser features - valid directives only
                     b"permissions-policy": b"geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+                    b"content-security-policy": (
+                        b"default-src 'self'; "
+                        b"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "
+                        b"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                        b"font-src 'self' https://fonts.gstatic.com data:; "
+                        b"img-src 'self' data: https: blob:; "
+                        b"connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com "
+                        b"https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io "
+                        b"https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
+                        b"https://vercel.live wss://vercel.live https://*.vercel.live; "
+                        b"frame-ancestors 'none'; "
+                        b"base-uri 'self'; "
+                        b"form-action 'self'; "
+                        b"upgrade-insecure-requests"
+                    ),
                 }
                 
                 headers.update(security_headers)
