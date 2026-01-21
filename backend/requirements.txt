@@ -1,6 +1,7 @@
 # ============================================
 # CryptoVault Backend - Pinned Dependencies
-# Last Updated: 2026-01-20
+# Production-Ready Enterprise Configuration
+# Last Updated: 2025-01-21
 # ============================================
 
 # Core Framework
@@ -10,11 +11,12 @@ pydantic==2.12.5
 pydantic-settings==2.12.0
 pydantic_core==2.41.5
 
-# ASGI Server (Production)
+# ASGI Server (Production-Grade)
 uvicorn[standard]==0.25.0
 gunicorn==21.2.0
+httptools==0.6.1
 
-# System Monitoring
+# System Monitoring & Health Checks
 psutil==5.9.8
 
 # Async HTTP & WebSocket
