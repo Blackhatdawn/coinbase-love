@@ -40,28 +40,50 @@ class EnvironmentValidationError(Exception):
 # These are the allowed origins for production deployments
 # Update these to match your actual deployment URLs
 
+# ============================================
+# CORS ORIGINS - Enterprise Configuration
+# ============================================
+# Production origins: All verified production domains
 PRODUCTION_CORS_ORIGINS = [
     "https://cryptovault.financial",
     "https://www.cryptovault.financial",
+    "https://app.cryptovault.financial",
     "https://cryptovault.vercel.app",
     "https://cryptovault-git-main-blackhatdawn.vercel.app",
+    # Add Render internal health checks (uses internal domain)
+    "https://cryptovault-api.onrender.com",
 ]
 
+# Staging origins: Pre-production environments
 STAGING_CORS_ORIGINS = [
     "https://staging.cryptovault.financial",
     "https://cryptovault-staging.vercel.app",
+    "https://cryptovault-preview.vercel.app",
 ]
 
+# Development origins: Local development servers
 DEVELOPMENT_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:8080",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
 ]
+
+# All allowed origins for reference (used by Socket.IO)
+def get_all_cors_origins(environment: str) -> List[str]:
+    """Get all CORS origins for the given environment."""
+    if environment == "production":
+        return PRODUCTION_CORS_ORIGINS
+    elif environment == "staging":
+        return STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS
+    else:
+        return DEVELOPMENT_CORS_ORIGINS
 
 
 def get_default_cors_origins(environment: str) -> str:
-    """Get default CORS origins based on environment."""
+    """Get default CORS origins based on environment as comma-separated string."""
     if environment == "production":
         return ",".join(PRODUCTION_CORS_ORIGINS)
     elif environment == "staging":
@@ -69,6 +91,24 @@ def get_default_cors_origins(environment: str) -> str:
     else:
         # Development - allow all for convenience
         return "*"
+
+
+def get_cors_origins_for_socketio(environment: str, cors_origins_str: str) -> List[str]:
+    """
+    Get CORS origins list for Socket.IO configuration.
+    Socket.IO requires a list, not a string.
+    """
+    if cors_origins_str == "*":
+        if environment == "production":
+            # Production should never use wildcard
+            return PRODUCTION_CORS_ORIGINS
+        elif environment == "staging":
+            return STAGING_CORS_ORIGINS + DEVELOPMENT_CORS_ORIGINS
+        else:
+            # Development: return wildcard as list for Socket.IO
+            return ["*"]
+    
+    return [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
 
 
 class Settings(BaseSettings):
@@ -254,6 +294,14 @@ class Settings(BaseSettings):
         if self.cors_origins == "*":
             return ["*"]
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def get_socketio_cors_origins(self) -> List[str]:
+        """
+        Get CORS origins for Socket.IO.
+        Socket.IO requires explicit origins list for credential-based auth.
+        Never returns wildcard in production.
+        """
+        return get_cors_origins_for_socketio(self.environment, self.cors_origins)
 
     def validate_critical_settings(self) -> List[str]:
         """

@@ -1,12 +1,20 @@
 """
 Socket.IO Server Integration for Real-time Communication
 Provides WebSocket with auto-reconnection, heartbeats, and room-based broadcasting.
+
+Enterprise Features:
+- CORS configuration matching backend settings
+- JWT token validation for authenticated connections
+- Room-based broadcasting (user-specific, global)
+- Connection state tracking with heartbeat
 """
 import logging
 import socketio
 import asyncio
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 from datetime import datetime
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +30,29 @@ class SocketIOManager:
     """
     
     def __init__(self):
+        # Get CORS origins from settings (environment-aware)
+        cors_origins = settings.get_socketio_cors_origins()
+        
+        # Log CORS configuration
+        if cors_origins == ["*"]:
+            logger.warning("⚠️ Socket.IO CORS set to wildcard - only for development")
+        else:
+            logger.info(f"🔒 Socket.IO CORS configured for {len(cors_origins)} origin(s)")
+        
         # Create Socket.IO server with CORS support
+        # IMPORTANT: For credential-based auth, cannot use wildcard in production
         self.sio = socketio.AsyncServer(
             async_mode='asgi',
-            cors_allowed_origins='*',  # Configure per environment
-            logger=False,
+            cors_allowed_origins=cors_origins,
+            cors_credentials=True,  # Allow credentials (cookies, auth headers)
+            logger=settings.environment == "development",
             engineio_logger=False,
             ping_timeout=60,
             ping_interval=25,
-            max_http_buffer_size=1000000
+            max_http_buffer_size=1000000,
+            # Transport fallback: WebSocket first, then polling
+            # This ensures compatibility with restrictive network environments
+            transports=['websocket', 'polling'],
         )
         
         # Track connections: {sid: {user_id, connected_at, last_ping}}
@@ -82,40 +104,69 @@ class SocketIOManager:
         
         @self.sio.event
         async def authenticate(sid, data):
-            """Authenticate user and join user-specific room."""
+            """
+            Authenticate user and join user-specific room.
+            Validates JWT token before allowing authenticated access.
+            """
             try:
+                from auth import decode_token
+                
                 user_id = data.get("user_id")
                 token = data.get("token")
                 
-                # TODO: Validate token with JWT service
-                # For now, simple validation
-                if user_id and token:
-                    # Update connection info
-                    self.connections[sid]["user_id"] = user_id
-                    
-                    # Add to user sessions
-                    if user_id not in self.user_sessions:
-                        self.user_sessions[user_id] = set()
-                    self.user_sessions[user_id].add(sid)
-                    
-                    # Join user-specific room
-                    await self.sio.enter_room(sid, f"user:{user_id}")
-                    
-                    logger.info(f"✅ User authenticated: {user_id} (sid: {sid})")
-                    
-                    await self.sio.emit('authenticated', {
-                        "success": True,
-                        "user_id": user_id
-                    }, room=sid)
-                else:
+                if not user_id or not token:
                     await self.sio.emit('auth_error', {
-                        "error": "Invalid credentials"
+                        "error": "Missing credentials",
+                        "code": "MISSING_CREDENTIALS"
                     }, room=sid)
+                    return
+                
+                # Validate JWT token
+                payload = decode_token(token)
+                
+                if not payload:
+                    logger.warning(f"❌ Invalid token for Socket.IO auth (sid: {sid})")
+                    await self.sio.emit('auth_error', {
+                        "error": "Invalid or expired token",
+                        "code": "INVALID_TOKEN"
+                    }, room=sid)
+                    return
+                
+                # Verify user_id matches token subject
+                token_user_id = payload.get("sub")
+                if token_user_id != user_id:
+                    logger.warning(f"❌ User ID mismatch in Socket.IO auth (sid: {sid})")
+                    await self.sio.emit('auth_error', {
+                        "error": "User ID mismatch",
+                        "code": "USER_MISMATCH"
+                    }, room=sid)
+                    return
+                
+                # Token is valid - authenticate the connection
+                self.connections[sid]["user_id"] = user_id
+                self.connections[sid]["authenticated_at"] = datetime.utcnow().isoformat()
+                
+                # Add to user sessions
+                if user_id not in self.user_sessions:
+                    self.user_sessions[user_id] = set()
+                self.user_sessions[user_id].add(sid)
+                
+                # Join user-specific room
+                await self.sio.enter_room(sid, f"user:{user_id}")
+                
+                logger.info(f"✅ User authenticated via Socket.IO: {user_id} (sid: {sid})")
+                
+                await self.sio.emit('authenticated', {
+                    "success": True,
+                    "user_id": user_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                }, room=sid)
             
             except Exception as e:
-                logger.error(f"Authentication error: {e}")
+                logger.error(f"Socket.IO authentication error: {e}")
                 await self.sio.emit('auth_error', {
-                    "error": "Authentication failed"
+                    "error": "Authentication failed",
+                    "code": "AUTH_ERROR"
                 }, room=sid)
         
         @self.sio.event

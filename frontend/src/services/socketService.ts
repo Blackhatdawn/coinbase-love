@@ -1,36 +1,79 @@
 /**
  * Socket.IO Service for Real-time Communication
- * Features:
+ * 
+ * Enterprise Features:
  * - Auto-reconnection with exponential backoff
  * - Heartbeat/ping-pong for connection health
- * - Event-based messaging
- * - Room subscriptions
+ * - Event-based messaging with type safety
+ * - Room subscriptions for targeted updates
+ * - Credential-based authentication
+ * - Transport fallback (WebSocket → Polling)
+ * 
+ * @version 2.0.0
  */
 
-import { io, Socket } from 'socket.io-client';
+import { io, Socket, ManagerOptions, SocketOptions } from 'socket.io-client';
 import { resolveApiBaseUrl, resolveSocketIoPath } from '@/lib/runtimeConfig';
 
-// Get backend URL from environment
-const getSocketURL = () => {
+// Connection configuration constants
+const CONNECTION_CONFIG = {
+  maxReconnectAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 10000,
+  timeout: 30000,
+  pingInterval: 25000,
+  pingTimeout: 60000,
+} as const;
+
+/**
+ * Resolve Socket.IO server URL
+ * Handles development proxy and production direct connections
+ */
+const getSocketURL = (): string => {
   const apiUrl = resolveApiBaseUrl();
   
-  // In development, use proxy
+  // In development with proxy, use current origin
   if (!apiUrl || apiUrl === '') {
-    return window.location.origin;
+    if (typeof window !== 'undefined') {
+      return window.location.origin;
+    }
+    return '';
   }
   
   return apiUrl;
 };
 
+/**
+ * Connection state for external monitoring
+ */
+export interface ConnectionStatus {
+  connected: boolean;
+  authenticated: boolean;
+  transport: 'websocket' | 'polling' | null;
+  reconnectAttempts: number;
+  lastPing: Date | null;
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private isConnecting = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private currentToken: string | null = null;
   private eventHandlers: Map<string, Set<Function>> = new Map();
+  private lastPing: Date | null = null;
+  private connectionStatus: ConnectionStatus = {
+    connected: false,
+    authenticated: false,
+    transport: null,
+    reconnectAttempts: 0,
+    lastPing: null,
+  };
   
   /**
-   * Initialize Socket.IO connection
+   * Initialize Socket.IO connection with optional authentication token
+   * 
+   * @param token - JWT token for authenticated connections
+   * @returns Socket instance
    */
   connect(token?: string): Socket {
     if (this.socket?.connected) {
@@ -44,21 +87,50 @@ class SocketService {
     }
     
     this.isConnecting = true;
+    this.currentToken = token || null;
     
     const socketURL = getSocketURL();
-    console.log(`[Socket] Connecting to ${socketURL}/socket.io/`);
+    const socketPath = resolveSocketIoPath();
     
-    this.socket = io(socketURL, {
-      path: resolveSocketIoPath(),
+    console.log(`[Socket] Connecting to ${socketURL}${socketPath}`);
+    
+    // Socket.IO client options optimized for production
+    const socketOptions: Partial<ManagerOptions & SocketOptions> = {
+      // Connection path
+      path: socketPath,
+      
+      // Transport configuration - WebSocket preferred, polling fallback
       transports: ['websocket', 'polling'],
+      upgrade: true,  // Allow transport upgrades
+      
+      // Reconnection settings with exponential backoff
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      timeout: 20000,
+      reconnectionDelay: CONNECTION_CONFIG.reconnectionDelay,
+      reconnectionDelayMax: CONNECTION_CONFIG.reconnectionDelayMax,
+      reconnectionAttempts: CONNECTION_CONFIG.maxReconnectAttempts,
+      
+      // Timeout settings
+      timeout: CONNECTION_CONFIG.timeout,
+      
+      // CRITICAL: Enable credentials for cross-origin cookie auth
+      withCredentials: true,
+      
+      // Auto connect on creation
       autoConnect: true,
+      
+      // Force new connection on reconnect (prevents stale connections)
+      forceNew: false,
+      
+      // Authentication token (if provided)
       auth: token ? { token } : undefined,
-    });
+      
+      // Extra headers for CORS
+      extraHeaders: {
+        'X-Client-Version': '2.0.0',
+      },
+    };
+    
+    this.socket = io(socketURL, socketOptions);
     
     this.setupEventHandlers();
     
@@ -66,43 +138,87 @@ class SocketService {
   }
   
   /**
-   * Setup Socket.IO event handlers
+   * Setup Socket.IO event handlers with enhanced logging and transport tracking
    */
   private setupEventHandlers() {
     if (!this.socket) return;
     
     // Connection events
     this.socket.on('connect', () => {
-      console.log('[Socket] ✅ Connected successfully');
+      const transport = this.socket?.io.engine?.transport?.name || 'unknown';
+      console.log(`[Socket] ✅ Connected successfully via ${transport}`);
+      
       this.isConnecting = false;
       this.reconnectAttempts = 0;
-      this.emit('connection', { status: 'connected' });
+      this.connectionStatus.connected = true;
+      this.connectionStatus.transport = transport as 'websocket' | 'polling';
+      this.connectionStatus.reconnectAttempts = 0;
+      
+      this.emit('connection', { 
+        status: 'connected', 
+        transport,
+        socketId: this.socket?.id 
+      });
+    });
+    
+    // Track transport upgrades (polling → websocket)
+    this.socket.io.engine?.on('upgrade', (transport) => {
+      console.log(`[Socket] ⬆️ Transport upgraded to ${transport.name}`);
+      this.connectionStatus.transport = transport.name as 'websocket' | 'polling';
+      this.emit('transport_upgrade', { transport: transport.name });
     });
     
     this.socket.on('disconnect', (reason) => {
       console.log(`[Socket] 🔴 Disconnected: ${reason}`);
       this.isConnecting = false;
-      this.emit('connection', { status: 'disconnected', reason });
+      this.connectionStatus.connected = false;
+      this.connectionStatus.authenticated = false;
+      this.connectionStatus.transport = null;
+      
+      // Handle specific disconnect reasons
+      const shouldReconnect = reason !== 'io server disconnect' && reason !== 'io client disconnect';
+      
+      this.emit('connection', { 
+        status: 'disconnected', 
+        reason,
+        willReconnect: shouldReconnect 
+      });
     });
     
     this.socket.on('connect_error', (error) => {
       console.error('[Socket] ❌ Connection error:', error.message);
       this.reconnectAttempts++;
+      this.connectionStatus.reconnectAttempts = this.reconnectAttempts;
       
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      // Log transport fallback info
+      const currentTransport = this.socket?.io.engine?.transport?.name;
+      if (currentTransport === 'polling') {
+        console.log('[Socket] ℹ️ Using HTTP polling (WebSocket may be blocked)');
+      }
+      
+      if (this.reconnectAttempts >= CONNECTION_CONFIG.maxReconnectAttempts) {
         console.log('[Socket] Max reconnection attempts reached');
-        this.emit('connection', { status: 'failed', error: error.message });
+        this.emit('connection', { 
+          status: 'failed', 
+          error: error.message,
+          attempts: this.reconnectAttempts 
+        });
       }
     });
     
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log(`[Socket] 🔄 Reconnected after ${attemptNumber} attempts`);
+      const transport = this.socket?.io.engine?.transport?.name || 'unknown';
+      console.log(`[Socket] 🔄 Reconnected after ${attemptNumber} attempts via ${transport}`);
       this.reconnectAttempts = 0;
-      this.emit('connection', { status: 'reconnected' });
+      this.connectionStatus.connected = true;
+      this.connectionStatus.transport = transport as 'websocket' | 'polling';
+      this.connectionStatus.reconnectAttempts = 0;
+      this.emit('connection', { status: 'reconnected', attempts: attemptNumber });
     });
     
     this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`[Socket] 🔄 Reconnection attempt ${attemptNumber}`);
+      console.log(`[Socket] 🔄 Reconnection attempt ${attemptNumber}/${CONNECTION_CONFIG.maxReconnectAttempts}`);
+      this.connectionStatus.reconnectAttempts = attemptNumber;
     });
     
     this.socket.on('reconnect_error', (error) => {
@@ -110,8 +226,13 @@ class SocketService {
     });
     
     this.socket.on('reconnect_failed', () => {
-      console.error('[Socket] ❌ Reconnection failed');
-      this.emit('connection', { status: 'failed', error: 'Reconnection failed' });
+      console.error('[Socket] ❌ Reconnection failed after all attempts');
+      this.connectionStatus.connected = false;
+      this.emit('connection', { 
+        status: 'failed', 
+        error: 'Reconnection failed',
+        attempts: this.reconnectAttempts 
+      });
     });
     
     // Server events
@@ -270,6 +391,31 @@ class SocketService {
    */
   getSocket(): Socket | null {
     return this.socket;
+  }
+  
+  /**
+   * Get current connection status
+   */
+  getConnectionStatus(): ConnectionStatus {
+    return { ...this.connectionStatus };
+  }
+  
+  /**
+   * Get current transport type (websocket or polling)
+   */
+  getTransport(): 'websocket' | 'polling' | null {
+    if (!this.socket?.connected) return null;
+    return (this.socket.io.engine?.transport?.name || null) as 'websocket' | 'polling' | null;
+  }
+  
+  /**
+   * Update authentication token for existing connection
+   */
+  updateToken(token: string) {
+    this.currentToken = token;
+    if (this.socket) {
+      this.socket.auth = { token };
+    }
   }
 }
 

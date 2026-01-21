@@ -1,11 +1,17 @@
 /**
  * Socket.IO Context Provider
  * Manages WebSocket connection state and provides hooks for components
+ * 
+ * Enterprise Features:
+ * - Automatic connection with credential-based auth
+ * - User authentication via JWT tokens
+ * - Transport fallback handling (WebSocket → Polling)
+ * - Connection health monitoring
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { Socket } from 'socket.io-client';
-import { socketService } from '@/services/socketService';
+import { socketService, ConnectionStatus } from '@/services/socketService';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -13,10 +19,12 @@ interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
   isAuthenticated: boolean;
+  connectionStatus: ConnectionStatus | null;
   subscribe: (channels: string[]) => void;
   unsubscribe: (channels: string[]) => void;
   on: (event: string, handler: Function) => void;
   off: (event: string, handler: Function) => void;
+  reconnect: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -38,6 +46,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
   
   // Initialize socket connection
   useEffect(() => {
@@ -46,30 +55,49 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const newSocket = socketService.connect(token);
     setSocket(newSocket);
     
-    // Connection status handler
+    // Connection status handler with enhanced logging
     const handleConnection = (data: any) => {
       if (data.status === 'connected' || data.status === 'reconnected') {
         setIsConnected(true);
-        console.log('[SocketProvider] Connected to WebSocket');
+        setConnectionStatus(socketService.getConnectionStatus());
+        
+        const transport = data.transport || socketService.getTransport();
+        console.log(`[SocketProvider] Connected via ${transport}`);
+        
+        // Notify if falling back to polling (might indicate firewall issues)
+        if (transport === 'polling') {
+          console.warn('[SocketProvider] Using HTTP polling - WebSocket may be blocked');
+        }
       } else if (data.status === 'disconnected') {
         setIsConnected(false);
         setIsAuthenticated(false);
-        console.log('[SocketProvider] Disconnected from WebSocket');
+        setConnectionStatus(socketService.getConnectionStatus());
+        console.log(`[SocketProvider] Disconnected: ${data.reason || 'unknown'}`);
       } else if (data.status === 'failed') {
         setIsConnected(false);
-        console.error('[SocketProvider] Connection failed');
+        setConnectionStatus(socketService.getConnectionStatus());
+        console.error('[SocketProvider] Connection failed after retries');
       }
     };
     
+    // Transport upgrade handler
+    const handleTransportUpgrade = (data: any) => {
+      console.log(`[SocketProvider] Transport upgraded to ${data.transport}`);
+      setConnectionStatus(socketService.getConnectionStatus());
+    };
+    
     socketService.on('connection', handleConnection);
+    socketService.on('transport_upgrade', handleTransportUpgrade);
     
     // Cleanup on unmount
     return () => {
       socketService.off('connection', handleConnection);
+      socketService.off('transport_upgrade', handleTransportUpgrade);
       socketService.disconnect();
       setSocket(null);
       setIsConnected(false);
       setIsAuthenticated(false);
+      setConnectionStatus(null);
     };
   }, [token]);
   
@@ -164,14 +192,24 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     socketService.off(event, handler);
   }, []);
   
+  // Manual reconnect function
+  const reconnect = useCallback(() => {
+    console.log('[SocketProvider] Manual reconnect requested');
+    socketService.disconnect();
+    const newSocket = socketService.connect(token);
+    setSocket(newSocket);
+  }, [token]);
+  
   const value: SocketContextType = {
     socket,
     isConnected,
     isAuthenticated,
+    connectionStatus,
     subscribe,
     unsubscribe,
     on,
     off,
+    reconnect,
   };
   
   return (
