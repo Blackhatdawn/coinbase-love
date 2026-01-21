@@ -19,7 +19,7 @@ import sys
 import json
 
 # Configuration and database
-from config import settings, validate_startup_environment
+from config import settings, validate_startup_environment, get_settings
 from database import DatabaseConnection
 
 # Routers
