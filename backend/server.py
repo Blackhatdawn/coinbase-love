@@ -280,8 +280,8 @@ class RateLimitHeadersMiddleware:
                 
                 # Add rate limit headers
                 rate_limit_headers = [
-                    (b"x-ratelimit-limit", str(settings.rate_limit_per_minute).encode()),
-                    (b"x-ratelimit-policy", f"{settings.rate_limit_per_minute};w=60".encode()),
+                    (b"x-ratelimit-limit", str(settings.rate_limit_requests_per_minute).encode()),
+                    (b"x-ratelimit-policy", f"{settings.rate_limit_requests_per_minute};w=60".encode()),
                 ]
                 
                 # Append new headers (don't convert to dict which removes duplicates)
