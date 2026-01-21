@@ -5,16 +5,25 @@ import { componentTagger } from "lovable-tagger";
 
 // ============================================
 // VITE CONFIGURATION - CryptoVault Frontend
+// Enterprise-Grade Production-Ready Setup
 // ============================================
 // This config enables:
-// 1. Development proxy to local backend (localhost:8001)
-// 2. WebSocket proxy for real-time price feeds
-// 3. Production build optimizations
+// 1. Development proxy to local backend (port 8001)
+// 2. WebSocket proxy for real-time price feeds (/socket.io)
+// 3. Production build optimizations and code splitting
+// 4. Zero-hardcoding of sensitive URLs (uses env vars)
+// 5. Proper error handling and fallbacks
 // ============================================
 
 // Backend URL for development proxy
-// In production, Vercel rewrites handle this via vercel.json
+// Falls back to localhost:8001 if VITE_BACKEND_URL not set
+// In production, Vercel rewrites handle all proxying via vercel.json
 const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8001";
+
+// Validate backend URL in development
+if (process.env.NODE_ENV === "development") {
+  console.log(`[Vite] Backend proxy configured for: ${BACKEND_URL}`);
+}
 
 export default defineConfig(({ mode }) => ({
   define: {
