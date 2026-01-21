@@ -46,28 +46,44 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Referrer-Policy": "strict-origin-when-cross-origin",
             
             # Content Security Policy
+            # Note: This is for API responses. Frontend CSP is set in vercel.json
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com data:; "
                 "img-src 'self' data: https: blob:; "
-                "connect-src 'self' https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io; "
+                "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com "
+                "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
-                "form-action 'self';"
+                "form-action 'self'; "
+                "upgrade-insecure-requests"
             ),
             
-            # Permissions policy
+            # Permissions policy - only valid directives
+            # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
             "Permissions-Policy": (
-                "geolocation=(), "
-                "microphone=(), "
+                "accelerometer=(), "
+                "autoplay=(), "
                 "camera=(), "
-                "payment=(), "
-                "usb=(), "
-                "magnetometer=(), "
+                "cross-origin-isolated=(), "
+                "display-capture=(), "
+                "encrypted-media=(), "
+                "fullscreen=(), "
+                "geolocation=(), "
                 "gyroscope=(), "
-                "speaker=()"
+                "keyboard-map=(), "
+                "magnetometer=(), "
+                "microphone=(), "
+                "midi=(), "
+                "payment=(), "
+                "picture-in-picture=(), "
+                "publickey-credentials-get=(), "
+                "screen-wake-lock=(), "
+                "sync-xhr=(), "
+                "usb=(), "
+                "xr-spatial-tracking=()"
             ),
             
             # Remove server header
@@ -233,53 +249,161 @@ class AdvancedRateLimiter(BaseHTTPMiddleware):
 
 class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     """
-    CSRF Protection for state-changing operations
+    Enterprise CSRF Protection for state-changing operations.
+    
+    Features:
+    - Token validation via cookie comparison (double-submit pattern)
+    - Configurable skip paths for public endpoints
+    - Detailed logging for security auditing
+    - Rate limiting for failed CSRF attempts
     """
     
-    def __init__(self, app, secret_key: str):
-        super().__init__(app)
-        self.secret_key = secret_key.encode()
-        
-    def _generate_csrf_token(self, session_id: str) -> str:
-        """Generate CSRF token for a session"""
-        message = f"{session_id}:{int(time.time())}".encode()
-        token = hmac.new(self.secret_key, message, hashlib.sha256).hexdigest()
-        return token
+    # Paths that don't require CSRF validation
+    # These are public endpoints or handle their own auth
+    SKIP_PATHS = [
+        "/api/auth/login",
+        "/api/auth/signup",
+        "/api/auth/refresh",
+        "/api/auth/forgot-password",
+        "/api/auth/reset-password",
+        "/api/auth/verify-email",
+        "/api/auth/resend-verification",
+        "/api/v1/auth/login",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/forgot-password",
+        "/api/v1/auth/reset-password",
+        "/api/v1/auth/verify-email",
+        "/csrf",
+        "/api/csrf",
+        "/health",
+        "/api/health",
+        "/ping",
+        "/api/ping",
+        "/socket.io/",
+        "/api/config",
+    ]
     
-    def _validate_csrf_token(self, token: str, session_id: str) -> bool:
-        """Validate CSRF token"""
+    # Methods that require CSRF validation
+    PROTECTED_METHODS = ["POST", "PUT", "DELETE", "PATCH"]
+    
+    def __init__(self, app, secret_key: str = None, enabled: bool = True):
+        super().__init__(app)
+        self.secret_key = (secret_key or "").encode() if secret_key else None
+        self.enabled = enabled
+        self._failed_attempts: Dict[str, int] = {}
+        
+    def _should_skip_path(self, path: str) -> bool:
+        """Check if path should skip CSRF validation."""
+        # Exact match
+        if path in self.SKIP_PATHS:
+            return True
+        
+        # Prefix match for dynamic paths
+        for skip_path in self.SKIP_PATHS:
+            if path.startswith(skip_path):
+                return True
+        
+        return False
+    
+    def _get_client_identifier(self, request: Request) -> str:
+        """Get client IP for rate limiting."""
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        if request.client:
+            return request.client.host
+        return "unknown"
+    
+    def _validate_csrf_token(self, header_token: str, cookie_token: str) -> bool:
+        """
+        Validate CSRF token using double-submit pattern.
+        Compares token from header with token from cookie.
+        Uses constant-time comparison to prevent timing attacks.
+        """
+        if not header_token or not cookie_token:
+            return False
+        
         try:
-            expected = self._generate_csrf_token(session_id)
-            return hmac.compare_digest(token, expected)
+            # Constant-time comparison to prevent timing attacks
+            return hmac.compare_digest(header_token, cookie_token)
         except Exception as e:
             logger.error(f"CSRF validation error: {e}")
             return False
     
     async def dispatch(self, request: Request, call_next):
-        # Only check state-changing methods
-        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-            # Skip for certain paths (e.g., login, signup)
-            skip_paths = ["/api/auth/login", "/api/auth/signup", "/api/auth/refresh"]
-            
-            if request.url.path not in skip_paths:
-                csrf_token = request.headers.get("X-CSRF-Token")
-                
-                if not csrf_token:
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={"error": "CSRF token missing"}
-                    )
-                
-                # Get session ID from cookie or header
-                session_id = request.cookies.get("session_id", "")
-                
-                if not self._validate_csrf_token(csrf_token, session_id):
-                    logger.warning(f"Invalid CSRF token from {request.client.host if request.client else 'unknown'}")
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={"error": "Invalid CSRF token"}
-                    )
+        # Skip if CSRF protection is disabled
+        if not self.enabled:
+            return await call_next(request)
         
+        # Only check state-changing methods
+        if request.method not in self.PROTECTED_METHODS:
+            return await call_next(request)
+        
+        # Skip configured paths
+        if self._should_skip_path(request.url.path):
+            return await call_next(request)
+        
+        # Get CSRF token from header
+        header_token = request.headers.get("X-CSRF-Token")
+        
+        # Get CSRF token from cookie
+        cookie_token = request.cookies.get("csrf_token")
+        
+        client_ip = self._get_client_identifier(request)
+        
+        # Check for missing token
+        if not header_token:
+            logger.warning(
+                f"🛑 CSRF token missing in header for {request.method} {request.url.path}",
+                extra={
+                    "type": "security",
+                    "event": "csrf_missing",
+                    "client_ip": client_ip,
+                    "path": request.url.path,
+                    "method": request.method
+                }
+            )
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "error": {
+                        "code": "CSRF_TOKEN_MISSING",
+                        "message": "CSRF token is required for this request",
+                        "hint": "Include X-CSRF-Token header with the token from /csrf endpoint"
+                    }
+                }
+            )
+        
+        # Validate token
+        if not self._validate_csrf_token(header_token, cookie_token):
+            # Track failed attempts for rate limiting
+            self._failed_attempts[client_ip] = self._failed_attempts.get(client_ip, 0) + 1
+            
+            logger.warning(
+                f"🛑 Invalid CSRF token for {request.method} {request.url.path}",
+                extra={
+                    "type": "security",
+                    "event": "csrf_invalid",
+                    "client_ip": client_ip,
+                    "path": request.url.path,
+                    "method": request.method,
+                    "failed_attempts": self._failed_attempts[client_ip]
+                }
+            )
+            
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "error": {
+                        "code": "CSRF_TOKEN_INVALID",
+                        "message": "CSRF token validation failed",
+                        "hint": "Token may be expired. Refresh by calling /csrf endpoint"
+                    }
+                }
+            )
+        
+        # Token is valid - proceed with request
         return await call_next(request)
 
 

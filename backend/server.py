@@ -182,7 +182,11 @@ class RequestIDMiddleware:
 
 
 class SecurityHeadersMiddleware:
-    """Add security headers to all responses."""
+    """
+    Add security headers to all responses.
+    These are baseline security headers applied to every response.
+    More comprehensive headers are added by middleware/security.py for specific routes.
+    """
     
     def __init__(self, app):
         self.app = app
@@ -195,13 +199,20 @@ class SecurityHeadersMiddleware:
             if message["type"] == "http.response.start":
                 headers = dict(message.get("headers", []))
                 
+                # Baseline security headers - valid values per HTTP spec
                 security_headers = {
-                    b"strict-transport-security": b"max-age=31536000; includeSubDomains",
+                    # HSTS with preload - force HTTPS for 1 year
+                    b"strict-transport-security": b"max-age=31536000; includeSubDomains; preload",
+                    # Prevent clickjacking
                     b"x-frame-options": b"DENY",
+                    # Prevent MIME sniffing
                     b"x-content-type-options": b"nosniff",
+                    # Legacy XSS protection (modern browsers use CSP)
                     b"x-xss-protection": b"1; mode=block",
+                    # Control referrer information
                     b"referrer-policy": b"strict-origin-when-cross-origin",
-                    b"permissions-policy": b"geolocation=(), microphone=(), camera=()",
+                    # Disable unused browser features - valid directives only
+                    b"permissions-policy": b"geolocation=(), microphone=(), camera=(), payment=(), usb=()",
                 }
                 
                 headers.update(security_headers)
@@ -401,11 +412,16 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # ============================================
-# CORS CONFIGURATION
+# CORS CONFIGURATION - Enterprise Grade
 # ============================================
 
 # Get CORS origins from settings
 cors_origins = settings.get_cors_origins_list()
+
+# Log CORS configuration at startup
+logger.info("=" * 60)
+logger.info("🌐 CORS CONFIGURATION")
+logger.info("=" * 60)
 
 # Important: When using allow_credentials=True with cross-site auth, cannot use ["*"]
 # Browsers will reject credentialed requests with wildcard CORS
@@ -417,18 +433,60 @@ if cors_origins == ["*"]:
             "with cross-origin requests. For production, set CORS_ORIGINS to specific origins."
         )
     else:
-        logger.warning(
-            "⚠️ Wildcard CORS detected - authentication may fail in cross-origin scenarios"
+        logger.error(
+            "🛑 PRODUCTION: Wildcard CORS detected - this is a security risk! "
+            "Set CORS_ORIGINS to specific frontend domains."
         )
+else:
+    logger.info(f"   Allowed Origins: {len(cors_origins)} configured")
+    for origin in cors_origins[:3]:  # Log first 3 for brevity
+        logger.info(f"     - {origin}")
+    if len(cors_origins) > 3:
+        logger.info(f"     ... and {len(cors_origins) - 3} more")
+
+logger.info(f"   Credentials: Enabled (cookie-based auth)")
+logger.info(f"   Max Age: 3600 seconds (preflight caching)")
+logger.info("=" * 60)
+
+# Define allowed headers explicitly for security
+# These are custom headers that the frontend may send
+# Note: Simple headers (Accept, Content-Type, etc.) are allowed by default
+# Note: "Origin" is a forbidden header name and handled by browser automatically
+ALLOWED_HEADERS = [
+    "Authorization",          # Bearer tokens (JWT)
+    "Content-Type",           # Required for JSON payloads
+    "Accept",                 # Content negotiation
+    "Accept-Language",        # Localization
+    "Accept-Encoding",        # Compression negotiation
+    "X-Requested-With",       # XMLHttpRequest indicator
+    "X-CSRF-Token",           # CSRF protection token
+    "X-Request-ID",           # Request correlation/tracing
+    "Cache-Control",          # Caching directives
+    "Pragma",                 # HTTP/1.0 cache control
+    "If-Match",               # Conditional requests (ETags)
+    "If-None-Match",          # Conditional requests (ETags)
+]
+
+# Define exposed headers (headers the browser can access)
+EXPOSED_HEADERS = [
+    "X-Request-ID",           # Request correlation
+    "X-RateLimit-Limit",      # Rate limit info
+    "X-RateLimit-Remaining",  # Remaining requests
+    "X-RateLimit-Reset",      # Reset timestamp
+    "X-RateLimit-Policy",     # Rate limit policy
+    "Retry-After",            # When to retry (429 responses)
+    "Content-Disposition",    # File downloads
+    "X-Total-Count",          # Pagination total
+]
 
 # Apply CORS middleware with credentials for authenticated endpoints
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,  # Required for session/cookie auth
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token", "Accept", "Accept-Language"],
-    expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=ALLOWED_HEADERS,
+    expose_headers=EXPOSED_HEADERS,
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
@@ -466,7 +524,8 @@ app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_s
 try:
     from middleware.security import (
         AdvancedRateLimiter,
-        RequestValidationMiddleware
+        RequestValidationMiddleware,
+        CSRFProtectionMiddleware
     )
     
     # Add advanced rate limiter (with burst protection and IP blocking)
@@ -481,7 +540,19 @@ try:
     # Add request validation middleware
     app.add_middleware(RequestValidationMiddleware)
     
-    logger.info("✅ Advanced security middleware enabled (burst protection & input validation)")
+    # Add CSRF protection middleware
+    # Enable in production, can be disabled for testing
+    csrf_enabled = settings.environment != "development" or settings.use_cross_site_cookies
+    app.add_middleware(
+        CSRFProtectionMiddleware,
+        secret_key=settings.csrf_secret or settings.jwt_secret,
+        enabled=csrf_enabled
+    )
+    
+    logger.info("✅ Advanced security middleware enabled:")
+    logger.info("   - Burst protection & IP blocking")
+    logger.info("   - Input validation")
+    logger.info(f"   - CSRF protection: {'ENABLED' if csrf_enabled else 'DISABLED (dev mode)'}")
 except ImportError as e:
     logger.warning(f"⚠️ Advanced security middleware not available: {e}")
 
@@ -617,25 +688,96 @@ async def health_check(request: Request):
 
 
 @app.get("/csrf", tags=["auth"])
+@app.get("/api/csrf", tags=["auth"])
 async def get_csrf_token(request: Request):
-    """Get CSRF token for form submissions."""
-    csrf_token = request.cookies.get("csrf_token")
-    if not csrf_token:
-        csrf_token = str(uuid.uuid4())
-        response = JSONResponse({"csrf_token": csrf_token})
-        same_site = "none" if settings.use_cross_site_cookies else "lax"
-        secure = (settings.environment == "production") or settings.use_cross_site_cookies
-        response.set_cookie(
-            key="csrf_token",
-            value=csrf_token,
-            httponly=True,
-            secure=secure,
-            samesite=same_site,
-            max_age=3600,
-            path="/"
-        )
-        return response
-    return {"csrf_token": csrf_token}
+    """
+    Get CSRF token for form submissions.
+    
+    Enterprise CSRF Protection:
+    - Generates cryptographically secure tokens
+    - Tokens are stored in HTTP-only cookies for security
+    - Also returned in response body for SPA architecture (store in memory, not localStorage)
+    - Tokens rotate every hour for enhanced security
+    - SameSite attribute prevents CSRF from third-party sites
+    
+    Usage:
+    1. Call this endpoint on app initialization
+    2. Store the returned token in memory (JavaScript variable)
+    3. Include the token in X-CSRF-Token header for POST/PUT/PATCH/DELETE requests
+    4. Token validation happens server-side for all non-idempotent requests
+    """
+    import secrets
+    import hashlib
+    from datetime import datetime
+    
+    # Check for existing valid token
+    existing_token = request.cookies.get("csrf_token")
+    existing_timestamp = request.cookies.get("csrf_timestamp")
+    
+    # Validate existing token age (rotate after 1 hour)
+    should_rotate = True
+    if existing_token and existing_timestamp:
+        try:
+            timestamp = float(existing_timestamp)
+            age = time.time() - timestamp
+            # Rotate if token is older than 1 hour (3600 seconds)
+            should_rotate = age > 3600
+        except (ValueError, TypeError):
+            should_rotate = True
+    
+    if existing_token and not should_rotate:
+        # Return existing valid token
+        return {
+            "csrf_token": existing_token,
+            "expires_in": 3600 - int(time.time() - float(existing_timestamp)),
+            "message": "Existing token valid"
+        }
+    
+    # Generate new cryptographically secure CSRF token
+    # Using secrets module for cryptographic randomness
+    random_bytes = secrets.token_bytes(32)
+    timestamp = str(time.time())
+    
+    # Create token with embedded timestamp for validation
+    token_data = f"{random_bytes.hex()}:{timestamp}"
+    csrf_token = hashlib.sha256(token_data.encode()).hexdigest()
+    
+    # Build response with token
+    response = JSONResponse({
+        "csrf_token": csrf_token,
+        "expires_in": 3600,
+        "message": "New token generated"
+    })
+    
+    # Cookie settings based on environment
+    same_site = "none" if settings.use_cross_site_cookies else "lax"
+    secure = (settings.environment == "production") or settings.use_cross_site_cookies
+    
+    # Set CSRF token cookie (HTTP-only for security)
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=True,  # Prevent JavaScript access (XSS protection)
+        secure=secure,   # HTTPS only in production
+        samesite=same_site,
+        max_age=3600,    # 1 hour expiry
+        path="/"
+    )
+    
+    # Set timestamp cookie for rotation tracking
+    response.set_cookie(
+        key="csrf_timestamp",
+        value=timestamp,
+        httponly=True,
+        secure=secure,
+        samesite=same_site,
+        max_age=3600,
+        path="/"
+    )
+    
+    logger.info("🔐 New CSRF token generated", extra={"type": "csrf_generation"})
+    
+    return response
 
 
 @app.get("/api/socketio/stats", tags=["monitoring"])
