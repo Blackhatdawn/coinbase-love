@@ -40,6 +40,10 @@
       "destination": "https://cryptovault-api.onrender.com/api/openapi.json"
     },
     {
+      "source": "/api/v1/:path*",
+      "destination": "https://cryptovault-api.onrender.com/api/v1/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://cryptovault-api.onrender.com/api/:path*"
     },
