@@ -103,6 +103,9 @@ class PriceStreamService:
         self.message_count = 0
         self.error_count = 0
         
+        # Current data source
+        self.current_source = "coincap"
+        
         # Tasks
         self._task: Optional[asyncio.Task] = None
         
@@ -169,6 +172,7 @@ class PriceStreamService:
         return {
             "enabled": self.is_enabled,
             "state": self.state.value,
+            "source": self.current_source,
             "is_running": self.is_running,
             "prices_cached": len(self.prices),
             "last_update": self.last_update.isoformat() if self.last_update else None,
