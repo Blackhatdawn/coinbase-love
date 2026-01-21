@@ -836,12 +836,13 @@ async def startup_event():
             raise
         
         # Connect to database
+        # Note: DatabaseConnection uses DATABASE_URL (MongoDB connection string)
         db_connection = DatabaseConnection(
-            mongo_url=settings.mongo_url,
-            db_name=settings.db_name,
-            max_pool_size=settings.mongo_max_pool_size,
-            min_pool_size=settings.mongo_min_pool_size,
-            server_selection_timeout_ms=settings.mongo_server_selection_timeout_ms
+            mongo_url=settings.database_url,
+            db_name="cryptovault",
+            max_pool_size=20,
+            min_pool_size=10,
+            server_selection_timeout_ms=5000
         )
         await db_connection.connect()
         
