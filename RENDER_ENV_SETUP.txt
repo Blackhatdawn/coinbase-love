@@ -1,0 +1,348 @@
+=================================================================
+RENDER.COM - ENVIRONMENT VARIABLES SETUP GUIDE
+=================================================================
+
+Your Backend Service: https://cryptovault-api.onrender.com
+Dashboard: https://dashboard.render.com
+
+=================================================================
+STEP 1: Go to Render Dashboard
+=================================================================
+
+1. Log in to https://dashboard.render.com
+2. Find your service: "cryptovault-api"
+3. Click on the service
+4. Go to "Environment" tab (in the left sidebar)
+
+=================================================================
+STEP 2: Add Environment Variables
+=================================================================
+
+Click "Add Environment Variable" button and paste each variable:
+
+-----------------------------------------------------------------
+APPLICATION SETTINGS
+-----------------------------------------------------------------
+
+Key: ENVIRONMENT
+Value: production
+
+Key: APP_NAME
+Value: CryptoVault
+
+Key: APP_VERSION
+Value: 2.0.0
+
+Key: DEBUG
+Value: false
+
+Key: APP_URL
+Value: https://www.cryptovault.financial
+
+Key: HOST
+Value: 0.0.0.0
+
+Key: PORT
+Value: 8000
+
+-----------------------------------------------------------------
+DATABASE (MongoDB Atlas)
+-----------------------------------------------------------------
+
+Key: MONGO_URL
+Value: mongodb+srv://team_db_user:mWPe3V6ZhoNNEWUk@cryptovaultcluster.vobw2w8.mongodb.net/?appName=CryptoVaultCluster
+
+Key: DB_NAME
+Value: cryptovault
+
+Key: MONGO_MAX_POOL_SIZE
+Value: 10
+
+Key: MONGO_TIMEOUT_MS
+Value: 5000
+
+-----------------------------------------------------------------
+CACHE (Redis via Upstash)
+-----------------------------------------------------------------
+
+Key: USE_REDIS
+Value: true
+
+Key: UPSTASH_REDIS_REST_URL
+Value: https://emerging-sponge-14455.upstash.io
+
+Key: UPSTASH_REDIS_REST_TOKEN
+Value: ATh3AAIncDE5OTMzNjFiM2M4NzA0NmEzOWQwOWE2MjgwODczMDNlM3AxMTQ0NTU
+
+Key: REDIS_PREFIX
+Value: cryptovault:
+
+-----------------------------------------------------------------
+SECURITY & AUTHENTICATION
+-----------------------------------------------------------------
+
+Key: JWT_SECRET
+Value: jmZgXmsOEx10hwWOIE6EvhCft56jew6PVSiSweq-JQI
+
+Key: JWT_ALGORITHM
+Value: HS256
+
+Key: ACCESS_TOKEN_EXPIRE_MINUTES
+Value: 30
+
+Key: REFRESH_TOKEN_EXPIRE_DAYS
+Value: 7
+
+Key: CSRF_SECRET
+Value: 9f5cb48d-aa6b-4923-a760-ce8065e4238d
+
+Key: USE_CROSS_SITE_COOKIES
+Value: true
+
+-----------------------------------------------------------------
+CORS CONFIGURATION
+-----------------------------------------------------------------
+
+Key: CORS_ORIGINS
+Value: https://www.cryptovault.financial,http://localhost:3000,http://127.0.0.1:3000
+
+-----------------------------------------------------------------
+EMAIL (SendGrid)
+-----------------------------------------------------------------
+
+Key: EMAIL_SERVICE
+Value: sendgrid
+
+Key: SENDGRID_API_KEY
+Value: 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
+
+Key: EMAIL_FROM
+Value: teams@cryptovault.financial
+
+Key: EMAIL_FROM_NAME
+Value: CryptoVault Financial
+
+Key: EMAIL_VERIFICATION_URL
+Value: https://cryptovault.financial/verify
+
+-----------------------------------------------------------------
+CRYPTO SERVICES
+-----------------------------------------------------------------
+
+Key: COINCAP_API_KEY
+Value: 68aa5a01aa84e5704a10f5d6f730dadd9381901161e06d07085fcca8587f41e3
+
+Key: COINCAP_RATE_LIMIT
+Value: 50
+
+Key: USE_MOCK_PRICES
+Value: false
+
+-----------------------------------------------------------------
+PAYMENT PROCESSING (NowPayments)
+-----------------------------------------------------------------
+
+Key: NOWPAYMENTS_API_KEY
+Value: ZKDVT1B-4WTMVAZ-KZ7E38G-GPNE8Q7
+
+Key: NOWPAYMENTS_IPN_SECRET
+Value: bEEgqlb1q+TF6ygQfNJ+fUJyWvARDJwp
+
+Key: NOWPAYMENTS_SANDBOX
+Value: false
+
+-----------------------------------------------------------------
+FIREBASE (Optional)
+-----------------------------------------------------------------
+
+Key: FIREBASE_CREDENTIALS_PATH
+Value: /app/backend/firebase-credentials.json
+
+-----------------------------------------------------------------
+ERROR TRACKING (Sentry)
+-----------------------------------------------------------------
+
+Key: SENTRY_DSN
+Value: https://bcb7c3a730f99e6fa758cd3e25edc327@o4510716875505664.ingest.us.sentry.io/4510716879503360
+
+Key: SENTRY_TRACES_SAMPLE_RATE
+Value: 0.1
+
+Key: SENTRY_PROFILES_SAMPLE_RATE
+Value: 0.1
+
+-----------------------------------------------------------------
+RATE LIMITING
+-----------------------------------------------------------------
+
+Key: RATE_LIMIT_PER_MINUTE
+Value: 60
+
+-----------------------------------------------------------------
+LOGGING
+-----------------------------------------------------------------
+
+Key: LOG_LEVEL
+Value: INFO
+
+=================================================================
+STEP 3: Save and Deploy
+=================================================================
+
+1. After adding all variables, click "Save"
+2. Render will show a message about restarting the service
+3. Click "Restart Service" button
+4. Wait for the service to restart (status shows "Live" with blue badge)
+
+=================================================================
+STEP 4: Verify Deployment
+=================================================================
+
+Once the service is running, test the endpoints:
+
+Health Check:
+curl https://cryptovault-api.onrender.com/ping
+Expected: { "status": "ok", "message": "pong" }
+
+Full Health:
+curl https://cryptovault-api.onrender.com/health
+Expected: { "status": "healthy", "database": "connected", ... }
+
+Configuration:
+curl https://cryptovault-api.onrender.com/api/config
+Expected: Configuration object
+
+Check Logs:
+1. Go to Logs tab in Render dashboard
+2. Look for: "✅ Environment Validated"
+3. Look for: "✅ Server startup complete!"
+
+=================================================================
+TROUBLESHOOTING
+=================================================================
+
+If you see errors in logs:
+
+❌ "STARTUP FAILED: Critical environment variables not configured"
+   → Check that all critical variables are set (JWT_SECRET, CSRF_SECRET, etc.)
+   → Restart the service after adding all variables
+
+❌ "Database connection timeout"
+   → Check MongoDB Atlas IP whitelist includes Render
+   → Verify MONGO_URL connection string is correct
+
+❌ "Cannot connect to Redis"
+   → Check UPSTASH_REDIS_REST_URL is correct
+   → Check UPSTASH_REDIS_REST_TOKEN is correct
+   → Test at https://console.upstash.io
+
+❌ "CORS error" in browser
+   → Check CORS_ORIGINS includes https://www.cryptovault.financial
+   → Restart the service after updating CORS_ORIGINS
+
+=================================================================
+TIPS
+=================================================================
+
+1. Copy-Paste:
+   - Easier to copy this whole block and paste one variable at a time
+   - This reduces typos
+
+2. Sensitive Variables:
+   - API keys and secrets are marked as sensitive
+   - Render hides them in logs (good for security)
+
+3. Restart After Changes:
+   - Always restart the service after updating environment variables
+   - Click "Restart Service" button in Render dashboard
+
+4. Verify After Deploy:
+   - Test health endpoints immediately after deployment
+   - Check logs for "Environment Validated" message
+   - Monitor logs for first 24 hours
+
+5. Backup Credentials:
+   - Keep a secure backup of these credentials
+   - Use a password manager (e.g., 1Password, Bitwarden)
+   - Never commit secrets to Git
+
+=================================================================
+QUICK COPY-PASTE BLOCK
+=================================================================
+
+If you want to paste all at once, here's the complete block:
+
+ENVIRONMENT=production
+APP_NAME=CryptoVault
+APP_VERSION=2.0.0
+DEBUG=false
+APP_URL=https://www.cryptovault.financial
+HOST=0.0.0.0
+PORT=8000
+MONGO_URL=mongodb+srv://team_db_user:mWPe3V6ZhoNNEWUk@cryptovaultcluster.vobw2w8.mongodb.net/?appName=CryptoVaultCluster
+DB_NAME=cryptovault
+MONGO_MAX_POOL_SIZE=10
+MONGO_TIMEOUT_MS=5000
+USE_REDIS=true
+UPSTASH_REDIS_REST_URL=https://emerging-sponge-14455.upstash.io
+UPSTASH_REDIS_REST_TOKEN=ATh3AAIncDE5OTMzNjFiM2M4NzA0NmEzOWQwOWE2MjgwODczMDNlM3AxMTQ0NTU
+REDIS_PREFIX=cryptovault:
+JWT_SECRET=jmZgXmsOEx10hwWOIE6EvhCft56jew6PVSiSweq-JQI
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+CSRF_SECRET=9f5cb48d-aa6b-4923-a760-ce8065e4238d
+USE_CROSS_SITE_COOKIES=true
+CORS_ORIGINS=https://www.cryptovault.financial,http://localhost:3000,http://127.0.0.1:3000
+EMAIL_SERVICE=sendgrid
+SENDGRID_API_KEY=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
+EMAIL_FROM=teams@cryptovault.financial
+EMAIL_FROM_NAME=CryptoVault Financial
+EMAIL_VERIFICATION_URL=https://cryptovault.financial/verify
+COINCAP_API_KEY=68aa5a01aa84e5704a10f5d6f730dadd9381901161e06d07085fcca8587f41e3
+COINCAP_RATE_LIMIT=50
+USE_MOCK_PRICES=false
+NOWPAYMENTS_API_KEY=ZKDVT1B-4WTMVAZ-KZ7E38G-GPNE8Q7
+NOWPAYMENTS_IPN_SECRET=bEEgqlb1q+TF6ygQfNJ+fUJyWvARDJwp
+NOWPAYMENTS_SANDBOX=false
+FIREBASE_CREDENTIALS_PATH=/app/backend/firebase-credentials.json
+SENTRY_DSN=https://bcb7c3a730f99e6fa758cd3e25edc327@o4510716875505664.ingest.us.sentry.io/4510716879503360
+SENTRY_TRACES_SAMPLE_RATE=0.1
+SENTRY_PROFILES_SAMPLE_RATE=0.1
+RATE_LIMIT_PER_MINUTE=60
+LOG_LEVEL=INFO
+
+=================================================================
+SUPPORT
+=================================================================
+
+If you need help:
+
+1. Check Render Logs:
+   - Service → Logs tab
+   - Look for error messages
+
+2. Check Frontend:
+   - Open https://www.cryptovault.financial in browser
+   - Open DevTools Console
+   - Look for CORS or network errors
+
+3. Test Endpoints:
+   - curl https://cryptovault-api.onrender.com/ping
+   - curl https://cryptovault-api.onrender.com/health
+
+4. Review Guides:
+   - RENDER_DEPLOYMENT_GUIDE.md - Full deployment guide
+   - CONFIGURATION_SUMMARY.md - Overview of all changes
+   - PRODUCTION_SETUP.md - Architecture and setup
+
+=================================================================
+STATUS: Ready for Production ✅
+=================================================================
+
+All configuration files are ready.
+Environment variables are documented.
+Backend service is configured.
+Frontend is pointing to your production backend.
+
+You're all set! 🚀
