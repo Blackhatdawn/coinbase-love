@@ -25,9 +25,13 @@ logger = logging.getLogger(__name__)
 # Try to import websockets, but gracefully handle if not available
 try:
     import websockets
+    import websockets.exceptions
     WEBSOCKETS_AVAILABLE = True
+    WEBSOCKETS_VERSION = getattr(websockets, '__version__', 'unknown')
+    logger.info(f"📦 websockets library version: {WEBSOCKETS_VERSION}")
 except ImportError:
     WEBSOCKETS_AVAILABLE = False
+    WEBSOCKETS_VERSION = None
     logger.warning("⚠️ websockets library not available - price streaming disabled")
 
 
@@ -202,15 +206,23 @@ class PriceStreamService:
                 logger.info("🔌 Connecting to CoinCap WebSocket...")
                 self._update_state(ConnectionState.CONNECTING)
                 
-                # Connect with API key header
-                headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+                # Build connection parameters
+                # Note: websockets 10.0+ uses 'additional_headers' instead of 'extra_headers'
+                connect_kwargs = {
+                    "ping_interval": 30,
+                    "ping_timeout": 15,
+                    "close_timeout": 10,
+                }
+                
+                # Add API key header if available
+                if self.api_key:
+                    connect_kwargs["additional_headers"] = {
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
                 
                 async with websockets.connect(
                     self.COINCAP_WS,
-                    extra_headers=headers,
-                    ping_interval=30,
-                    ping_timeout=15,
-                    close_timeout=10,
+                    **connect_kwargs
                 ) as websocket:
                     self.websocket = websocket
                     self._update_state(ConnectionState.CONNECTED)
@@ -227,6 +239,37 @@ class PriceStreamService:
                 logger.warning(f"⚠️ WebSocket closed: {e.code} - {e.reason}")
                 self._update_state(ConnectionState.DISCONNECTED)
                 self.reconnect_attempt += 1
+            
+            except websockets.exceptions.InvalidStatusCode as e:
+                logger.error(f"❌ WebSocket connection rejected: HTTP {e.status_code}")
+                self.error_count += 1
+                self._update_state(ConnectionState.DISCONNECTED)
+                # If we get 401/403, likely API key issue - don't retry as fast
+                if e.status_code in (401, 403):
+                    logger.warning("⚠️ Authentication error - check COINCAP_API_KEY")
+                    self.reconnect_attempt += 2  # Skip ahead to longer backoff
+                else:
+                    self.reconnect_attempt += 1
+            
+            except ConnectionRefusedError as e:
+                logger.error(f"❌ Connection refused: {e}")
+                self.error_count += 1
+                self._update_state(ConnectionState.DISCONNECTED)
+                self.reconnect_attempt += 1
+            
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ WebSocket connection timeout")
+                self._update_state(ConnectionState.DISCONNECTED)
+                self.reconnect_attempt += 1
+            
+            except TypeError as e:
+                # Catch API compatibility issues (e.g., wrong parameter names)
+                logger.error(f"❌ WebSocket API error (possible version incompatibility): {e}")
+                logger.error(f"   websockets version: {WEBSOCKETS_VERSION}")
+                self.error_count += 1
+                self._update_state(ConnectionState.DISABLED)
+                self.is_running = False  # Stop trying if there's an API issue
+                break
             
             except Exception as e:
                 logger.error(f"❌ WebSocket error: {type(e).__name__}: {e}")
