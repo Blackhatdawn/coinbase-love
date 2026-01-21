@@ -110,15 +110,23 @@ class PriceStreamService:
         # Current data source
         self.current_source = "coincap"
         
+        # Authorization tracking
+        self._auth_error_received = False
+        
         # Tasks
         self._task: Optional[asyncio.Task] = None
         
         if not self.is_enabled:
             logger.warning("⚠️ PriceStreamService disabled - websockets library not available")
         else:
-            api_status = "with API key" if self.api_key else "without API key (free tier)"
-            logger.info("🚀 PriceStreamService initialized %s (tracking %d assets)", 
-                       api_status, len(self.TRACKED_ASSETS))
+            if self.api_key:
+                logger.info("🚀 PriceStreamService initialized with API key (tracking %d assets)", 
+                           len(self.TRACKED_ASSETS))
+            else:
+                logger.warning("⚠️ PriceStreamService initialized WITHOUT API key")
+                logger.warning("   CoinCap now requires an API key for WebSocket access.")
+                logger.warning("   Get a free API key at: https://coincap.io/api-key")
+                logger.warning("   Set COINCAP_API_KEY in your environment to enable real-time prices.")
     
     async def start(self) -> None:
         """Start the price stream service"""
@@ -173,7 +181,7 @@ class PriceStreamService:
     
     def get_status(self) -> Dict:
         """Get service health status"""
-        return {
+        status = {
             "enabled": self.is_enabled,
             "state": self.state.value,
             "source": self.current_source,
@@ -183,6 +191,13 @@ class PriceStreamService:
             "message_count": self.message_count,
             "error_count": self.error_count,
         }
+        
+        # Add auth error info if applicable
+        if self._auth_error_received:
+            status["auth_error"] = True
+            status["auth_message"] = "CoinCap requires API key. Set COINCAP_API_KEY environment variable."
+        
+        return status
     
     async def _stream_loop(self) -> None:
         """Main streaming loop with automatic reconnection"""
@@ -233,7 +248,16 @@ class PriceStreamService:
                     async for message in websocket:
                         if not self.is_running:
                             break
-                        await self._process_message(message)
+                        
+                        # Process message and check for fatal errors
+                        should_continue = await self._process_message(message)
+                        
+                        if not should_continue:
+                            # Fatal error (e.g., auth error) - stop the service
+                            logger.error("🛑 Fatal error received from CoinCap - stopping service")
+                            self.is_running = False
+                            self._update_state(ConnectionState.DISABLED)
+                            break
             
             except websockets.exceptions.ConnectionClosed as e:
                 logger.warning(f"⚠️ WebSocket closed: {e.code} - {e.reason}")
@@ -277,16 +301,33 @@ class PriceStreamService:
                 self._update_state(ConnectionState.DISCONNECTED)
                 self.reconnect_attempt += 1
     
-    async def _process_message(self, message: str) -> None:
-        """Process WebSocket message"""
+    async def _process_message(self, message: str) -> bool:
+        """
+        Process WebSocket message.
+        
+        Returns:
+            True if message was processed successfully
+            False if a fatal error occurred (should stop the connection)
+        """
         try:
             data = json.loads(message)
             
-            # Check for error
+            # Check for error messages from CoinCap
             if "error" in data:
-                logger.error(f"❌ CoinCap error: {data['error']}")
-                return
+                error_msg = data['error']
+                logger.error(f"❌ CoinCap error: {error_msg}")
+                
+                # Check if this is an authorization error - this is fatal
+                if "Unauthorized" in error_msg or "API key" in error_msg.lower():
+                    logger.error("🔒 CoinCap requires an API key. Set COINCAP_API_KEY in environment.")
+                    logger.info("ℹ️ Get a free API key at https://coincap.io/api-key")
+                    self._auth_error_received = True
+                    return False  # Signal to stop the connection
+                
+                self.error_count += 1
+                return True  # Non-fatal error, continue listening
             
+            # Process price data
             for coin_id, price_str in data.items():
                 try:
                     self.prices[coin_id] = float(price_str)
@@ -296,11 +337,14 @@ class PriceStreamService:
             self.last_update = datetime.now()
             self.last_message_time = datetime.now()
             self.message_count += 1
+            return True
         
         except json.JSONDecodeError as e:
             logger.debug(f"⚠️ Invalid JSON: {e}")
+            return True
         except Exception as e:
             logger.warning(f"⚠️ Error processing message: {e}")
+            return True
     
     def _update_state(self, new_state: ConnectionState) -> None:
         """Update connection state with logging"""

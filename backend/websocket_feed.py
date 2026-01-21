@@ -144,6 +144,14 @@ class PriceFeedManager:
             logger.warning("⏱️ CoinCap API timeout")
             self.consecutive_errors += 1
             return {}
+        except httpx.ConnectError as e:
+            # DNS or connection errors - try fallback
+            if "Name or service not known" in str(e) or "getaddrinfo failed" in str(e):
+                logger.warning("🌐 DNS resolution failed for CoinCap API - possible network issue")
+            else:
+                logger.warning(f"🔌 Connection error: {e}")
+            self.consecutive_errors += 1
+            return {}
         except Exception as e:
             logger.error(f"Price fetch error: {e}")
             self.consecutive_errors += 1
