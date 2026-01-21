@@ -3,7 +3,7 @@
  */
 
 import * as Sentry from '@sentry/react';
-import { getRuntimeConfig, resolveSentryConfig } from './runtimeConfig';
+import { getRuntimeConfig, resolveSentryConfig } from '@/lib/runtimeConfig';
 
 // Initialize Sentry only in production and when DSN is available
 export const initSentry = () => {
@@ -28,8 +28,8 @@ export const initSentry = () => {
           // This setting controls which URLs Sentry adds trace headers to
           tracePropagationTargets: [
             'localhost',
-            /^https:\/\/cryptovault\.financial/,
-            /^https:\/\/cryptovault-api\.onrender\.com/,
+            /^https?:\/\/[^/]+\.financial/,  // Match any .financial domain
+            /^https?:\/\/[^/]+\.onrender\.com/,  // Match any .onrender.com domain
             /^\/api\//,  // Relative API paths
           ],
         }),
