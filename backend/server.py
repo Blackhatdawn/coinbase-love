@@ -533,7 +533,7 @@ except ImportError as e:
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitHeadersMiddleware)
-app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
+app.add_middleware(TimeoutMiddleware, timeout_seconds=30)  # 30-second request timeout
 
 # Import and add advanced security middleware from middleware/security.py
 try:
