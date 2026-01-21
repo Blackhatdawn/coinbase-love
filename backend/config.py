@@ -14,8 +14,8 @@ Usage:
     # Validate on startup
     validate_startup_environment()
     
-    print(settings.database_url)
-    print(settings.redis_url)
+    print(settings.mongo_url)
+    print(settings.upstash_redis_rest_url)
 """
 
 from typing import Optional, List
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     
     Environment variables override defaults.
     Priority order:
-    1. Environment variables (with CRYPTOVAULT_ prefix optional)
+    1. Environment variables
     2. .env file values
     3. Hardcoded defaults
     """
@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         description="Environment: development, staging, production"
     )
     debug: bool = Field(default=False, description="Enable debug mode")
+    app_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend application URL"
+    )
 
     # ============================================
     # SERVER CONFIGURATION
@@ -57,32 +61,33 @@ class Settings(BaseSettings):
         description="Server port (falls back to PORT env var for Render/Railway)"
     )
     workers: int = Field(default=4, description="Number of Gunicorn workers for production")
-    server_url: str = Field(
-        default="http://localhost:8000",
-        description="Local server URL"
-    )
-    public_server_url: str = Field(
-        default="https://api.cryptovault.com",
-        description="Public-facing API URL"
-    )
 
     # ============================================
-    # DATABASE CONFIGURATION
+    # MONGODB CONFIGURATION
     # ============================================
-    database_url: str = Field(
+    mongo_url: str = Field(
         default="mongodb://localhost:27017/cryptovault",
-        description="MongoDB connection URL"
+        description="MongoDB Atlas connection URL"
     )
-    db_pool_size: int = Field(default=20, description="Database connection pool size")
-    db_max_overflow: int = Field(default=10, description="Max overflow connections")
-    db_pool_timeout: int = Field(default=30, description="Connection timeout in seconds")
+    db_name: str = Field(default="cryptovault", description="Database name")
+    mongo_max_pool_size: int = Field(default=10, description="MongoDB connection pool size")
+    mongo_timeout_ms: int = Field(default=5000, description="MongoDB connection timeout in ms")
 
     # ============================================
     # REDIS / CACHE CONFIGURATION
     # ============================================
-    redis_url: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL"
+    use_redis: bool = Field(default=True, description="Enable Redis caching")
+    upstash_redis_rest_url: Optional[str] = Field(
+        default=None,
+        description="Upstash Redis REST API URL (for serverless environments)"
+    )
+    upstash_redis_rest_token: Optional[str] = Field(
+        default=None,
+        description="Upstash Redis REST API token"
+    )
+    redis_url: Optional[str] = Field(
+        default=None,
+        description="Traditional Redis URL (if not using Upstash)"
     )
     redis_prefix: str = Field(default="cryptovault:", description="Redis key prefix")
 
@@ -90,21 +95,20 @@ class Settings(BaseSettings):
     # SECURITY & AUTHENTICATION
     # ============================================
     jwt_secret: SecretStr = Field(
-        default="change-me-in-production-use-secure-random-string",
+        default="change-me-in-production",
         description="JWT signing secret key"
     )
-    jwt_expiration_hours: int = Field(default=24, description="JWT token expiration in hours")
-    jwt_refresh_expiration_days: int = Field(
-        default=7,
-        description="Refresh token expiration in days"
-    )
+    jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
+    access_token_expire_minutes: int = Field(default=30, description="Access token expiration in minutes")
+    refresh_token_expire_days: int = Field(default=7, description="Refresh token expiration in days")
+    
     csrf_secret: SecretStr = Field(
-        default="change-me-in-production-use-secure-random-string",
+        default="change-me-in-production",
         description="CSRF protection secret"
     )
-    password_algorithm: str = Field(
-        default="bcrypt",
-        description="Password hashing algorithm"
+    use_cross_site_cookies: bool = Field(
+        default=False,
+        description="Enable cross-site cookies for development"
     )
 
     # ============================================
@@ -114,33 +118,59 @@ class Settings(BaseSettings):
         default="http://localhost:3000,http://localhost:5173",
         description="Comma-separated list of allowed CORS origins"
     )
-    cors_credentials: bool = Field(
-        default=True,
-        description="Allow credentials in CORS requests"
-    )
-    cors_methods: List[str] = Field(
-        default=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        description="Allowed HTTP methods for CORS"
-    )
-    cors_headers: List[str] = Field(
-        default=["*"],
-        description="Allowed headers for CORS"
-    )
 
     # ============================================
     # EMAIL CONFIGURATION
     # ============================================
-    smtp_host: str = Field(default="smtp.gmail.com", description="SMTP server host")
-    smtp_port: int = Field(default=587, description="SMTP server port")
-    smtp_username: str = Field(default="", description="SMTP username")
-    smtp_password: SecretStr = Field(default="", description="SMTP password")
+    email_service: str = Field(default="sendgrid", description="Email service provider")
+    sendgrid_api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="SendGrid API key"
+    )
     email_from: str = Field(
-        default="noreply@cryptovault.com",
+        default="noreply@cryptovault.financial",
         description="Default sender email"
     )
-    email_support: str = Field(
-        default="support@cryptovault.com",
-        description="Support email address"
+    email_from_name: str = Field(
+        default="CryptoVault Financial",
+        description="Default sender name"
+    )
+    email_verification_url: str = Field(
+        default="https://cryptovault.financial/verify",
+        description="Email verification URL"
+    )
+
+    # ============================================
+    # EXTERNAL CRYPTO SERVICES
+    # ============================================
+    coincap_api_key: Optional[str] = Field(
+        default=None,
+        description="CoinCap API key"
+    )
+    coincap_rate_limit: int = Field(default=50, description="CoinCap API rate limit")
+    use_mock_prices: bool = Field(default=False, description="Use mock price data for testing")
+    
+    # NowPayments (Payment Processing)
+    nowpayments_api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="NowPayments API key"
+    )
+    nowpayments_ipn_secret: Optional[SecretStr] = Field(
+        default=None,
+        description="NowPayments IPN secret"
+    )
+    nowpayments_sandbox: bool = Field(default=False, description="Use NowPayments sandbox")
+
+    # ============================================
+    # FIREBASE CONFIGURATION
+    # ============================================
+    firebase_credentials_path: Optional[str] = Field(
+        default=None,
+        description="Path to Firebase credentials JSON file"
+    )
+    firebase_credential: Optional[str] = Field(
+        default=None,
+        description="Firebase credentials as JSON string (alternative to file)"
     )
 
     # ============================================
@@ -149,10 +179,6 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = Field(
         default=None,
         description="Sentry DSN for error tracking"
-    )
-    sentry_environment: Optional[str] = Field(
-        default=None,
-        description="Sentry environment name"
     )
     sentry_traces_sample_rate: float = Field(
         default=0.1,
@@ -164,80 +190,23 @@ class Settings(BaseSettings):
     )
 
     # ============================================
-    # EXTERNAL SERVICES
-    # ============================================
-    crypto_api_key: str = Field(default="", description="Cryptocurrency API key")
-    crypto_api_base_url: str = Field(
-        default="https://api.coingecko.com/api/v3",
-        description="Cryptocurrency API base URL"
-    )
-    eth_rpc_url: str = Field(
-        default="https://mainnet.infura.io/v3/",
-        description="Ethereum RPC endpoint"
-    )
-    polygon_rpc_url: str = Field(
-        default="https://polygon-rpc.com",
-        description="Polygon RPC endpoint"
-    )
-    sepolia_rpc_url: str = Field(
-        default="https://sepolia.infura.io/v3/",
-        description="Sepolia testnet RPC endpoint"
-    )
-
-    # ============================================
-    # FEATURE FLAGS
-    # ============================================
-    feature_2fa_enabled: bool = Field(default=True, description="Enable two-factor authentication")
-    feature_deposits_enabled: bool = Field(default=True, description="Enable deposits")
-    feature_withdrawals_enabled: bool = Field(default=True, description="Enable withdrawals")
-    feature_trading_enabled: bool = Field(default=True, description="Enable trading")
-    feature_staking_enabled: bool = Field(default=False, description="Enable staking")
-
-    # ============================================
     # RATE LIMITING
     # ============================================
-    rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
-    rate_limit_requests_per_minute: int = Field(
+    rate_limit_per_minute: int = Field(
         default=60,
         description="Requests allowed per minute"
-    )
-    rate_limit_requests_per_hour: int = Field(
-        default=1000,
-        description="Requests allowed per hour"
     )
 
     # ============================================
     # LOGGING
     # ============================================
     log_level: str = Field(default="INFO", description="Logging level")
-    log_format: str = Field(default="json", description="Log format: json or text")
-
-    # ============================================
-    # BACKGROUND JOBS (Celery)
-    # ============================================
-    celery_broker_url: str = Field(
-        default="redis://localhost:6379/1",
-        description="Celery broker URL"
-    )
-    celery_result_backend: str = Field(
-        default="redis://localhost:6379/2",
-        description="Celery result backend URL"
-    )
-
-    # ============================================
-    # MONITORING & OBSERVABILITY
-    # ============================================
-    health_check_enabled: bool = Field(default=True, description="Enable health checks")
-    metrics_enabled: bool = Field(default=True, description="Enable metrics collection")
-    metrics_port: int = Field(default=9090, description="Metrics server port")
 
     # Pydantic Settings configuration
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        # Support both with and without CRYPTOVAULT_ prefix
-        # env_prefix="CRYPTOVAULT_",  # Optional: use prefix for namespace
         extra="ignore",  # Ignore extra environment variables
     )
 
@@ -249,7 +218,6 @@ class Settings(BaseSettings):
     def validate_port(cls, v):
         """
         Validate port number. Supports PORT env var for Render/Railway compatibility.
-        Falls back to CRYPTOVAULT_PORT or CRYPTOVAULT_SERVER_PORT.
         """
         if v is None:
             return 8000
@@ -312,6 +280,18 @@ class Settings(BaseSettings):
         """Check if Sentry is configured."""
         return bool(self.sentry_dsn)
 
+    def get_redis_url(self) -> Optional[str]:
+        """
+        Get Redis URL from Upstash REST API or traditional Redis.
+        
+        Priority:
+        1. Upstash REST API (for serverless)
+        2. Traditional Redis URL
+        """
+        if self.upstash_redis_rest_url and self.upstash_redis_rest_token:
+            return self.upstash_redis_rest_url
+        return self.redis_url
+
     def to_dict(self, include_secrets: bool = False) -> dict:
         """
         Convert settings to dictionary.
@@ -326,7 +306,15 @@ class Settings(BaseSettings):
         
         if not include_secrets:
             # Redact secrets
-            secret_fields = {"jwt_secret", "csrf_secret", "smtp_password"}
+            secret_fields = {
+                "jwt_secret",
+                "csrf_secret",
+                "sendgrid_api_key",
+                "nowpayments_api_key",
+                "nowpayments_ipn_secret",
+                "upstash_redis_rest_token",
+                "firebase_credential"
+            }
             for field in secret_fields:
                 if field in data:
                     data[field] = "***REDACTED***"
@@ -339,9 +327,8 @@ class Settings(BaseSettings):
             f"<Settings "
             f"environment={self.environment} "
             f"app={self.app_name} "
-            f"v{self.app_version} "
-            f"host={self.host} "
-            f"port={self.port}>"
+            f"v={self.app_version} "
+            f"host={self.host}:{self.port}>"
         )
 
 
@@ -366,23 +353,25 @@ settings = get_settings()
 # STARTUP VALIDATION
 # ============================================
 
-def validate_startup_environment() -> None:
+def validate_startup_environment() -> dict:
     """
     Validate all critical environment variables on startup.
     
     This function should be called in your FastAPI startup event.
     Raises ValueError if critical configuration is missing in production.
+    
+    Returns:
+        Dictionary with validation results
     """
     critical_vars = {
         "jwt_secret": settings.jwt_secret,
         "csrf_secret": settings.csrf_secret,
-        "database_url": settings.database_url,
-        "redis_url": settings.redis_url,
+        "mongo_url": settings.mongo_url,
     }
 
     missing_vars = []
     for var_name, var_value in critical_vars.items():
-        if not var_value or var_value == "change-me-in-production-use-secure-random-string":
+        if not var_value or var_value == "change-me-in-production":
             if settings.is_production:
                 missing_vars.append(var_name)
 
@@ -401,11 +390,19 @@ def validate_startup_environment() -> None:
     print(f"   Environment: {settings.environment}")
     print(f"   App: {settings.app_name} v{settings.app_version}")
     print(f"   Host: {settings.host}:{settings.port}")
-    print(f"   Database: {settings.database_url[:50]}...")
-    print(f"   Redis: {settings.redis_url[:50]}...")
+    print(f"   Database: {settings.db_name}")
+    print(f"   Redis: {'Enabled (Upstash)' if settings.upstash_redis_rest_url else 'Enabled (Standard)' if settings.redis_url else 'Disabled'}")
+    print(f"   Email Service: {settings.email_service}")
     print(f"   CORS Origins: {', '.join(settings.get_cors_origins_list())}")
     if settings.is_sentry_available():
-        print(f"   Sentry: Enabled ({settings.sentry_environment})")
+        print(f"   Sentry: Enabled")
+    
+    return {
+        "status": "success",
+        "environment": settings.environment,
+        "app_name": settings.app_name,
+        "database": settings.db_name
+    }
 
 
 # ============================================
@@ -426,48 +423,65 @@ def test_configuration() -> None:
     print(f"  Version: {settings.app_version}")
     print(f"  Environment: {settings.environment}")
     print(f"  Debug: {settings.debug}")
+    print(f"  Frontend URL: {settings.app_url}")
 
     print("\nServer:")
     print(f"  Host: {settings.host}")
     print(f"  Port: {settings.port}")
     print(f"  Workers: {settings.workers}")
-    print(f"  Public URL: {settings.public_server_url}")
 
-    print("\nDatabase:")
-    print(f"  URL: {settings.database_url[:60]}...")
-    print(f"  Pool Size: {settings.db_pool_size}")
-    print(f"  Max Overflow: {settings.db_max_overflow}")
+    print("\nDatabase (MongoDB):")
+    print(f"  URL: {settings.mongo_url[:60]}...")
+    print(f"  Database: {settings.db_name}")
+    print(f"  Max Pool Size: {settings.mongo_max_pool_size}")
+    print(f"  Timeout: {settings.mongo_timeout_ms}ms")
 
     print("\nCache (Redis):")
-    print(f"  URL: {settings.redis_url[:60]}...")
+    if settings.use_redis:
+        if settings.upstash_redis_rest_url:
+            print(f"  Provider: Upstash REST API")
+            print(f"  URL: {settings.upstash_redis_rest_url[:60]}...")
+        elif settings.redis_url:
+            print(f"  Provider: Standard Redis")
+            print(f"  URL: {settings.redis_url[:60]}...")
+        else:
+            print(f"  Status: Redis disabled (use_redis=false)")
+    else:
+        print(f"  Status: Redis disabled")
     print(f"  Prefix: {settings.redis_prefix}")
 
     print("\nSecurity:")
+    print(f"  JWT Algorithm: {settings.jwt_algorithm}")
     print(f"  JWT Secret: {'✓ Set' if settings.jwt_secret else '✗ Not set'}")
-    print(f"  JWT Expiration: {settings.jwt_expiration_hours} hours")
+    print(f"  Access Token Expiry: {settings.access_token_expire_minutes} minutes")
+    print(f"  Refresh Token Expiry: {settings.refresh_token_expire_days} days")
     print(f"  CSRF Secret: {'✓ Set' if settings.csrf_secret else '✗ Not set'}")
 
     print("\nCORS:")
     print(f"  Origins: {', '.join(settings.get_cors_origins_list())}")
-    print(f"  Credentials: {settings.cors_credentials}")
-    print(f"  Methods: {', '.join(settings.cors_methods)}")
 
     print("\nEmail:")
-    print(f"  SMTP Host: {settings.smtp_host}:{settings.smtp_port}")
+    print(f"  Service: {settings.email_service}")
     print(f"  From: {settings.email_from}")
-    print(f"  Support: {settings.email_support}")
+    print(f"  From Name: {settings.email_from_name}")
+    print(f"  Verification URL: {settings.email_verification_url}")
+    if settings.sendgrid_api_key:
+        print(f"  SendGrid: ✓ Configured")
+
+    print("\nExternal Services:")
+    print(f"  CoinCap API: {'✓ Configured' if settings.coincap_api_key else '✗ Not configured'}")
+    print(f"  NowPayments: {'✓ Configured' if settings.nowpayments_api_key else '✗ Not configured'}")
+    print(f"  Firebase: {'✓ Configured' if (settings.firebase_credentials_path or settings.firebase_credential) else '✗ Not configured'}")
+    print(f"  Mock Prices: {settings.use_mock_prices}")
+
+    print("\nRate Limiting:")
+    print(f"  Requests/Minute: {settings.rate_limit_per_minute}")
 
     print("\nMonitoring:")
     print(f"  Sentry: {'✓ Enabled' if settings.is_sentry_available() else '✗ Disabled'}")
-    print(f"  Metrics: {'✓ Enabled' if settings.metrics_enabled else '✗ Disabled'}")
-    print(f"  Health Checks: {'✓ Enabled' if settings.health_check_enabled else '✗ Disabled'}")
-
-    print("\nFeatures:")
-    print(f"  2FA: {'✓' if settings.feature_2fa_enabled else '✗'}")
-    print(f"  Deposits: {'✓' if settings.feature_deposits_enabled else '✗'}")
-    print(f"  Withdrawals: {'✓' if settings.feature_withdrawals_enabled else '✗'}")
-    print(f"  Trading: {'✓' if settings.feature_trading_enabled else '✗'}")
-    print(f"  Staking: {'✓' if settings.feature_staking_enabled else '✗'}")
+    if settings.is_sentry_available():
+        print(f"  Traces Sample Rate: {settings.sentry_traces_sample_rate}")
+        print(f"  Profiles Sample Rate: {settings.sentry_profiles_sample_rate}")
 
     print("\n" + "=" * 70 + "\n")
 
