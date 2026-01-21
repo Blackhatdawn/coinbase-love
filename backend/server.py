@@ -546,7 +546,7 @@ try:
     # Add advanced rate limiter (with burst protection and IP blocking)
     app.add_middleware(
         AdvancedRateLimiter,
-        default_limit=settings.rate_limit_per_minute,
+        default_limit=settings.rate_limit_requests_per_minute,
         window_seconds=60,
         block_duration=15,  # Block IPs for 15 minutes on burst attack
         burst_threshold=10   # 10 requests in 1 second = burst
