@@ -43,6 +43,32 @@ async def create_indexes(db: AsyncIOMotorDatabase):
             ("locked_until", ASCENDING),
             ("failed_login_attempts", ASCENDING)
         ])
+
+        # Token lookup indexes (email verification & password reset)
+        await users_collection.create_index(
+            [("email_verification_token", ASCENDING)],
+            sparse=True
+        )
+        await users_collection.create_index(
+            [("email_verification_code", ASCENDING)],
+            sparse=True
+        )
+        await users_collection.create_index(
+            [("password_reset_token", ASCENDING)],
+            sparse=True
+        )
+
+        # TTL indexes for temporary tokens
+        await users_collection.create_index(
+            [("email_verification_expires", ASCENDING)],
+            expireAfterSeconds=0,
+            partialFilterExpression={"email_verification_expires": {"$type": "date"}}
+        )
+        await users_collection.create_index(
+            [("password_reset_expires", ASCENDING)],
+            expireAfterSeconds=0,
+            partialFilterExpression={"password_reset_expires": {"$type": "date"}}
+        )
         
         logger.info("✅ Users indexes created")
         
@@ -304,10 +330,10 @@ async def create_indexes(db: AsyncIOMotorDatabase):
         # Index for resource lookup
         await audit_logs_collection.create_index([("resource", ASCENDING)])
         
-        # TTL index for old audit logs (delete after 1 year)
+        # TTL index for old audit logs (delete after 7 years)
         await audit_logs_collection.create_index(
             [("created_at", ASCENDING)],
-            expireAfterSeconds=365 * 24 * 60 * 60  # 1 year
+            expireAfterSeconds=7 * 365 * 24 * 60 * 60  # 7 years
         )
         
         logger.info("✅ Audit logs indexes created")
