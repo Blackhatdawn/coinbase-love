@@ -45,8 +45,8 @@ export const LivePriceTicker = () => {
 
   if (isLoading || prices.length === 0) {
     return (
-      <div className="bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-sm border-y border-gold-500/20 py-3 overflow-hidden">
-        <div className="animate-pulse flex gap-8 px-4">
+      <div className="bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-sm border-y border-gold-500/20 py-2 sm:py-3 overflow-hidden">
+        <div className="animate-pulse flex gap-6 sm:gap-8 px-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2 whitespace-nowrap">
               <div className="h-4 w-12 bg-gold-500/10 rounded" />
@@ -62,7 +62,7 @@ export const LivePriceTicker = () => {
   const duplicatedPrices = [...prices, ...prices, ...prices];
 
   return (
-    <div className="bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-sm border-y border-gold-500/20 py-3 overflow-hidden relative group">
+    <div className="bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-sm border-y border-gold-500/20 py-2 sm:py-3 overflow-hidden relative group">
       <style>{`
         @keyframes scroll {
           0% { transform: translateX(0); }
@@ -90,15 +90,15 @@ export const LivePriceTicker = () => {
         }
       `}</style>
       
-      <div className="ticker-scroll flex gap-8">
+      <div className="ticker-scroll flex gap-6 sm:gap-8">
         {duplicatedPrices.map((crypto, index) => {
           const isPriceUp = crypto.previousPrice !== undefined && crypto.price > crypto.previousPrice;
           const isPriceDown = crypto.previousPrice !== undefined && crypto.price < crypto.previousPrice;
           
           return (
-            <div 
-              key={`${crypto.symbol}-${index}`} 
-              className="flex items-center gap-3 whitespace-nowrap text-sm font-mono group/item"
+            <div
+              key={`${crypto.symbol}-${index}`}
+              className="flex items-center gap-3 whitespace-nowrap text-xs sm:text-sm font-mono group/item"
             >
               <span className="font-bold text-gold-400 group-hover/item:text-gold-300 transition-colors">
                 {crypto.symbol}

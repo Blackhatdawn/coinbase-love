@@ -81,30 +81,30 @@ const stats = [
 
 const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
   <div 
-    className="glass-card p-6 sm:p-6 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 h-full flex flex-col"
+    className="glass-card p-4 sm:p-5 rounded-xl border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 h-full flex flex-col"
     data-testid={`testimonial-${testimonial.id}`}
   >
     {/* Rating Stars */}
-    <div className="flex gap-1 mb-4">
+    <div className="flex gap-1 mb-3 sm:mb-4">
       {Array.from({ length: testimonial.rating }).map((_, i) => (
-        <Star key={i} className="h-5 w-5 fill-gold-400 text-gold-400" />
+        <Star key={i} className="h-4 w-4 sm:h-5 sm:w-5 fill-gold-400 text-gold-400" />
       ))}
     </div>
     
     {/* Content - Improved readability */}
-    <p className="text-[15px] sm:text-base text-foreground/75 mb-6 flex-1 leading-relaxed">
+    <p className="text-sm sm:text-[15px] text-foreground/75 mb-4 sm:mb-6 flex-1 leading-relaxed">
       "{testimonial.content}"
     </p>
     
     {/* Author */}
-    <div className="flex items-center gap-3 pt-4 border-t border-border/30">
+    <div className="flex items-center gap-3 pt-3 sm:pt-4 border-t border-border/30">
       <img 
         src={testimonial.avatar} 
         alt={testimonial.name}
-        className="h-12 w-12 rounded-full bg-gold-500/20"
+        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gold-500/20"
       />
       <div className="flex-1">
-        <div className="font-semibold text-[15px] flex items-center gap-2 text-foreground">
+        <div className="font-semibold text-sm sm:text-[15px] flex items-center gap-2 text-foreground">
           {testimonial.name}
           <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500/20 border border-blue-500/50">
             <svg className="h-2.5 w-2.5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -112,7 +112,7 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
             </svg>
           </span>
         </div>
-        <div className="text-[13px] text-foreground/60 mt-0.5">{testimonial.role}</div>
+        <div className="text-[11px] sm:text-[13px] text-foreground/60 mt-0.5">{testimonial.role}</div>
       </div>
     </div>
   </div>
@@ -120,13 +120,13 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
 
 const StatCard = ({ stat }: { stat: typeof stats[0] }) => (
   <div 
-    className="text-center p-5 sm:p-6"
+    className="text-center p-4 sm:p-5"
     data-testid={`stat-${stat.label.toLowerCase().replace(' ', '-')}`}
   >
-    <div className="inline-flex items-center justify-center h-14 w-14 sm:h-14 sm:w-14 rounded-xl bg-gold-500/10 mb-4 sm:mb-4 mx-auto">
-      <stat.icon className="h-7 w-7 sm:h-7 sm:w-7 text-gold-400" />
+    <div className="inline-flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gold-500/10 mb-3 sm:mb-4 mx-auto">
+      <stat.icon className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400" />
     </div>
-    <div className="font-display text-3xl sm:text-3xl lg:text-4xl font-bold text-gold-400 mb-1 flex items-center justify-center gap-2">
+    <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-gold-400 mb-1 flex items-center justify-center gap-2">
       {stat.value}
       {stat.verified && (
         <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-500/20 border border-green-500/50">
@@ -136,10 +136,10 @@ const StatCard = ({ stat }: { stat: typeof stats[0] }) => (
         </span>
       )}
     </div>
-    <div className="text-[15px] sm:text-base font-medium text-foreground mb-1">
+    <div className="text-sm sm:text-base font-medium text-foreground mb-1">
       {stat.label}
     </div>
-    <div className="text-[13px] text-foreground/60">
+    <div className="text-[11px] sm:text-[13px] text-foreground/60">
       {stat.sublabel}
     </div>
   </div>
@@ -147,13 +147,13 @@ const StatCard = ({ stat }: { stat: typeof stats[0] }) => (
 
 const SocialProofSection = () => {
   return (
-    <section className="py-16 sm:py-20 lg:py-24 relative overflow-hidden" data-testid="social-proof-section">
+    <section className="py-12 sm:py-16 lg:py-20 relative overflow-hidden" data-testid="social-proof-section">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gold-500/5 to-transparent pointer-events-none" />
       
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16 sm:mb-20">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-10 sm:mb-16">
           {stats.map((stat, index) => (
             <div 
               key={stat.label}
@@ -166,17 +166,17 @@ const SocialProofSection = () => {
         </div>
 
         {/* Section Header */}
-        <div className="text-center mb-10 sm:mb-12">
-          <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold mb-3">
             Trusted by <span className="text-gradient">Professionals</span>
           </h2>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-xs sm:text-base max-w-2xl mx-auto">
             Join thousands of traders and institutions who trust CryptoVault for their digital asset needs.
           </p>
         </div>
 
         {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {testimonials.map((testimonial, index) => (
             <div 
               key={testimonial.id}
@@ -189,16 +189,16 @@ const SocialProofSection = () => {
         </div>
 
         {/* Trust Badges - Improved readability */}
-        <div className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
+        <div className="mt-10 sm:mt-14 flex flex-wrap items-center justify-center gap-5 sm:gap-8">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-foreground/60">
             <Shield className="h-4 w-4" />
             <span>SOC 2 Compliant</span>
           </div>
-          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-foreground/60">
             <DollarSign className="h-4 w-4" />
             <span>$500M Insurance</span>
           </div>
-          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-foreground/60">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-foreground/60">
             <Clock className="h-4 w-4" />
             <span>24/7 Support</span>
           </div>

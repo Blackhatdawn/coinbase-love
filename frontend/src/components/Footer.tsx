@@ -40,8 +40,8 @@ const Footer = () => {
 
   return (
     <footer className="border-t border-gold-500/10 bg-background/95" data-testid="footer">
-      <div className="container mx-auto px-4 py-14">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
+      <div className="container mx-auto px-4 py-10 sm:py-12">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 sm:gap-8">
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-4 w-fit group">
@@ -49,12 +49,12 @@ const Footer = () => {
                 <img
                   src="/favicon.svg"
                   alt="CryptoVault"
-                  className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 rounded-full bg-gold-500/0 group-hover:bg-gold-500/20 blur-lg transition-all duration-500 -z-10" />
               </div>
               <div className="flex flex-col">
-                <span className="font-display text-2xl font-bold tracking-tight">
+                <span className="font-display text-xl sm:text-2xl font-bold tracking-tight">
                   Crypto<span className="text-gold-400">Vault</span>
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-muted-foreground tracking-wider uppercase">
@@ -63,13 +63,13 @@ const Footer = () => {
                 </span>
               </div>
             </Link>
-            <p className="text-sm text-muted-foreground max-w-xs mb-6">
+            <p className="text-sm text-muted-foreground max-w-xs mb-5">
               Institutional-grade digital asset custody and management.
               Secure, compliant, and trusted by individuals and enterprises worldwide.
             </p>
 
             {/* Contact Info */}
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-5">
               <a
                 href={`mailto:${supportEmail}`}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-400 transition-colors"
@@ -85,7 +85,7 @@ const Footer = () => {
             </div>
 
             {/* Social Links */}
-            <div className="flex gap-4">
+            <div className="flex gap-3 sm:gap-4">
               {socialLinks.twitter && (
                 <a
                   href={socialLinks.twitter}
@@ -95,7 +95,7 @@ const Footer = () => {
                   title="X (Twitter)"
                   data-testid="social-twitter"
                 >
-                  <Twitter className="h-5 w-5" />
+                  <Twitter className="h-4 w-4 sm:h-5 sm:w-5" />
                 </a>
               )}
               {socialLinks.linkedin && (
@@ -107,7 +107,7 @@ const Footer = () => {
                   title="LinkedIn"
                   data-testid="social-linkedin"
                 >
-                  <Linkedin className="h-5 w-5" />
+                  <Linkedin className="h-4 w-4 sm:h-5 sm:w-5" />
                 </a>
               )}
               {socialLinks.discord && (
@@ -119,7 +119,7 @@ const Footer = () => {
                   title="Discord"
                   data-testid="social-discord"
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 </a>
               )}
               {socialLinks.telegram && (
@@ -131,7 +131,7 @@ const Footer = () => {
                   title="Telegram"
                   data-testid="social-telegram"
                 >
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                 </a>
               )}
             </div>
@@ -139,8 +139,8 @@ const Footer = () => {
 
           {/* Company Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-gold-400">Company</h4>
-            <ul className="space-y-3">
+            <h4 className="font-semibold mb-3 text-gold-400">Company</h4>
+            <ul className="space-y-2 sm:space-y-3">
               {links.company.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
@@ -160,8 +160,8 @@ const Footer = () => {
 
           {/* Products Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-gold-400">Products</h4>
-            <ul className="space-y-3">
+            <h4 className="font-semibold mb-3 text-gold-400">Products</h4>
+            <ul className="space-y-2 sm:space-y-3">
               {links.products.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
@@ -180,8 +180,8 @@ const Footer = () => {
 
           {/* Resources Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-gold-400">Resources</h4>
-            <ul className="space-y-3">
+            <h4 className="font-semibold mb-3 text-gold-400">Resources</h4>
+            <ul className="space-y-2 sm:space-y-3">
               {links.resources.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
@@ -200,8 +200,8 @@ const Footer = () => {
 
           {/* Legal Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-gold-400">Legal</h4>
-            <ul className="space-y-3">
+            <h4 className="font-semibold mb-3 text-gold-400">Legal</h4>
+            <ul className="space-y-2 sm:space-y-3">
               {links.legal.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("http") || link.href === "#" ? (
@@ -220,7 +220,7 @@ const Footer = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-gold-500/10 mt-12 pt-8">
+        <div className="border-t border-gold-500/10 mt-10 sm:mt-12 pt-6 sm:pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
               © 2025 CryptoVault Financial, Inc. All rights reserved.
@@ -238,7 +238,7 @@ const Footer = () => {
           </div>
           
           {/* Risk Disclaimer */}
-          <p className="text-xs text-muted-foreground/70 mt-6 text-center max-w-4xl mx-auto">
+          <p className="text-xs text-muted-foreground/70 mt-5 sm:mt-6 text-center max-w-4xl mx-auto">
             Digital asset investments involve substantial risk. Prices can be volatile and you may lose 
             your entire investment. Past performance does not guarantee future results. CryptoVault Financial 
             does not provide investment advice. Please review our <Link to="/risk-disclosure" className="underline hover:text-gold-400">risk disclosures</Link> before trading.

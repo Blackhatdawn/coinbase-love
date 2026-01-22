@@ -51,6 +51,34 @@ class Settings(BaseSettings):
         default="http://localhost:3000",
         description="Frontend application URL"
     )
+    public_site_name: str = Field(
+        default="CryptoVault Financial",
+        description="Public site name for frontend branding"
+    )
+    public_logo_url: Optional[str] = Field(
+        default=None,
+        description="Public logo URL for frontend branding"
+    )
+    public_support_email: Optional[str] = Field(
+        default=None,
+        description="Public support email for frontend"
+    )
+    public_api_url: Optional[str] = Field(
+        default=None,
+        description="Public API base URL for frontend runtime config"
+    )
+    public_ws_url: Optional[str] = Field(
+        default=None,
+        description="Public WebSocket base URL for frontend runtime config"
+    )
+    public_socket_io_path: str = Field(
+        default="/socket.io/",
+        description="Socket.IO path for frontend clients"
+    )
+    public_sentry_dsn: Optional[str] = Field(
+        default=None,
+        description="Public Sentry DSN for frontend monitoring"
+    )
 
     # ============================================
     # SERVER CONFIGURATION
@@ -276,9 +304,32 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in self.cors_origins.split(",")]
         return self.cors_origins
 
+    def get_socketio_cors_origins(self) -> List[str]:
+        """Get Socket.IO CORS origins with app URL fallback."""
+        origins = self.get_cors_origins_list()
+        app_origin = self.app_url.rstrip("/")
+        if app_origin and app_origin not in origins:
+            origins.append(app_origin)
+        return origins
+
     def is_sentry_available(self) -> bool:
         """Check if Sentry is configured."""
         return bool(self.sentry_dsn)
+
+    @property
+    def rate_limit_requests_per_minute(self) -> int:
+        """Backward-compatible rate limit accessor."""
+        return self.rate_limit_per_minute
+
+    @property
+    def password_algorithm(self) -> str:
+        """Backward-compatible JWT algorithm accessor."""
+        return self.jwt_algorithm
+
+    @property
+    def database_url(self) -> str:
+        """Backward-compatible database URL accessor."""
+        return self.mongo_url
 
     def get_redis_url(self) -> Optional[str]:
         """
@@ -291,6 +342,13 @@ class Settings(BaseSettings):
         if self.upstash_redis_rest_url and self.upstash_redis_rest_token:
             return self.upstash_redis_rest_url
         return self.redis_url
+
+    def is_redis_available(self) -> bool:
+        """Check if Redis is configured."""
+        return bool(
+            (self.upstash_redis_rest_url and self.upstash_redis_rest_token)
+            or self.redis_url
+        )
 
     def to_dict(self, include_secrets: bool = False) -> dict:
         """

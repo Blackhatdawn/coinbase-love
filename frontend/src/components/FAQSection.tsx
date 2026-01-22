@@ -96,17 +96,17 @@ const FAQCard = ({ faq, isOpen, onToggle }: { faq: FAQItem; isOpen: boolean; onT
   >
     <button
       onClick={onToggle}
-      className="w-full text-left p-5 sm:p-6 flex items-start justify-between gap-4 group touch-target"
+      className="w-full text-left p-4 sm:p-5 flex items-start justify-between gap-3 sm:gap-4 group touch-target"
       aria-expanded={isOpen}
     >
       <div className="flex-1">
-        <h3 className="font-semibold text-[15px] sm:text-lg text-foreground group-hover:text-gold-400 transition-colors leading-relaxed">
+        <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-gold-400 transition-colors leading-relaxed">
           {faq.question}
         </h3>
       </div>
       <ChevronDown 
         className={cn(
-          "h-6 w-6 text-gold-400 transition-transform duration-300 flex-shrink-0 mt-0.5",
+          "h-5 w-5 text-gold-400 transition-transform duration-300 flex-shrink-0 mt-0.5 sm:h-6 sm:w-6",
           isOpen && "rotate-180"
         )}
       />
@@ -118,8 +118,8 @@ const FAQCard = ({ faq, isOpen, onToggle }: { faq: FAQItem; isOpen: boolean; onT
         isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
       )}
     >
-      <div className="px-5 sm:px-6 pb-5 sm:pb-6">
-        <p className="text-[15px] sm:text-base text-foreground/75 leading-relaxed border-t border-border/30 pt-4">
+      <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+        <p className="text-sm sm:text-base text-foreground/75 leading-relaxed border-t border-border/30 pt-3 sm:pt-4">
           {faq.answer}
         </p>
       </div>
@@ -145,30 +145,30 @@ const FAQSection = () => {
     : faqs.filter(faq => faq.category === activeCategory);
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 bg-background/50" data-testid="faq-section">
+    <section className="py-12 sm:py-16 lg:py-20 bg-background/50" data-testid="faq-section">
       <div className="container mx-auto px-4 sm:px-6">
         {/* Section Header */}
-        <div className="text-center mb-10 sm:mb-12">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-gold-500/10 mb-4">
-            <HelpCircle className="h-7 w-7 text-gold-400" />
+        <div className="text-center mb-8 sm:mb-10">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gold-500/10 mb-3 sm:mb-4">
+            <HelpCircle className="h-6 w-6 text-gold-400" />
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-4xl font-bold mb-3">
+          <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">
             Frequently Asked <span className="text-gradient">Questions</span>
           </h2>
-          <p className="text-foreground/70 text-[15px] sm:text-base max-w-2xl mx-auto leading-relaxed">
+          <p className="text-foreground/70 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
             Everything you need to know about our custody services, security, and pricing. 
             Can't find an answer? <a href="/contact" className="text-gold-400 underline hover:text-gold-300">Contact our team</a>.
           </p>
         </div>
 
         {/* Category Filter - Mobile optimized */}
-        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 sm:mb-10">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
               className={cn(
-                "px-4 py-2.5 text-[15px] font-medium rounded-full transition-all duration-300 touch-target-sm",
+                "px-3 py-2 text-sm font-medium rounded-full transition-all duration-300 touch-target-sm",
                 activeCategory === category.id
                   ? "bg-gold-500 text-black"
                   : "bg-card/50 text-foreground/80 hover:bg-gold-500/10 hover:text-gold-400 border border-gold-500/20"
@@ -180,7 +180,7 @@ const FAQSection = () => {
         </div>
 
         {/* FAQ Grid */}
-        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
+        <div className="max-w-4xl mx-auto space-y-3">
           {filteredFAQs.map((faq, index) => (
             <div
               key={faq.id}
@@ -197,24 +197,24 @@ const FAQSection = () => {
         </div>
 
         {/* Still Have Questions CTA */}
-        <div className="mt-12 sm:mt-16 text-center glass-card p-8 sm:p-8 max-w-2xl mx-auto border border-gold-500/20">
-          <h3 className="font-display text-xl sm:text-2xl font-bold mb-3">
+        <div className="mt-10 sm:mt-14 text-center glass-card p-6 sm:p-7 max-w-2xl mx-auto border border-gold-500/20">
+          <h3 className="font-display text-lg sm:text-2xl font-bold mb-3">
             Still have questions?
           </h3>
-          <p className="text-foreground/70 text-[15px] sm:text-base mb-6 leading-relaxed">
+          <p className="text-foreground/70 text-sm sm:text-base mb-5 sm:mb-6 leading-relaxed">
             Our custody specialists are available 24/7 to help you understand our services 
             and find the right solution for your needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a 
               href="/contact"
-              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105 touch-target"
+              className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105 touch-target"
             >
               Contact Support
             </a>
             <a 
               href={`mailto:${supportEmail}`}
-              className="inline-flex items-center justify-center px-6 py-3 border border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-foreground rounded-lg transition-all duration-300 touch-target"
+              className="inline-flex items-center justify-center px-5 py-2.5 border border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-foreground rounded-lg transition-all duration-300 touch-target"
             >
               Email Us
             </a>
@@ -222,7 +222,7 @@ const FAQSection = () => {
         </div>
 
         {/* Additional Resources */}
-        <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-[13px] sm:text-sm text-foreground/60">
+        <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-foreground/60">
           <a href="/security" className="hover:text-gold-400 transition-colors underline touch-target-sm">
             Security Architecture
           </a>

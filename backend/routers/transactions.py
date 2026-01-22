@@ -1,74 +1,58 @@
 """Transaction history endpoints."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 import logging
+import csv
+from io import StringIO
 
 from dependencies import get_current_user_id, get_db
+from services.transactions_utils import format_transaction, normalize_type_filter
+from services.rate_limit_utils import enforce_rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
-# ============================================
-# TRANSACTION TYPE NORMALIZATION
-# ============================================
-
-TRANSFER_TYPES = {"transfer_in", "transfer_out", "p2p_send", "p2p_receive"}
-DISPLAY_TYPE_MAP = {
-    "withdrawal": "withdraw",
-    "transfer_in": "transfer",
-    "transfer_out": "transfer",
-    "p2p_send": "transfer",
-    "p2p_receive": "transfer",
-}
+MAX_EXPORT_LIMIT = 5000
+TRANSACTIONS_RATE_LIMIT = 100
 
 
-def normalize_type_filter(type_filter: Optional[str]) -> Optional[dict]:
-    """Normalize UI-friendly type filters to database query filters."""
-    if not type_filter:
-        return None
-
-    normalized = type_filter.lower()
-    if normalized == "buy":
-        return {"type": "trade", "amount": {"$gt": 0}}
-    if normalized == "sell":
-        return {"type": "trade", "amount": {"$lt": 0}}
-    if normalized == "withdraw":
-        return {"type": "withdrawal"}
-    if normalized == "transfer":
-        return {"type": {"$in": list(TRANSFER_TYPES)}}
-
-    allowed = {"deposit", "withdrawal", "trade", "fee", "refund"}
-    if normalized not in allowed:
-        raise HTTPException(status_code=400, detail="Invalid transaction type")
-
-    return {"type": normalized}
+async def enforce_transactions_limit(user_id: str) -> None:
+    await enforce_rate_limit(f"transactions:{user_id}", TRANSACTIONS_RATE_LIMIT, 60)
 
 
-def resolve_display_type(transaction: dict) -> str:
-    """Map internal transaction types to UI-friendly display types."""
-    tx_type = transaction.get("type", "")
-    if tx_type == "trade":
-        return "buy" if transaction.get("amount", 0) >= 0 else "sell"
-    return DISPLAY_TYPE_MAP.get(tx_type, tx_type)
+class TransactionExportRequest(BaseModel):
+    """Export transactions to CSV or JSON."""
+
+    format: Literal["csv", "json"] = "csv"
+    type: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    limit: int = Field(default=MAX_EXPORT_LIMIT, ge=1, le=MAX_EXPORT_LIMIT)
 
 
-def format_transaction(transaction: dict) -> dict:
-    """Format transaction response with display-friendly fields."""
-    display_type = resolve_display_type(transaction)
-    return {
-        "id": transaction["id"],
-        "type": display_type,
-        "rawType": transaction.get("type"),
-        "amount": transaction["amount"],
-        "currency": transaction.get("currency", "USD"),
-        "symbol": transaction.get("symbol"),
-        "status": transaction.get("status", "completed"),
-        "description": transaction.get("description"),
-        "reference": transaction.get("reference"),
-        "createdAt": transaction["created_at"].isoformat()
-    }
+async def log_audit(
+    db,
+    user_id: str,
+    action: str,
+    resource: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    details: Optional[dict] = None,
+) -> None:
+    """Log audit event."""
+    from models import AuditLog
+
+    audit_log = AuditLog(
+        user_id=user_id,
+        action=action,
+        resource=resource,
+        ip_address=ip_address,
+        details=details,
+    )
+    await db.get_collection("audit_logs").insert_one(audit_log.dict())
 
 
 @router.get("")
@@ -80,6 +64,7 @@ async def get_transactions(
     db = Depends(get_db)
 ):
     """Get user's transaction history."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     # Build query
@@ -110,6 +95,7 @@ async def get_transaction(
     db = Depends(get_db)
 ):
     """Get a specific transaction."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     transaction = await transactions_collection.find_one({
@@ -125,12 +111,84 @@ async def get_transaction(
     }
 
 
+@router.post("/export")
+async def export_transactions(
+    payload: TransactionExportRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """Export transactions in CSV or JSON format."""
+    await enforce_transactions_limit(user_id)
+    if payload.start_date and payload.end_date and payload.start_date > payload.end_date:
+        raise HTTPException(status_code=400, detail="start_date must be before end_date")
+
+    transactions_collection = db.get_collection("transactions")
+
+    query = {"user_id": user_id}
+    type_filter = normalize_type_filter(payload.type)
+    if type_filter:
+        query.update(type_filter)
+
+    if payload.start_date or payload.end_date:
+        date_filter = {}
+        if payload.start_date:
+            date_filter["$gte"] = payload.start_date
+        if payload.end_date:
+            date_filter["$lte"] = payload.end_date
+        query["created_at"] = date_filter
+
+    limit = min(payload.limit, MAX_EXPORT_LIMIT)
+    transactions = await transactions_collection.find(query).sort("created_at", -1).limit(limit).to_list(limit)
+    formatted = [format_transaction(tx) for tx in transactions]
+
+    await log_audit(
+        db,
+        user_id,
+        "TRANSACTIONS_EXPORTED",
+        ip_address=request.client.host if request.client else None,
+        details={
+            "format": payload.format,
+            "count": len(formatted),
+            "type": payload.type,
+        }
+    )
+
+    if payload.format == "json":
+        return {"transactions": formatted, "count": len(formatted)}
+
+    output = StringIO()
+    fieldnames = [
+        "id",
+        "type",
+        "rawType",
+        "amount",
+        "currency",
+        "symbol",
+        "status",
+        "description",
+        "reference",
+        "createdAt",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(formatted)
+
+    filename = f"transactions_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 @router.get("/summary/stats")
 async def get_transaction_stats(
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
     """Get transaction statistics summary."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     # Aggregate by type

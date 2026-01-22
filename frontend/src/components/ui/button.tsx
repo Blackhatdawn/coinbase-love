@@ -19,11 +19,11 @@ const buttonVariants = cva(
         hero: "bg-gradient-to-r from-primary to-accent text-primary-foreground font-semibold hover:opacity-90 shadow-xl shadow-primary/30",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-12 rounded-lg px-8 text-base",
-        xl: "h-14 rounded-xl px-10 text-lg",
-        icon: "h-10 w-10",
+        default: "h-9 px-3 py-2 text-sm sm:h-10 sm:px-4",
+        sm: "h-8 rounded-md px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm",
+        lg: "h-11 rounded-lg px-6 text-base sm:h-12 sm:px-8",
+        xl: "h-12 rounded-xl px-7 text-base sm:h-14 sm:px-10 sm:text-lg",
+        icon: "h-9 w-9 sm:h-10 sm:w-10",
       },
     },
     defaultVariants: {

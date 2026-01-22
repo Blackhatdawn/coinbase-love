@@ -8,7 +8,7 @@ const HeroSection = () => {
   const user = auth?.user ?? null;
   
   return (
-    <section className="relative pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 overflow-hidden" data-testid="hero-section">
+    <section className="relative pt-20 sm:pt-24 md:pt-28 pb-10 sm:pb-12 md:pb-16 overflow-hidden" data-testid="hero-section">
       {/* Background Effects - Gold themed */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-48 sm:w-72 md:w-96 h-48 sm:h-72 md:h-96 bg-gold-500/10 rounded-full blur-3xl animate-pulse-glow" />
@@ -19,18 +19,18 @@ const HeroSection = () => {
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
           {/* Badge with improved design */}
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-gold-500/10 via-gold-500/5 to-gold-500/10 border border-gold-500/30 mb-8 backdrop-blur-sm hover:border-gold-400/50 transition-all duration-300 group cursor-default">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-gold-500/10 via-gold-500/5 to-gold-500/10 border border-gold-500/30 mb-6 sm:mb-8 backdrop-blur-sm hover:border-gold-400/50 transition-all duration-300 group cursor-default">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold-500 shadow-[0_0_10px_rgba(251,191,36,0.5)]"></span>
             </span>
-            <span className="text-sm font-semibold text-gold-400 font-mono tracking-wide">
+            <span className="text-xs font-semibold text-gold-400 font-mono tracking-wide sm:text-sm">
               TRUSTED BY 250+ INSTITUTIONS GLOBALLY
             </span>
           </div>
 
           {/* Headline - Enhanced with better hierarchy */}
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-6 leading-[1.1] tracking-tight" data-testid="hero-headline">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-5 sm:mb-6 leading-[1.1] tracking-tight" data-testid="hero-headline">
             <span className="block text-foreground mb-2">
               Institutional-Grade
             </span>
@@ -40,18 +40,18 @@ const HeroSection = () => {
           </h1>
 
           {/* Subheadline - More impactful */}
-          <p className="text-lg sm:text-xl md:text-2xl text-foreground/90 mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-light" data-testid="hero-subheadline">
+          <p className="text-base sm:text-lg md:text-xl text-foreground/90 mb-8 sm:mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-light" data-testid="hero-subheadline">
             Multi-jurisdiction cold storage • Real-time proof of reserves • Zero breaches since 2019
-            <span className="block mt-3 text-gold-400/80 text-base sm:text-lg font-medium">
+            <span className="block mt-3 text-sm sm:text-base text-gold-400/80 font-medium">
               $10.2B+ in assets secured for family offices, hedge funds, and enterprises worldwide
             </span>
           </p>
 
           {/* CTAs - Enhanced with better styling and animations */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 px-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-10 sm:mb-12 px-4">
             <Button 
               size="lg" 
-              className="relative overflow-hidden bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 hover:from-gold-300 hover:via-gold-400 hover:to-gold-500 text-black font-bold shadow-xl shadow-gold-500/30 hover:shadow-gold-500/50 transition-all duration-300 hover:scale-105 group h-14 sm:h-16 px-8 sm:px-10 text-base sm:text-lg"
+              className="relative overflow-hidden bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600 hover:from-gold-300 hover:via-gold-400 hover:to-gold-500 text-black font-bold shadow-xl shadow-gold-500/30 hover:shadow-gold-500/50 transition-all duration-300 hover:scale-105 group h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base"
               asChild 
               data-testid="hero-cta-primary"
             >
@@ -67,7 +67,7 @@ const HeroSection = () => {
             <Button 
               variant="outline" 
               size="lg"
-              className="border-2 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 transition-all duration-300 backdrop-blur-sm h-14 sm:h-16 px-8 sm:px-10 text-base sm:text-lg font-semibold hover:scale-105"
+              className="border-2 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 transition-all duration-300 backdrop-blur-sm h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base font-semibold hover:scale-105"
               asChild 
               data-testid="hero-cta-secondary"
             >
@@ -78,35 +78,35 @@ const HeroSection = () => {
           </div>
 
           {/* Trust Indicators - Enhanced cards with better visual hierarchy */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto px-4">
-            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.1s' }} data-testid="trust-indicator-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto px-4">
+            <div className="glass-card p-4 sm:p-6 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.1s' }} data-testid="trust-indicator-1">
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
-                  <Shield className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 mb-3 sm:mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">ZERO</div>
-                <div className="text-sm sm:text-base text-foreground/80 font-medium">Security Breaches</div>
-                <div className="text-xs text-muted-foreground mt-1 font-mono">Since 2019</div>
+                <div className="font-display text-2xl sm:text-3xl font-black text-gold-400 mb-2">ZERO</div>
+                <div className="text-xs sm:text-sm text-foreground/80 font-medium">Security Breaches</div>
+                <div className="text-[11px] text-muted-foreground mt-1 font-mono">Since 2019</div>
               </div>
             </div>
-            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.2s' }} data-testid="trust-indicator-2">
+            <div className="glass-card p-4 sm:p-6 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.2s' }} data-testid="trust-indicator-2">
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
-                  <Vault className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 mb-3 sm:mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Vault className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">$10.2B+</div>
-                <div className="text-sm sm:text-base text-foreground/80 font-medium">Assets Under Custody</div>
-                <div className="text-xs text-muted-foreground mt-1 font-mono">Globally Secured</div>
+                <div className="font-display text-2xl sm:text-3xl font-black text-gold-400 mb-2">$10.2B+</div>
+                <div className="text-xs sm:text-sm text-foreground/80 font-medium">Assets Under Custody</div>
+                <div className="text-[11px] text-muted-foreground mt-1 font-mono">Globally Secured</div>
               </div>
             </div>
-            <div className="glass-card p-6 sm:p-8 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.3s' }} data-testid="trust-indicator-3">
+            <div className="glass-card p-4 sm:p-6 animate-slide-up border-2 border-gold-500/20 hover:border-gold-400/40 transition-all duration-300 group hover:shadow-xl hover:shadow-gold-500/10 hover:-translate-y-1" style={{ animationDelay: '0.3s' }} data-testid="trust-indicator-3">
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 sm:w-18 sm:h-18 mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
-                  <Lock className="h-8 w-8 sm:h-9 sm:w-9 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 mb-3 sm:mb-4 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-600/10 flex items-center justify-center group-hover:from-gold-500/30 group-hover:to-gold-600/20 transition-all duration-300 shadow-lg shadow-gold-500/20">
+                  <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-gold-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                 </div>
-                <div className="font-display text-3xl sm:text-4xl font-black text-gold-400 mb-2">5</div>
-                <div className="text-sm sm:text-base text-foreground/80 font-medium">Jurisdictions</div>
-                <div className="text-xs text-muted-foreground mt-1 font-mono">Multi-Location Storage</div>
+                <div className="font-display text-2xl sm:text-3xl font-black text-gold-400 mb-2">5</div>
+                <div className="text-xs sm:text-sm text-foreground/80 font-medium">Jurisdictions</div>
+                <div className="text-[11px] text-muted-foreground mt-1 font-mono">Multi-Location Storage</div>
               </div>
             </div>
           </div>

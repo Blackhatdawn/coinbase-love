@@ -6,14 +6,14 @@ const RiskDisclosure = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-8 w-8 text-destructive" />
+          <div className="text-center mb-8 sm:mb-12">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-5 sm:mb-6 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" />
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               Risk <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Disclosure</span>
             </h1>
             <p className="text-muted-foreground">Important information about the risks of trading digital assets</p>
@@ -21,11 +21,11 @@ const RiskDisclosure = () => {
           </div>
 
           {/* Warning Banner */}
-          <div className="mb-12 p-6 bg-destructive/10 border border-destructive/20 rounded-xl">
+          <div className="mb-8 sm:mb-12 p-5 sm:p-6 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-start gap-4">
-              <AlertTriangle className="h-6 w-6 text-destructive shrink-0 mt-1" />
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-destructive shrink-0 mt-1" />
               <div>
-                <h2 className="font-bold text-lg mb-2">Important Warning</h2>
+                <h2 className="font-bold text-base sm:text-lg mb-2">Important Warning</h2>
                 <p className="text-sm leading-relaxed">
                   Trading cryptocurrencies involves significant risk and can result in the loss of your entire investment. Past performance is not indicative of future results. You should carefully consider whether trading is suitable for you in light of your circumstances, knowledge, and financial resources. Only invest funds you can afford to lose entirely.
                 </p>
