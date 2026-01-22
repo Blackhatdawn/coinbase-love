@@ -142,7 +142,7 @@ class Settings(BaseSettings):
     # ============================================
     # CORS CONFIGURATION
     # ============================================
-    cors_origins: str = Field(
+    cors_origins: List[str] = Field(
         default="http://localhost:3000,http://localhost:5173,https://www.cryptovault.financial",
         description="Comma-separated list of allowed CORS origins"
     )
