@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     # CORS CONFIGURATION
     # ============================================
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173, ",
+        default="http://localhost:3000,http://localhost:5173,https://www.cryptovault.financial",
         description="Comma-separated list of allowed CORS origins"
     )
 
@@ -156,7 +156,7 @@ class Settings(BaseSettings):
         description="SendGrid API key"
     )
     email_from: str = Field(
-        default="noreply@cryptovault.financial",
+        default="team@cryptovault.financial",
         description="Default sender email"
     )
     email_from_name: str = Field(
