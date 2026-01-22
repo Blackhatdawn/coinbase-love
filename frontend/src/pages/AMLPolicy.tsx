@@ -7,14 +7,14 @@ const AMLPolicy = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gold-500/10 flex items-center justify-center">
-              <Shield className="h-8 w-8 text-gold-400" />
+          <div className="text-center mb-8 sm:mb-12">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-5 sm:mb-6 rounded-2xl bg-gold-500/10 flex items-center justify-center">
+              <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-gold-400" />
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               AML <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Policy</span>
             </h1>
             <p className="text-muted-foreground">Anti-Money Laundering & Counter-Terrorist Financing Policy</p>
@@ -23,8 +23,8 @@ const AMLPolicy = () => {
 
           {/* Content */}
           <div className="prose prose-invert max-w-none space-y-8">
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
                 <FileText className="h-5 w-5 text-gold-400" />
                 Policy Statement
               </h2>
@@ -36,8 +36,8 @@ const AMLPolicy = () => {
               </p>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-gold-400" />
                 Know Your Customer (KYC)
               </h2>
@@ -66,8 +66,8 @@ const AMLPolicy = () => {
               </div>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-gold-400" />
                 Transaction Monitoring
               </h2>
@@ -83,8 +83,8 @@ const AMLPolicy = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
                 <Flag className="h-5 w-5 text-gold-400" />
                 Suspicious Activity Reporting
               </h2>
@@ -100,8 +100,8 @@ const AMLPolicy = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
                 <Ban className="h-5 w-5 text-gold-400" />
                 Prohibited Activities
               </h2>
@@ -122,8 +122,8 @@ const AMLPolicy = () => {
               </div>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
-              <h2 className="text-xl font-bold mb-4">Compliance Officer</h2>
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
+              <h2 className="text-lg sm:text-xl font-bold mb-4">Compliance Officer</h2>
               <p className="text-muted-foreground leading-relaxed">
                 CryptoVault has appointed a dedicated Compliance Officer responsible for implementing and maintaining our AML/CTF program. For compliance-related inquiries, please contact:
               </p>

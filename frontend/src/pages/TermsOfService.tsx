@@ -5,9 +5,9 @@ const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-8">Terms of Service</h1>
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8">Terms of Service</h1>
           
           <div className="prose prose-invert max-w-none space-y-8 text-muted-foreground">
             <section>

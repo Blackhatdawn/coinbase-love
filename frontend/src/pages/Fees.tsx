@@ -24,21 +24,21 @@ const Fees = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 sm:pt-24 pb-16 sm:pb-20">
         <div className="container mx-auto px-4">
           {/* Hero */}
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-5 sm:mb-6">
               Transparent <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Fee Structure</span>
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base sm:text-lg text-muted-foreground">
               At CryptoVault, we believe in complete transparency. Our competitive fee structure rewards active traders with lower costs.
             </p>
           </div>
 
           {/* Trading Fees */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <section className="mb-10 sm:mb-16">
+            <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 flex items-center gap-2">
               <span className="h-8 w-1 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full"></span>
               Trading Fees
             </h2>

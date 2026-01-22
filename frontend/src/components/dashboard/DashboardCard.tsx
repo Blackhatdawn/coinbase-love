@@ -75,10 +75,10 @@ const DashboardCard = ({
       )}
 
       {/* Card Content */}
-      <div className={cn(!noPadding && 'p-5 sm:p-6')}>
+      <div className={cn(!noPadding && 'p-4 sm:p-5 lg:p-6')}>
         {/* Header */}
         {(title || icon || badge || action) && (
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-3">
               {icon && (
                 <div className={cn(
@@ -89,7 +89,7 @@ const DashboardCard = ({
                 </div>
               )}
               {title && (
-                <h3 className="font-semibold text-white">{title}</h3>
+                <h3 className="text-sm font-semibold text-white sm:text-base">{title}</h3>
               )}
               {badge && (
                 <span className="px-2 py-0.5 text-[10px] font-semibold bg-gold-500/20 text-gold-400 rounded-full">

@@ -12,38 +12,38 @@ const PortfolioSection = () => {
   const totalValue = holdings.reduce((acc, h) => acc + h.value, 0);
 
   return (
-    <section className="py-20 relative">
+    <section className="py-14 sm:py-16 lg:py-20 relative">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
             Your <span className="text-gradient">Portfolio</span>
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
             Track your investments in real-time. Manage your crypto portfolio with powerful analytics and insights.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Portfolio Summary */}
           <div className="lg:col-span-1">
-            <div className="glass-card p-6 h-full">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-muted-foreground">Total Balance</h3>
-                <PieChart className="h-5 w-5 text-primary" />
+            <div className="glass-card p-4 sm:p-6 h-full">
+              <div className="flex items-center justify-between mb-5 sm:mb-6">
+                <h3 className="text-sm sm:text-base font-semibold text-muted-foreground">Total Balance</h3>
+                <PieChart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
               
-              <div className="mb-6">
-                <div className="font-display text-4xl font-bold mb-2">
+              <div className="mb-5 sm:mb-6">
+                <div className="font-display text-3xl sm:text-4xl font-bold mb-2">
                   ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <div className="flex items-center gap-2 text-success">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="text-sm font-medium">+$4,523.45 (4.12%) today</span>
+                  <span className="text-xs sm:text-sm font-medium">+$4,523.45 (4.12%) today</span>
                 </div>
               </div>
 
@@ -82,7 +82,7 @@ const PortfolioSection = () => {
                 </div>
               </div>
 
-              <Button variant="gradient" className="w-full mt-6">
+              <Button variant="gradient" className="w-full mt-5 sm:mt-6">
                 Deposit Funds
               </Button>
             </div>
@@ -91,10 +91,10 @@ const PortfolioSection = () => {
           {/* Holdings List */}
           <div className="lg:col-span-2">
             <div className="glass-card overflow-hidden">
-              <div className="p-4 border-b border-border/50 flex items-center justify-between">
+              <div className="p-3 sm:p-4 border-b border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold">Holdings</h3>
+                  <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  <h3 className="text-sm sm:text-base font-semibold">Holdings</h3>
                 </div>
                 <Button variant="ghost" size="sm">
                   View All
@@ -104,20 +104,20 @@ const PortfolioSection = () => {
 
               <div className="divide-y divide-border/50">
                 {holdings.map((holding) => (
-                  <div key={holding.symbol} className="p-4 hover:bg-secondary/50 transition-colors">
+                  <div key={holding.symbol} className="p-3 sm:p-4 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
                           {holding.symbol.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-semibold">{holding.symbol}</div>
-                          <div className="text-sm text-muted-foreground">{holding.amount} {holding.symbol}</div>
+                          <div className="text-sm sm:text-base font-semibold">{holding.symbol}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">{holding.amount} {holding.symbol}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">${holding.value.toLocaleString()}</div>
-                        <div className={`text-sm ${holding.change >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        <div className="text-sm sm:text-base font-semibold">${holding.value.toLocaleString()}</div>
+                        <div className={`text-xs sm:text-sm ${holding.change >= 0 ? 'text-success' : 'text-destructive'}`}>
                           {holding.change >= 0 ? '+' : ''}{holding.change}%
                         </div>
                       </div>

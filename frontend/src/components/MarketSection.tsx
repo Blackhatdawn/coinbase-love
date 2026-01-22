@@ -19,15 +19,15 @@ const MarketSection = () => {
   const displayCoins = data.slice(0, 8);
 
   return (
-    <section className="py-20" data-testid="market-section">
+    <section className="py-14 sm:py-16 lg:py-20" data-testid="market-section">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10">
           <div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
               Live <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Market</span> Prices
             </h2>
-            <p className="text-muted-foreground max-w-xl">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl">
               Track real-time prices across 200+ cryptocurrencies. Trade with
               confidence using advanced charts and analytics.
             </p>
@@ -41,7 +41,7 @@ const MarketSection = () => {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
+          <div className="flex items-center gap-2 sm:gap-3 mt-4 md:mt-0">
             <Button
               variant="ghost"
               size="sm"
@@ -66,11 +66,11 @@ const MarketSection = () => {
 
         {/* Loading State - Skeleton Grid */}
         {isLoading && data.length === 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="glass-card p-6 animate-pulse border border-gold-500/10"
+                className="glass-card p-4 sm:p-6 animate-pulse border border-gold-500/10"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gold-500/10" />
@@ -88,10 +88,10 @@ const MarketSection = () => {
 
         {/* Error State */}
         {error && data.length === 0 && (
-          <div className="glass-card p-12 text-center border border-gold-500/10">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <div className="glass-card p-8 sm:p-10 text-center border border-gold-500/10">
+            <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Failed to Load Market Data</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground mb-5 sm:mb-6 max-w-md mx-auto">
               We couldn't fetch the latest prices. This might be due to a network issue or our data provider being temporarily unavailable.
             </p>
             <Button 
@@ -107,44 +107,44 @@ const MarketSection = () => {
 
         {/* Data Grid */}
         {displayCoins.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {displayCoins.map((crypto) => (
               <Link
                 key={crypto.id}
                 to={`/trade?coin=${crypto.id}`}
-                className="glass-card p-6 border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group"
+                className="glass-card p-4 sm:p-6 border border-gold-500/10 hover:border-gold-500/30 transition-all duration-300 group"
                 data-testid={`crypto-card-${crypto.symbol}`}
               >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <div className="flex items-center gap-3">
                     {crypto.image ? (
                       <img
                         src={crypto.image}
                         alt={crypto.name}
-                        className="w-10 h-10 rounded-full"
+                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gold-500/10 flex items-center justify-center font-bold text-gold-400">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gold-500/10 flex items-center justify-center font-bold text-gold-400">
                         {crypto.symbol.charAt(0)}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-semibold group-hover:text-gold-400 transition-colors">
+                      <h3 className="font-semibold group-hover:text-gold-400 transition-colors text-sm sm:text-base">
                         {crypto.symbol}
                       </h3>
-                      <p className="text-xs text-muted-foreground">{crypto.name}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">{crypto.name}</p>
                     </div>
                   </div>
                   <ExternalLink className="h-4 w-4 text-gold-400/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Price */}
-                <div className="mb-3">
-                  <p className="text-2xl font-bold">{formatPrice(crypto.price)}</p>
+                <div className="mb-2 sm:mb-3">
+                  <p className="text-xl sm:text-2xl font-bold">{formatPrice(crypto.price)}</p>
                 </div>
 
                 {/* Change & Stats */}
@@ -165,7 +165,7 @@ const MarketSection = () => {
                     {formatPercentage(crypto.change_24h)}
                   </span>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground">
                       MCap: {formatCompactNumber(crypto.market_cap)}
                     </p>
                   </div>
@@ -176,7 +176,7 @@ const MarketSection = () => {
         )}
 
         {/* Data Source Attribution */}
-        <p className="text-xs text-muted-foreground text-center mt-8">
+        <p className="text-xs text-muted-foreground text-center mt-6 sm:mt-8">
           Market data provided by CoinCap API • Prices update in real-time
         </p>
       </div>
