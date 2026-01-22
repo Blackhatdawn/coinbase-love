@@ -26,6 +26,14 @@ from pydantic import Field, validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def get_version_from_file() -> str:
+    """Reads the version from the VERSION file."""
+    try:
+        return (Path(__file__).parent.parent / "VERSION").read_text().strip()
+    except FileNotFoundError:
+        return "0.0.0"
+
+
 class Settings(BaseSettings):
     """
     Application settings using pydantic BaseSettings.
@@ -41,7 +49,7 @@ class Settings(BaseSettings):
     # APPLICATION CONFIGURATION
     # ============================================
     app_name: str = Field(default="CryptoVault", description="Application name")
-    app_version: str = Field(default="2.0.0", description="Application version")
+    app_version: str = Field(default_factory=get_version_from_file, description="Application version")
     environment: str = Field(
         default="development",
         description="Environment: development, staging, production"

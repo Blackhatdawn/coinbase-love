@@ -2,8 +2,25 @@ import { Twitter, Linkedin, MessageCircle, Send, MapPin, Mail, Shield, ExternalL
 import { Link } from "react-router-dom";
 import { resolveSupportEmail } from "@/lib/runtimeConfig";
 import { getSocialLinks } from "@/config/socialLinks";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/apiClient";
 
 const Footer = () => {
+  const [apiVersion, setApiVersion] = useState("unknown");
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const response = await api.health.ping();
+        setApiVersion(response.version);
+      } catch (error) {
+        console.error("Failed to fetch API version:", error);
+      }
+    };
+
+    fetchVersion();
+  }, []);
+
   const links = {
     company: [
       { label: "About Us", href: "/about" },
@@ -223,7 +240,7 @@ const Footer = () => {
         <div className="border-t border-gold-500/10 mt-10 sm:mt-12 pt-6 sm:pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2025 CryptoVault Financial, Inc. All rights reserved.
+              © 2025 CryptoVault Financial, Inc. All rights reserved. (v{apiVersion})
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">

@@ -654,8 +654,10 @@ export const api = {
   },
 
   // Health check
-  health: () =>
-    apiClient.get('/health'),
+  health: {
+    ping: () => apiClient.get('/ping'),
+    health: () => apiClient.get('/health'),
+  },
 
   // Simple ping (no database required)
   ping: () =>

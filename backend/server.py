@@ -651,7 +651,7 @@ async def ping():
         "status": "ok",
         "message": "pong",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "version": settings.app_version
     }
 
 
@@ -669,7 +669,7 @@ async def health_check(request: Request):
         "status": "healthy",
         "api": "running",
         "environment": settings.environment,
-        "version": "1.0.0",
+        "version": settings.app_version,
         "request_id": request_id,
         "timestamp": datetime.utcnow().isoformat()
     }
