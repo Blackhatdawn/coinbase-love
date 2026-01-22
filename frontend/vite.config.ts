@@ -18,7 +18,7 @@ import { componentTagger } from "lovable-tagger";
 // Backend URL for development proxy
 // Falls back to localhost:8001 if VITE_BACKEND_URL not set
 // In production, Vercel rewrites handle all proxying via vercel.json
-const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8001";
+const BACKEND_URL = process.env.VITE_BACKEND_URL || "http://localhost:8001, https://www.cryptovault.financial/";
 
 // Validate backend URL in development
 if (process.env.NODE_ENV === "development") {
