@@ -22,6 +22,7 @@ from models import Transaction
 from config import settings
 from services.gas_fees import gas_fee_service
 from email_service import email_service
+from services.transactions_utils import broadcast_transaction_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transfers", tags=["transfers"])
@@ -332,6 +333,11 @@ async def create_p2p_transfer(
         if fee_txn:
             txns_to_insert.append(fee_txn)
         await transactions_collection.insert_many(txns_to_insert)
+
+        await broadcast_transaction_event(user_id, sender_txn)
+        await broadcast_transaction_event(recipient["id"], recipient_txn)
+        if fee_txn:
+            await broadcast_transaction_event(user_id, fee_txn)
 
         # Update sender wallet balance (deduct amount + fee)
         new_sender_balance = sender_balance - total_to_deduct

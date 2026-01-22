@@ -9,6 +9,7 @@ import uuid
 
 from models import Order, OrderCreate, Transaction
 from dependencies import get_current_user_id, get_db, get_limiter
+from services.transactions_utils import broadcast_transaction_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["trading"])
@@ -195,7 +196,8 @@ async def create_order(
         symbol=order_data.trading_pair,
         description=f"{order_data.side.upper()} {order_data.amount} {order_data.trading_pair} @ ${order_data.price}"
     )
-    await transactions_collection.insert_one(transaction.dict())
+    transaction_payload = transaction.dict()
+    await transactions_collection.insert_one(transaction_payload)
 
     # Create fee transaction
     fee_transaction = Transaction(
@@ -205,7 +207,11 @@ async def create_order(
         symbol="USD",
         description=f"Trading fee for order {order.id[:8]}"
     )
-    await transactions_collection.insert_one(fee_transaction.dict())
+    fee_payload = fee_transaction.dict()
+    await transactions_collection.insert_one(fee_payload)
+
+    await broadcast_transaction_event(user_id, transaction_payload)
+    await broadcast_transaction_event(user_id, fee_payload)
 
     await log_audit(
         db, user_id, "ORDER_CREATED",

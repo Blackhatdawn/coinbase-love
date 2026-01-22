@@ -10,6 +10,7 @@ import logging
 from dependencies import get_current_user_id, get_db, get_limiter
 from nowpayments_service import nowpayments_service, PaymentStatus
 from config import settings
+from services.transactions_utils import broadcast_transaction_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/wallet", tags=["wallet"])
@@ -370,7 +371,7 @@ async def nowpayments_webhook(
             
             # Create transaction record
             transactions_collection = db.get_collection("transactions")
-            await transactions_collection.insert_one({
+            deposit_transaction = {
                 "id": str(uuid.uuid4()),
                 "user_id": user_id,
                 "type": "deposit",
@@ -380,7 +381,9 @@ async def nowpayments_webhook(
                 "reference": order_id,
                 "description": f"Deposit via {deposit['pay_currency']}",
                 "created_at": datetime.utcnow()
-            })
+            }
+            await transactions_collection.insert_one(deposit_transaction)
+            await broadcast_transaction_event(user_id, deposit_transaction)
             
             # Log audit
             await log_audit(
@@ -489,7 +492,7 @@ async def create_withdrawal(
     
     # Create transaction record
     transactions_collection = db.get_collection("transactions")
-    await transactions_collection.insert_one({
+    withdrawal_transaction = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "type": "withdrawal",
@@ -499,10 +502,11 @@ async def create_withdrawal(
         "reference": withdrawal_id,
         "description": f"Withdrawal to {data.address[:12]}...",
         "created_at": datetime.utcnow()
-    })
+    }
+    await transactions_collection.insert_one(withdrawal_transaction)
     
     # Create fee transaction record
-    await transactions_collection.insert_one({
+    fee_transaction = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "type": "fee",
@@ -512,7 +516,11 @@ async def create_withdrawal(
         "reference": withdrawal_id,
         "description": f"Withdrawal fee for {withdrawal_id[:8]}...",
         "created_at": datetime.utcnow()
-    })
+    }
+    await transactions_collection.insert_one(fee_transaction)
+
+    await broadcast_transaction_event(user_id, withdrawal_transaction)
+    await broadcast_transaction_event(user_id, fee_transaction)
     
     # Log audit
     await log_audit(
@@ -764,7 +772,7 @@ async def create_p2p_transfer(
 
     # Create transaction records for both users
     # Sender transaction
-    await transactions_collection.insert_one({
+    sender_transaction = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "type": "transfer_out",
@@ -774,10 +782,11 @@ async def create_p2p_transfer(
         "reference": transfer_id,
         "description": f"Transfer to {recipient['name']} ({recipient['email']})",
         "created_at": datetime.utcnow()
-    })
+    }
+    await transactions_collection.insert_one(sender_transaction)
 
     # Recipient transaction
-    await transactions_collection.insert_one({
+    recipient_transaction = {
         "id": str(uuid.uuid4()),
         "user_id": recipient["id"],
         "type": "transfer_in",
@@ -787,7 +796,11 @@ async def create_p2p_transfer(
         "reference": transfer_id,
         "description": f"Transfer from {sender['name']} ({sender['email']})",
         "created_at": datetime.utcnow()
-    })
+    }
+    await transactions_collection.insert_one(recipient_transaction)
+
+    await broadcast_transaction_event(user_id, sender_transaction)
+    await broadcast_transaction_event(recipient["id"], recipient_transaction)
 
     # Log audit events
     await log_audit(

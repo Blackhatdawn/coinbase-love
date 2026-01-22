@@ -10,6 +10,7 @@ import logging
 from dependencies import get_current_user_id, get_db, get_limiter
 from models import Transaction
 from config import settings
+from services.transactions_utils import broadcast_transaction_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transfers", tags=["transfers"])
@@ -210,6 +211,9 @@ async def create_p2p_transfer(
     try:
         # Execute atomic transfer
         await transactions_collection.insert_many([sender_txn, recipient_txn])
+
+        await broadcast_transaction_event(user_id, sender_txn)
+        await broadcast_transaction_event(recipient["id"], recipient_txn)
 
         # Update sender wallet balance
         new_sender_balance = sender_balance - transfer.amount
