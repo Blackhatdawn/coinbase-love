@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 import logging
+from typing import Optional
 
 from multi_source_crypto_service import multi_source_service
 
@@ -10,13 +11,17 @@ router = APIRouter(prefix="/crypto", tags=["cryptocurrency"])
 
 
 @router.get("")
-async def get_all_cryptocurrencies():
+async def get_all_cryptocurrencies(limit: Optional[int] = None):
     """
     Get all cryptocurrency prices from multiple sources.
     Primary: CoinCap (200 req/min) → Fallback: CoinPaprika
     """
     try:
         prices = await multi_source_service.get_prices()
+        if limit is not None:
+            if limit < 1 or limit > 500:
+                raise HTTPException(status_code=400, detail="limit must be between 1 and 500")
+            prices = prices[:limit]
         return {"cryptocurrencies": prices}
     except Exception as e:
         logger.error(f"❌ Error fetching cryptocurrencies: {str(e)}")

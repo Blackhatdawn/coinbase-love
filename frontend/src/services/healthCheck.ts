@@ -129,7 +129,7 @@ class HealthCheckService {
       // 3. Last resort: try crypto endpoint
       if (!success) {
         try {
-          await api.crypto.getAll();
+          await api.crypto.getAll(5);
           success = true;
         } catch (e) {
           lastError = e;

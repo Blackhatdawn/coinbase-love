@@ -27,6 +27,7 @@ export interface CryptoData {
 interface UseCryptoDataOptions {
   refreshInterval?: number; // in milliseconds
   autoRefresh?: boolean;
+  limit?: number;
 }
 
 interface UseCryptoDataReturn {
@@ -44,6 +45,7 @@ export function useCryptoData(options: UseCryptoDataOptions = {}): UseCryptoData
   const {
     refreshInterval = DEFAULT_REFRESH_INTERVAL,
     autoRefresh = true,
+    limit,
   } = options;
 
   const [data, setData] = useState<CryptoData[]>([]);
@@ -62,7 +64,7 @@ export function useCryptoData(options: UseCryptoDataOptions = {}): UseCryptoData
         setIsRefreshing(true);
       }
 
-      const response = await api.crypto.getAll();
+      const response = await api.crypto.getAll(limit);
       
       if (!mounted.current) return;
 

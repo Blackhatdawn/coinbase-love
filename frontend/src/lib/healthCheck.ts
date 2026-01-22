@@ -26,7 +26,7 @@ export class FrontendHealthCheck {
     // Core endpoints
     await this.checkEndpoint('Backend Health', () => api.health());
     await this.checkEndpoint('Auth Profile', () => api.auth.getProfile());
-    await this.checkEndpoint('Crypto Prices', () => api.crypto.getAll());
+    await this.checkEndpoint('Crypto Prices', () => api.crypto.getAll(5));
     await this.checkEndpoint('Portfolio', () => api.portfolio.get());
     await this.checkEndpoint('Transactions', () => api.transactions.getAll(0, 10));
     await this.checkEndpoint('Wallet Balance', () => api.wallet.getBalance());

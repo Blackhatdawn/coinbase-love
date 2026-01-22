@@ -106,7 +106,7 @@ const AppContent = () => {
         // Warmup: Make initial API request to activate backend
         console.log('[App] Warming up backend API...');
         try {
-          await api.crypto.getAll();
+          await api.crypto.getAll(10);
           console.log('[App] ✅ Backend API is active and responding');
           setApiAvailable(true);
         } catch (error) {

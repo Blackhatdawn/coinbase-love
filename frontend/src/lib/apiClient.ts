@@ -480,8 +480,8 @@ export const api = {
 
   // Cryptocurrency market data
   crypto: {
-    getAll: () =>
-      apiClient.get('/api/crypto'),
+    getAll: (limit?: number) =>
+      apiClient.get(`/api/crypto${limit ? `?limit=${limit}` : ''}`),
     get: (coinId: string) =>
       apiClient.get(`/api/crypto/${coinId}`),
     getHistory: (coinId: string, days: number = 7) =>
