@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     )
     debug: bool = Field(default=False, description="Enable debug mode")
     app_url: str = Field(
-        default="http://localhost:3000",
+        default="https://www.cryptovault.financial",
         description="Frontend application URL"
     )
     public_site_name: str = Field(
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     # MONGODB CONFIGURATION
     # ============================================
     mongo_url: str = Field(
-        default="mongodb://localhost:27017/cryptovault",
+        default="mongodb+srv://team_db_user:mWPe3V6ZhoNNEWUk@cryptovaultcluster.vobw2w8.mongodb.net/?appName=CryptoVaultCluster",
         description="MongoDB Atlas connection URL"
     )
     db_name: str = Field(default="cryptovault", description="Database name")
@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     # CORS CONFIGURATION
     # ============================================
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173",
+        default="http://localhost:3000,http://localhost:5173, ",
         description="Comma-separated list of allowed CORS origins"
     )
 
