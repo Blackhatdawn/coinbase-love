@@ -41,7 +41,7 @@ const LanguageSelector = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger 
-        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 focus:outline-none min-h-[44px]"
+        className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 focus:outline-none min-h-[44px]"
         aria-label="Select language"
       >
         <Globe className="h-4 w-4" />
@@ -144,14 +144,14 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
         aria-label="Mobile navigation menu"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10 relative z-10">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/10 relative z-10">
           <Link to="/" className="flex items-center gap-3" onClick={onClose}>
             <img 
               src="/logo.svg" 
               alt="CryptoVault" 
-              className="h-10 w-10 object-contain"
+              className="h-9 w-9 sm:h-10 sm:w-10 object-contain"
             />
-            <span className="font-display text-xl font-bold tracking-tight">
+            <span className="font-display text-lg sm:text-xl font-bold tracking-tight">
               Crypto<span className="text-gold-400">Vault</span>
             </span>
           </Link>
@@ -166,7 +166,7 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
         </div>
         
         {/* Navigation Links */}
-        <nav className="flex flex-col px-4 sm:px-6 py-6 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <nav className="flex flex-col px-4 sm:px-6 py-5 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
           {menuLinks.map((link, index) => {
             const Icon = link.icon;
             return (
@@ -174,10 +174,10 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
                 key={link.to}
                 to={link.to}
                 onClick={onClose}
-                className="text-base font-medium text-muted-foreground hover:text-gold-400 py-4 px-4 hover:bg-gold-500/5 transition-colors flex items-center gap-4 rounded-lg min-h-[56px]"
+                className="text-sm sm:text-base font-medium text-muted-foreground hover:text-gold-400 py-3 px-3 sm:px-4 hover:bg-gold-500/5 transition-colors flex items-center gap-3 rounded-lg min-h-[48px]"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 {link.label}
               </Link>
             );
@@ -185,13 +185,13 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
         </nav>
         
         {/* Bottom Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 border-t border-white/10 bg-background/80 backdrop-blur-xl safe-area-pb">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 border-t border-white/10 bg-background/80 backdrop-blur-xl safe-area-pb">
           <div className="flex flex-col gap-3">
             {user ? (
               <>
                 <Button 
                   variant="outline" 
-                  className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
+                  className="w-full h-11 sm:h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
                   asChild
                 >
                   <Link to="/dashboard" onClick={onClose}>
@@ -201,7 +201,7 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full h-12 text-muted-foreground hover:text-destructive font-mono uppercase"
+                  className="w-full h-11 sm:h-12 text-muted-foreground hover:text-destructive font-mono uppercase"
                   onClick={() => { onSignOut(); onClose(); }}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -212,13 +212,13 @@ const MobileMenu = ({ isOpen, onClose, user, onSignOut }: MobileMenuProps) => {
               <>
                 <Button 
                   variant="outline" 
-                  className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
+                  className="w-full h-11 sm:h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 hover:text-gold-400 font-mono uppercase"
                   asChild
                 >
                   <Link to="/auth" onClick={onClose}>Sign In</Link>
                 </Button>
                 <Button 
-                  className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold font-mono uppercase tracking-wider"
+                  className="w-full h-11 sm:h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold font-mono uppercase tracking-wider"
                   asChild
                 >
                   <Link to="/auth" onClick={onClose}>
@@ -293,7 +293,7 @@ const Header = () => {
         role="banner"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex h-16 sm:h-18 lg:h-20 items-center justify-between">
+          <div className="flex h-14 sm:h-16 lg:h-18 items-center justify-between">
             
             {/* LEFT: Logo with enhanced branding */}
             <Link 
@@ -308,17 +308,17 @@ const Header = () => {
                 <img 
                   src="/logo.svg" 
                   alt="CryptoVault Logo" 
-                  className="relative h-11 w-11 sm:h-12 sm:w-12 lg:h-14 lg:w-14 object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]"
+                  className="relative h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                 />
               </div>
               
               {/* Brand text with enhanced styling */}
               <div className="flex flex-col relative">
-                <span className="font-display text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight leading-none group-hover:text-gold-400 transition-colors duration-300">
+                <span className="font-display text-lg sm:text-xl lg:text-2xl font-bold tracking-tight leading-none group-hover:text-gold-400 transition-colors duration-300">
                   Crypto<span className="text-gold-400">Vault</span>
                 </span>
-                <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground tracking-widest uppercase mt-1 font-mono group-hover:text-gold-400/80 transition-colors duration-300">
-                  <Shield className="h-3 w-3 text-gold-400" />
+                <span className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground tracking-widest uppercase mt-1 font-mono group-hover:text-gold-400/80 transition-colors duration-300">
+                  <Shield className="h-2.5 w-2.5 text-gold-400" />
                   Institutional-Grade Security
                 </span>
               </div>
@@ -329,7 +329,7 @@ const Header = () => {
 
             {/* CENTER: Desktop Navigation */}
             <nav 
-              className="hidden lg:flex items-center gap-6 xl:gap-8"
+              className="hidden lg:flex items-center gap-5 xl:gap-6"
               role="navigation"
               aria-label="Main navigation"
             >
@@ -341,7 +341,7 @@ const Header = () => {
             </nav>
 
             {/* RIGHT: Actions */}
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+            <div className="flex items-center gap-1 sm:gap-2">
               <div className="hidden md:block">
                 <LanguageSelector />
               </div>
@@ -399,7 +399,7 @@ const Header = () => {
 
               {/* Mobile Menu Toggle */}
               <button 
-                className="lg:hidden p-2.5 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className="lg:hidden p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 data-testid="mobile-menu-toggle"
                 aria-expanded={isMenuOpen}

@@ -6,14 +6,14 @@ const RiskDisclosure = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-8 w-8 text-destructive" />
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-5 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" />
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               Risk <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Disclosure</span>
             </h1>
             <p className="text-muted-foreground">Important information about the risks of trading digital assets</p>
@@ -21,7 +21,7 @@ const RiskDisclosure = () => {
           </div>
 
           {/* Warning Banner */}
-          <div className="mb-12 p-6 bg-destructive/10 border border-destructive/20 rounded-xl">
+          <div className="mb-8 sm:mb-10 p-5 sm:p-6 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-start gap-4">
               <AlertTriangle className="h-6 w-6 text-destructive shrink-0 mt-1" />
               <div>
@@ -34,8 +34,8 @@ const RiskDisclosure = () => {
           </div>
 
           {/* Content */}
-          <div className="prose prose-invert max-w-none space-y-8">
-            <section className="glass-card p-6 border border-gold-500/10">
+          <div className="prose prose-invert max-w-none space-y-6 sm:space-y-8">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <TrendingDown className="h-5 w-5 text-gold-400" />
                 Market Volatility Risk
@@ -53,7 +53,7 @@ const RiskDisclosure = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Lock className="h-5 w-5 text-gold-400" />
                 Liquidity Risk
@@ -69,7 +69,7 @@ const RiskDisclosure = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Scale className="h-5 w-5 text-gold-400" />
                 Regulatory Risk
@@ -86,7 +86,7 @@ const RiskDisclosure = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Zap className="h-5 w-5 text-gold-400" />
                 Technology Risk
@@ -104,7 +104,7 @@ const RiskDisclosure = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Globe className="h-5 w-5 text-gold-400" />
                 Counterparty Risk

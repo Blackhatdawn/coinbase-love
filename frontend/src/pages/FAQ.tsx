@@ -106,19 +106,19 @@ const FAQ = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24">
+      <main className="pt-20 sm:pt-24">
         {/* Hero */}
-        <section className="py-20 bg-gradient-to-b from-secondary/30 to-background">
+        <section className="section-padding bg-gradient-to-b from-secondary/30 to-background">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
                 <HelpCircle className="h-4 w-4 text-primary" />
                 <span className="text-sm text-primary font-medium">Help Center</span>
               </div>
-              <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
                 FAQ & <span className="text-gradient">Resources</span>
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
                 Find answers to common questions and explore our educational resources
                 to make the most of your CryptoVault experience.
               </p>
@@ -127,23 +127,23 @@ const FAQ = () => {
         </section>
 
         {/* FAQ Sections */}
-        <section className="py-20">
+        <section className="section-padding">
           <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto space-y-12">
+            <div className="max-w-4xl mx-auto space-y-8 sm:space-y-10">
               {faqCategories.map((category) => (
                 <div key={category.title} data-testid={`faq-${category.title.toLowerCase().replace(/\s+/g, '-')}`}>
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <category.icon className="h-5 w-5 text-primary" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <category.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     </div>
-                    <h2 className="font-display text-2xl font-bold">{category.title}</h2>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold">{category.title}</h2>
                   </div>
                   <Accordion type="single" collapsible className="space-y-2">
                     {category.questions.map((item, index) => (
                       <AccordionItem
                         key={index}
                         value={`${category.title}-${index}`}
-                        className="glass-card px-6"
+                        className="glass-card px-4 sm:px-6"
                       >
                         <AccordionTrigger className="text-left font-medium hover:no-underline">
                           {item.q}
@@ -161,21 +161,21 @@ const FAQ = () => {
         </section>
 
         {/* Resources / Blog */}
-        <section className="py-20 bg-secondary/20">
+        <section className="section-padding bg-secondary/20">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center justify-between mb-8 sm:mb-10">
                 <div>
-                  <h2 className="font-display text-3xl font-bold mb-2">Resources & Insights</h2>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2">Resources & Insights</h2>
                   <p className="text-muted-foreground">Educational content and market analysis</p>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 {resources.map((resource) => (
                   <div
                     key={resource.title}
-                    className="glass-card p-6 hover:border-primary/50 transition-colors cursor-pointer group"
+                    className="glass-card p-5 sm:p-6 hover:border-primary/50 transition-colors cursor-pointer group"
                   >
                     <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
                       {resource.category}

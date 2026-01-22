@@ -76,24 +76,24 @@ const Trade = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="mb-12 animate-fade-in">
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-3">
+          <div className="mb-8 sm:mb-10 animate-fade-in">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
               Advanced <span className="text-gradient">Trading</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
               Trade cryptocurrencies with powerful tools, real-time analytics, and institutional-grade features.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* Trading Panel */}
             <div className="lg:col-span-2">
-              <Card className="p-6 border-border/50 bg-secondary/20 backdrop-blur">
-                <div className="mb-6">
-                  <h2 className="font-display text-xl font-bold mb-4">Create Order</h2>
+              <Card className="p-5 sm:p-6 border-border/50 bg-secondary/20 backdrop-blur">
+                <div className="mb-5">
+                  <h2 className="font-display text-lg sm:text-xl font-bold mb-4">Create Order</h2>
 
                   <div className="space-y-4">
                     {/* Pair Selection */}

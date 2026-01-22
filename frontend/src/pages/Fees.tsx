@@ -24,21 +24,21 @@ const Fees = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="container mx-auto px-4">
           {/* Hero */}
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
               Transparent <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Fee Structure</span>
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base sm:text-lg text-muted-foreground">
               At CryptoVault, we believe in complete transparency. Our competitive fee structure rewards active traders with lower costs.
             </p>
           </div>
 
           {/* Trading Fees */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <section className="mb-10 sm:mb-14">
+            <h2 className="text-xl sm:text-2xl font-bold mb-5 flex items-center gap-2">
               <span className="h-8 w-1 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full"></span>
               Trading Fees
             </h2>
@@ -47,19 +47,19 @@ const Fees = () => {
                 <table className="w-full">
                   <thead className="bg-gold-500/5">
                     <tr>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Tier</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">30-Day Volume (USD)</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Maker Fee</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Taker Fee</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Tier</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">30-Day Volume (USD)</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Maker Fee</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Taker Fee</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tradingFees.map((fee, index) => (
                       <tr key={fee.tier} className={index % 2 === 0 ? "bg-background/50" : ""}>
-                        <td className="px-6 py-4 font-medium">{fee.tier}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{fee.volume}</td>
-                        <td className="px-6 py-4 text-success">{fee.maker}</td>
-                        <td className="px-6 py-4 text-gold-400">{fee.taker}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 font-medium">{fee.tier}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-muted-foreground">{fee.volume}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-success">{fee.maker}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-gold-400">{fee.taker}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -73,8 +73,8 @@ const Fees = () => {
           </section>
 
           {/* Withdrawal Fees */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <section className="mb-10 sm:mb-14">
+            <h2 className="text-xl sm:text-2xl font-bold mb-5 flex items-center gap-2">
               <span className="h-8 w-1 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full"></span>
               Withdrawal Fees
             </h2>
@@ -83,19 +83,19 @@ const Fees = () => {
                 <table className="w-full">
                   <thead className="bg-gold-500/5">
                     <tr>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Asset</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Network</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Withdrawal Fee</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gold-400">Minimum Withdrawal</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Asset</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Network</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Withdrawal Fee</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-gold-400">Minimum Withdrawal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {withdrawalFees.map((fee, index) => (
                       <tr key={`${fee.asset}-${fee.network}`} className={index % 2 === 0 ? "bg-background/50" : ""}>
-                        <td className="px-6 py-4 font-medium">{fee.asset}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{fee.network}</td>
-                        <td className="px-6 py-4">{fee.fee}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{fee.minWithdraw}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 font-medium">{fee.asset}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-muted-foreground">{fee.network}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4">{fee.fee}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-muted-foreground">{fee.minWithdraw}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -109,8 +109,8 @@ const Fees = () => {
           </section>
 
           {/* Zero Fee Benefits */}
-          <section className="mb-16">
-            <div className="glass-card p-8 border border-gold-500/20 bg-gradient-to-br from-gold-500/5 to-transparent">
+          <section className="mb-10 sm:mb-14">
+            <div className="glass-card p-6 sm:p-8 border border-gold-500/20 bg-gradient-to-br from-gold-500/5 to-transparent">
               <h3 className="text-xl font-bold mb-4">Zero Fee Benefits</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">

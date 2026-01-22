@@ -113,7 +113,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             !isMobile && sidebarCollapsed && 'lg:ml-[72px]'
           )}
         >
-          <div className="p-4 md:p-6 lg:p-8">
+          <div className="p-3 sm:p-4 md:p-5 lg:p-6">
             {children || <Outlet />}
           </div>
         </main>

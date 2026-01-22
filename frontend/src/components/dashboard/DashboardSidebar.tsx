@@ -79,7 +79,7 @@ const DashboardSidebar = ({ collapsed, onToggle, isMobile = false }: DashboardSi
       {/* Navigation Content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {/* Main Navigation */}
-        <nav className="p-3">
+        <nav className="p-2 sm:p-3">
           <div className={cn('mb-2 px-3', collapsed && 'px-0 text-center')}>
             <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
               {collapsed ? '•' : 'Main'}
@@ -98,7 +98,7 @@ const DashboardSidebar = ({ collapsed, onToggle, isMobile = false }: DashboardSi
         </nav>
 
         {/* Secondary Navigation */}
-        <nav className="p-3 pt-0">
+        <nav className="p-2 sm:p-3 pt-0">
           <div className={cn('mb-2 px-3', collapsed && 'px-0 text-center')}>
             <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
               {collapsed ? '•' : 'Activity'}
@@ -117,7 +117,7 @@ const DashboardSidebar = ({ collapsed, onToggle, isMobile = false }: DashboardSi
         </nav>
 
         {/* Bottom Navigation */}
-        <nav className="p-3 pt-0 mt-auto">
+        <nav className="p-2 sm:p-3 pt-0 mt-auto">
           <div className={cn('mb-2 px-3', collapsed && 'px-0 text-center')}>
             <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
               {collapsed ? '•' : 'Account'}
@@ -138,7 +138,7 @@ const DashboardSidebar = ({ collapsed, onToggle, isMobile = false }: DashboardSi
 
       {/* Collapse Toggle Button (Desktop only) */}
       {!isMobile && (
-        <div className="p-3 border-t border-white/5">
+        <div className="p-2 sm:p-3 border-t border-white/5">
           <button
             onClick={onToggle}
             className={cn(
@@ -179,7 +179,7 @@ const NavItem = ({
     <Link
       to={item.path}
       className={cn(
-        'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+        'relative flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg transition-all duration-200 group',
         isActive
           ? 'bg-gold-500/10 text-gold-400'
           : 'text-gray-400 hover:text-white hover:bg-white/5',

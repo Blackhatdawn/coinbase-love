@@ -12,6 +12,7 @@ const PriceTicker = () => {
   const { data, isLoading, error, isRefreshing } = useCryptoData({
     refreshInterval: 15000, // Refresh every 15 seconds for real-time feel
     autoRefresh: true,
+    limit: 30,
   });
 
   // Track previous prices for flash animation

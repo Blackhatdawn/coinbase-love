@@ -163,7 +163,7 @@ const Portfolio = () => {
           >
             <div className="space-y-6">
               <div className="flex items-baseline gap-3">
-                <span className="text-4xl sm:text-5xl font-display font-bold text-white">
+                <span className="text-3xl sm:text-4xl font-display font-bold text-white">
                   ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 <div className={cn(

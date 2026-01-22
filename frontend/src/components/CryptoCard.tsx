@@ -16,12 +16,12 @@ const CryptoCard = ({ symbol, name, price, change, marketCap, volume, icon, inde
 
   return (
     <div 
-      className="glass-card p-5 hover:border-primary/50 transition-all duration-300 cursor-pointer group animate-slide-up"
+      className="glass-card p-4 sm:p-5 hover:border-primary/50 transition-all duration-300 cursor-pointer group animate-slide-up"
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="text-3xl">{icon}</div>
+          <div className="text-2xl sm:text-3xl">{icon}</div>
           <div>
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
               {symbol}
@@ -45,7 +45,7 @@ const CryptoCard = ({ symbol, name, price, change, marketCap, volume, icon, inde
 
       <div className="space-y-2">
         <div className="flex items-baseline gap-2">
-          <span className="font-display text-2xl font-bold">
+          <span className="font-display text-xl sm:text-2xl font-bold">
             ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>

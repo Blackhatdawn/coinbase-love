@@ -148,6 +148,38 @@
     background-image: var(--gradient-primary);
   }
 
+  .section-padding {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+
+  .section-padding-lg {
+    @apply py-14 sm:py-20 lg:py-24;
+  }
+
+  .page-padding {
+    @apply pt-20 sm:pt-24 lg:pt-28 pb-16 sm:pb-20;
+  }
+
+  .page-padding-top {
+    @apply pt-20 sm:pt-24 lg:pt-28;
+  }
+
+  .card-compact {
+    @apply p-4 sm:p-6;
+  }
+
+  .card-compact-lg {
+    @apply p-5 sm:p-6 lg:p-8;
+  }
+
+  .section-title {
+    @apply font-display text-2xl sm:text-3xl lg:text-4xl font-bold;
+  }
+
+  .section-subtitle {
+    @apply text-sm sm:text-base text-muted-foreground leading-relaxed;
+  }
+
   .glow-effect {
     box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.4);
   }

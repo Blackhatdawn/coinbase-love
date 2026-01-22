@@ -6,13 +6,13 @@ const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-8">Privacy Policy</h1>
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-6">Privacy Policy</h1>
           
-          <div className="prose prose-invert max-w-none space-y-8 text-muted-foreground">
+          <div className="prose prose-invert max-w-none space-y-6 sm:space-y-8 text-muted-foreground">
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Introduction</h2>
               <p>
                 CryptoVault ("we" or "us" or "our") operates the website. This page informs you of our policies regarding the collection, 
                 use, and disclosure of personal data when you use our service and the choices you have associated with that data.
@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Information Collection and Use</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Information Collection and Use</h2>
               <p>
                 We collect several different types of information for various purposes to provide and improve our service to you.
               </p>
@@ -33,7 +33,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Use of Data</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Use of Data</h2>
               <p>
                 CryptoVault uses the collected data for various purposes:
               </p>
@@ -49,7 +49,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Security of Data</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Security of Data</h2>
               <p>
                 The security of your data is important to us, but remember that no method of transmission over the Internet or method of electronic storage 
                 is 100% secure. While we strive to use commercially acceptable means to protect your personal data, we cannot guarantee its absolute security.
@@ -57,7 +57,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Changes to This Privacy Policy</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Changes to This Privacy Policy</h2>
               <p>
                 We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and 
                 updating the "effective date" at the bottom of this Privacy Policy.
@@ -65,7 +65,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Contact Us</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Contact Us</h2>
               <p>
                 If you have any questions about this Privacy Policy, please contact us at:
               </p>
@@ -75,7 +75,7 @@ const PrivacyPolicy = () => {
               </ul>
             </section>
 
-            <p className="text-sm pt-8 border-t border-border/50">
+            <p className="text-sm pt-6 sm:pt-8 border-t border-border/50">
               Last updated: January 2024
             </p>
           </div>

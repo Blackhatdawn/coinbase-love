@@ -48,9 +48,9 @@ const DashboardHeader = ({ onMenuToggle, isSidebarCollapsed }: DashboardHeaderPr
 
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-[#0f0f17]/95 backdrop-blur-xl border-b border-white/5 z-50">
-      <div className="h-full px-4 flex items-center justify-between">
+      <div className="h-full px-3 sm:px-4 flex items-center justify-between">
         {/* Left Section: Menu + Logo */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Menu Toggle Button */}
           <button
             onClick={onMenuToggle}
@@ -68,10 +68,10 @@ const DashboardHeader = ({ onMenuToggle, isSidebarCollapsed }: DashboardHeaderPr
               <img
                 src="/logo.svg"
                 alt="CryptoVault"
-                className="h-8 w-8 object-contain relative z-10"
+                className="h-7 w-7 sm:h-8 sm:w-8 object-contain relative z-10"
               />
             </div>
-            <span className="font-display text-lg font-bold hidden sm:block">
+            <span className="font-display text-base sm:text-lg font-bold hidden sm:block">
               Crypto<span className="text-gold-400">Vault</span>
             </span>
           </Link>
@@ -93,7 +93,7 @@ const DashboardHeader = ({ onMenuToggle, isSidebarCollapsed }: DashboardHeaderPr
         </div>
 
         {/* Right Section: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Theme Toggle */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}

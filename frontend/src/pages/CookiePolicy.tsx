@@ -7,22 +7,22 @@ const CookiePolicy = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gold-500/10 flex items-center justify-center">
-              <Cookie className="h-8 w-8 text-gold-400" />
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-5 rounded-2xl bg-gold-500/10 flex items-center justify-center">
+              <Cookie className="h-6 w-6 sm:h-8 sm:w-8 text-gold-400" />
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               Cookie <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">Policy</span>
             </h1>
             <p className="text-muted-foreground">Last updated: June 1, 2025</p>
           </div>
 
           {/* Content */}
-          <div className="prose prose-invert max-w-none space-y-8">
-            <section className="glass-card p-6 border border-gold-500/10">
+          <div className="prose prose-invert max-w-none space-y-6 sm:space-y-8">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Info className="h-5 w-5 text-gold-400" />
                 What Are Cookies?
@@ -32,7 +32,7 @@ const CookiePolicy = () => {
               </p>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Settings className="h-5 w-5 text-gold-400" />
                 Types of Cookies We Use
@@ -74,7 +74,7 @@ const CookiePolicy = () => {
               </div>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-gold-400" />
                 Managing Your Cookie Preferences
@@ -98,7 +98,7 @@ const CookiePolicy = () => {
               </div>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4">Cookie Retention</h2>
               <p className="text-muted-foreground leading-relaxed">
                 The length of time cookies remain on your device depends on the type of cookie. Session cookies only last for your browsing session and are deleted when you close your browser. Persistent cookies stay on your device until they expire or are deleted manually.
@@ -111,7 +111,7 @@ const CookiePolicy = () => {
               </ul>
             </section>
 
-            <section className="glass-card p-6 border border-gold-500/10">
+            <section className="glass-card p-5 sm:p-6 border border-gold-500/10">
               <h2 className="text-xl font-bold mb-4">Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 If you have any questions about our use of cookies or this Cookie Policy, please contact us at:

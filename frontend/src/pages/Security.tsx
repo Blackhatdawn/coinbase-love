@@ -19,19 +19,19 @@ const Security = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24">
+      <main className="pt-20 sm:pt-24">
         {/* Hero */}
-        <section className="py-20 bg-gradient-to-b from-secondary/30 to-background">
+        <section className="section-padding bg-gradient-to-b from-secondary/30 to-background">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 mb-6">
                 <Shield className="h-4 w-4 text-success" />
                 <span className="text-sm text-success font-medium">Enterprise Security</span>
               </div>
-              <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
                 Security & <span className="text-gradient">Compliance</span>
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
                 Bank-grade security infrastructure with institutional compliance standards.
                 Your assets are protected by multiple layers of security.
               </p>
@@ -40,13 +40,13 @@ const Security = () => {
         </section>
 
         {/* Security Features */}
-        <section className="py-20">
+        <section className="section-padding">
           <div className="container mx-auto px-4">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {/* Cold Storage */}
-              <div className="glass-card p-8" data-testid="security-cold-storage">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <Server className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-cold-storage">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <Server className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">95%+ Cold Storage</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -67,9 +67,9 @@ const Security = () => {
               </div>
 
               {/* Multi-Sig */}
-              <div className="glass-card p-8" data-testid="security-multisig">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <Lock className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-multisig">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">Multi-Signature</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -90,9 +90,9 @@ const Security = () => {
               </div>
 
               {/* SOC 2 */}
-              <div className="glass-card p-8" data-testid="security-soc2">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <FileCheck className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-soc2">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <FileCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">SOC 2 Type II</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -109,9 +109,9 @@ const Security = () => {
               </div>
 
               {/* KYC/AML */}
-              <div className="glass-card p-8" data-testid="security-kyc-aml">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <UserCheck className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-kyc-aml">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <UserCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">KYC/AML Compliance</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -132,9 +132,9 @@ const Security = () => {
               </div>
 
               {/* Risk Disclosures */}
-              <div className="glass-card p-8" data-testid="security-risk">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <AlertTriangle className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-risk">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">Risk Disclosures</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -150,9 +150,9 @@ const Security = () => {
               </div>
 
               {/* Proof of Reserves */}
-              <div className="glass-card p-8" data-testid="security-por">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <Database className="h-7 w-7 text-primary" />
+              <div className="glass-card p-6 sm:p-8" data-testid="security-por">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <Database className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 </div>
                 <h3 className="font-display text-xl font-semibold mb-3">Proof-of-Reserves</h3>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -176,12 +176,12 @@ const Security = () => {
         </section>
 
         {/* Insurance */}
-        <section className="py-20 bg-secondary/20">
+        <section className="section-padding bg-secondary/20">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
-              <div className="glass-card p-10 text-center">
-                <Shield className="h-16 w-16 text-primary mx-auto mb-6" />
-                <h2 className="font-display text-3xl font-bold mb-4">$500M Insurance Coverage</h2>
+              <div className="glass-card p-8 sm:p-10 text-center">
+                <Shield className="h-12 w-12 sm:h-16 sm:w-16 text-primary mx-auto mb-6" />
+                <h2 className="font-display text-2xl sm:text-3xl font-bold mb-4">$500M Insurance Coverage</h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
                   Digital assets under custody are protected by comprehensive insurance coverage
                   against theft, hacking, and other security breaches.
@@ -195,7 +195,7 @@ const Security = () => {
         </section>
 
         {/* Important Risk Notice */}
-        <section className="py-20">
+        <section className="section-padding">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-xl p-8">
@@ -228,7 +228,7 @@ const Security = () => {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-secondary/20">
+        <section className="section-padding bg-secondary/20">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto text-center">
               <h2 className="font-display text-3xl font-bold mb-4">
