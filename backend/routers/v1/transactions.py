@@ -11,11 +11,17 @@ from io import StringIO
 
 from dependencies import get_current_user_id, get_db
 from services.transactions_utils import format_transaction, normalize_type_filter
+from services.rate_limit_utils import enforce_rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 MAX_EXPORT_LIMIT = 5000
+TRANSACTIONS_RATE_LIMIT = 100
+
+
+async def enforce_transactions_limit(user_id: str) -> None:
+    await enforce_rate_limit(f"transactions:{user_id}", TRANSACTIONS_RATE_LIMIT, 60)
 
 
 class TransactionExportRequest(BaseModel):
@@ -58,6 +64,7 @@ async def get_transactions(
     db = Depends(get_db)
 ):
     """Get user's transaction history."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     # Build query
@@ -88,6 +95,7 @@ async def get_transaction(
     db = Depends(get_db)
 ):
     """Get a specific transaction."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     transaction = await transactions_collection.find_one({
@@ -111,6 +119,7 @@ async def export_transactions(
     db = Depends(get_db)
 ):
     """Export transactions in CSV or JSON format."""
+    await enforce_transactions_limit(user_id)
     if payload.start_date and payload.end_date and payload.start_date > payload.end_date:
         raise HTTPException(status_code=400, detail="start_date must be before end_date")
 
@@ -179,6 +188,7 @@ async def get_transaction_stats(
     db = Depends(get_db)
 ):
     """Get transaction statistics summary."""
+    await enforce_transactions_limit(user_id)
     transactions_collection = db.get_collection("transactions")
     
     # Aggregate by type

@@ -343,6 +343,13 @@ class Settings(BaseSettings):
             return self.upstash_redis_rest_url
         return self.redis_url
 
+    def is_redis_available(self) -> bool:
+        """Check if Redis is configured."""
+        return bool(
+            (self.upstash_redis_rest_url and self.upstash_redis_rest_token)
+            or self.redis_url
+        )
+
     def to_dict(self, include_secrets: bool = False) -> dict:
         """
         Convert settings to dictionary.
