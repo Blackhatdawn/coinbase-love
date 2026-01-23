@@ -1,21 +1,23 @@
 import sys
 import os
+import asyncio
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from httpx import AsyncClient
-from .server import app
+import httpx
+from server import app
 
 @pytest.mark.anyio
 async def test_root():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/")
         assert response.status_code == 200
         assert "CryptoVault API is live" in response.json()["message"]
 
 @pytest.mark.anyio
 async def test_health():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        await asyncio.sleep(0.1)
         response = await client.get("/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
@@ -23,7 +25,8 @@ async def test_health():
 
 @pytest.mark.anyio
 async def test_signup_login_logout_flow():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        await asyncio.sleep(0.1)
         # Unique email to avoid duplicates
         unique_email = f"test_{os.urandom(4).hex()}@example.com"
 
