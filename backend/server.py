@@ -23,7 +23,7 @@ from config import settings, validate_startup_environment, get_settings
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, deep_investigation
 
 # Services
 from websocket_feed import price_feed
@@ -611,6 +611,7 @@ app.include_router(websocket.router)
 
 # Monitoring (no versioning or auth required)
 app.include_router(monitoring.router, prefix="/api")
+app.include_router(deep_investigation.router, prefix="/api")
 
 # ============================================
 # SOCKET.IO INTEGRATION
