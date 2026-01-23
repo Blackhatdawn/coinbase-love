@@ -7,12 +7,11 @@ services:
     runtime: python
     region: oregon
     plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn server:socket_app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    root: .
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python run_server.py
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
       - key: ENVIRONMENT
         value: production
       - key: PORT
