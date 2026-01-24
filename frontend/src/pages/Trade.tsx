@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,18 +14,56 @@ import { useAuth } from "@/contexts/AuthContext";
 const Trade = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [tradingPair, setTradingPair] = useState("");
   const [orderType, setOrderType] = useState("market");
   const [side, setSide] = useState("buy");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [accountBalance] = useState(10000);
+
+  // Fetch account balance
+  const { data: balanceData } = useQuery({
+    queryKey: ["balance"],
+    queryFn: () => api.wallet.balance(),
+    enabled: !!user,
+  });
+  const accountBalance = balanceData?.balances?.USD || 0;
+
+  // Fetch available trading pairs
+  const { data: pairsData } = useQuery({
+    queryKey: ["tradingPairs"],
+    queryFn: () => api.crypto.getTradingPairs(),
+  });
+  const tradingPairs = pairsData?.pairs || [];
 
   const total = amount && price ? (parseFloat(amount) * parseFloat(price)).toFixed(2) : "0.00";
 
-  const handlePlaceOrder = async () => {
+  const placeOrderMutation = useMutation({
+    mutationFn: api.orders.create,
+    onSuccess: () => {
+      toast({
+        title: "Order placed successfully",
+        description: `${side.toUpperCase()} ${amount} ${tradingPair} at ${price}`,
+      });
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["balance"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      // Reset form
+      setTradingPair("");
+      setAmount("");
+      setPrice("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to place order",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePlaceOrder = () => {
     if (!user) {
       toast({
         title: "Not authenticated",
@@ -43,34 +82,13 @@ const Trade = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await api.orders.create({
-        trading_pair: tradingPair,
-        order_type: orderType,
-        side: side,
-        amount: parseFloat(amount),
-        price: parseFloat(price)
-      });
-
-      toast({
-        title: "Order placed successfully",
-        description: `${side.toUpperCase()} ${amount} ${tradingPair} at ${price}`,
-      });
-
-      // Reset form
-      setTradingPair("");
-      setAmount("");
-      setPrice("");
-    } catch (error: any) {
-      toast({
-        title: "Failed to place order",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    placeOrderMutation.mutate({
+      trading_pair: tradingPair,
+      order_type: orderType,
+      side: side,
+      amount: parseFloat(amount),
+      price: parseFloat(price)
+    });
   };
 
   return (
@@ -104,10 +122,9 @@ const Trade = () => {
                           <SelectValue placeholder="Select cryptocurrency pair" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
-                          <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
-                          <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
-                          <SelectItem value="XRP/USDT">XRP/USDT</SelectItem>
+                          {tradingPairs.map((pair: string) => (
+                            <SelectItem key={pair} value={pair}>{pair}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -185,9 +202,9 @@ const Trade = () => {
                         size="lg"
                         className="flex-1"
                         onClick={handlePlaceOrder}
-                        disabled={isLoading || !user}
+                        disabled={placeOrderMutation.isPending || !user}
                       >
-                        {isLoading ? "Placing..." : "Place Order"}
+                        {placeOrderMutation.isPending ? "Placing..." : "Place Order"}
                       </Button>
                       <Button variant="outline" size="lg">
                         <Settings className="h-4 w-4" />
@@ -227,7 +244,7 @@ const Trade = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Available</span>
-                    <span className="font-medium">$10,000.00</span>
+                    <span className="font-medium">${accountBalance.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">In Orders</span>
@@ -236,7 +253,7 @@ const Trade = () => {
                   <div className="h-px bg-border/50 my-2" />
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Total</span>
-                    <span className="font-display font-bold">$10,000.00</span>
+                    <span className="font-display font-bold">${accountBalance.toLocaleString()}</span>
                   </div>
                 </div>
               </Card>

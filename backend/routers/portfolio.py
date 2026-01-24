@@ -1,13 +1,13 @@
 """Portfolio management endpoints."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
 
 from models import Portfolio, Holding, HoldingCreate
 from dependencies import get_current_user_id, get_db
-from redis_cache import redis_cache
+from cache import cache
 from services import price_stream_service
 from coincap_service import coincap_service
 
@@ -48,7 +48,9 @@ async def get_price_for_symbol(symbol: str) -> Optional[float]:
 # ============================================
 
 @router.get("")
+@cache(ttl=60)
 async def get_portfolio(
+    request: Request,
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
@@ -65,10 +67,17 @@ async def get_portfolio(
     total_balance = 0
     updated_holdings = []
 
-    # Get prices from Redis cache (real-time WebSocket updates)
+    # Batch get prices from Redis
+    symbols = [h.get("symbol", "").lower() for h in holdings]
+    price_keys = [f"crypto:price:{s}" for s in symbols]
+    cached_prices = await redis_cache.mget(price_keys) if price_keys else []
+
+    price_map = {symbol: float(price) if price else None for symbol, price in zip(symbols, cached_prices)}
+
     for holding in holdings:
         symbol = holding.get("symbol", "").upper()
-        current_price = await get_price_for_symbol(symbol)
+        symbol_lower = symbol.lower()
+        current_price = price_map.get(symbol_lower) or price_stream_service.prices.get(symbol)
 
         if current_price is not None and current_price > 0:
             current_value = holding.get("amount", 0) * current_price
@@ -83,7 +92,6 @@ async def get_portfolio(
                 "cached_at": datetime.now().isoformat()
             })
         else:
-            # Price not available, use cached value if exists
             updated_holdings.append({
                 "symbol": symbol,
                 "name": holding.get("name", symbol),
@@ -181,6 +189,9 @@ async def add_holding(
         {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
     )
 
+    # Invalidate portfolio cache
+    await redis_cache.delete(f"portfolio:{user_id}")
+
     return {"message": "Holding added successfully", "holding": new_holding}
 
 
@@ -203,5 +214,8 @@ async def delete_holding(
         {"user_id": user_id},
         {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
     )
+
+    # Invalidate portfolio cache
+    await redis_cache.delete(f"portfolio:{user_id}")
 
     return {"message": "Holding deleted successfully"}
