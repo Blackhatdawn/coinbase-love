@@ -1,121 +1,122 @@
-# CryptoVault - Product Requirements Document
+# CryptoVault Enterprise Trading Platform - PRD
 
-## Overview
-CryptoVault is a secure cryptocurrency trading platform with institutional-grade custody solutions. Built with React (Vite) frontend and FastAPI backend.
+## Original Problem Statement
+PRODUCTION ENGINEERING PROTOCOL: CryptoVault Enterprise Trading Platform completion across 6 phases - Backend API completion, Database optimization, Frontend integration, Production deployment readiness, Monitoring & logging, and Testing validation.
 
-## Architecture
-- **Frontend**: Vite + React + TypeScript (Tailwind CSS, Shadcn/UI)
-- **Backend**: FastAPI + Python
-- **Database**: MongoDB Atlas (primary), Redis/Upstash (caching, OTPs, sessions)
-- **Integrations**: CoinGecko (live prices), SendGrid (emails), NOWPayments (deposits - ready), Firebase FCM (push - ready)
+## Project Overview
+- **Frontend**: React + Vite deployed to Vercel (https://www.cryptovault.financial)
+- **Backend**: FastAPI + MongoDB deployed to Render (https://cryptovault-api.onrender.com)
+- **Real-time**: Socket.IO for live price feeds and updates
 
 ## User Personas
-1. **Retail Crypto Traders** - Individual users trading cryptocurrencies
-2. **Institutional Investors** - Organizations requiring secure custody
-3. **New Crypto Users** - First-time cryptocurrency buyers
+1. **Retail Investors**: Individual crypto traders seeking secure custody
+2. **Institutional Clients**: Family offices, hedge funds requiring enterprise-grade security
+3. **Enterprise Users**: Businesses managing crypto treasuries
 
 ## Core Requirements (Static)
-- Secure JWT-based authentication with email OTP verification
-- Live cryptocurrency prices from CoinGecko
-- Portfolio management with real-time value updates
-- Buy/Sell trading functionality
-- Wallet management (deposit/withdraw)
-- Order history tracking
-- Mobile-first responsive design
-- Gold/orange theme branding
+- Cookie-based authentication with JWT tokens
+- Real-time crypto price feeds via Socket.IO
+- Wallet management with deposits/withdrawals
+- P2P transfers between users
+- Transaction history with export capability
+- 2FA security setup
+- Audit logging for compliance
 
-## What's Been Implemented
+---
 
-### Phase 1 - January 2026
-- ✅ Complete authentication flow (signup, OTP verification, login)
-- ✅ Email service with SendGrid integration
-- ✅ Redis caching for OTPs and API responses
-- ✅ CoinGecko integration for live prices
-- ✅ Portfolio dashboard with holdings display
-- ✅ Markets page with live prices and green/red indicators
-- ✅ Trading page with price charts (lightweight-charts v5)
-- ✅ Mobile-first responsive design across all pages
-- ✅ Custom logo.svg used consistently across all pages
-- ✅ Price ticker with auto-refresh (15s intervals)
-- ✅ Touch-friendly buttons (min 44x44px)
-- ✅ Gold/orange theme consistently applied
+## Implementation Status
 
-### Phase 2 - January 2026 (Latest Update)
-- ✅ **Enhanced LivePriceTicker** - Flash animations on price changes, horizontal swipe on mobile
-- ✅ **Social Proof Section** - 4 testimonials + trust statistics (Secured $10B+, 99.99% Uptime, 2M+ Users, 150+ Countries)
-- ✅ **Onboarding Loader** - Full-screen branded loading animation
-- ✅ **Password Reset Flow** - Request page + confirmation with token
-- ✅ **Order Confirmation Modal** - Shows trade details after execution
-- ✅ **Wallet Deposit Page** - Crypto payment form (NOWPayments ready)
-- ✅ **Price Alerts Page** - Create/manage price notifications
-- ✅ **Admin Dashboard** - User management, trade monitoring, volume charts
-- ✅ **SEO Optimization** - Meta tags, Open Graph support
-- ✅ **Security Headers** - CSP, X-Frame-Options, etc. in vercel.json
-- ✅ **Lazy Loading** - React.lazy for performance optimization
+### ✅ Phase 0: Baseline Verification (COMPLETED - Jan 25, 2026)
+- [x] Audited API surface and mapped frontend usage
+- [x] Fixed Socket.IO mounting (changed uvicorn to use socket_app)
+- [x] Fixed cookie-based auth (dual set-cookie header issue in middleware)
+- [x] Validated /api/config payload matches frontend RuntimeConfig
+- [x] All routers verified and functional
 
-## API Endpoints Added
-- `POST /api/auth/password-reset/request` - Request password reset
-- `POST /api/auth/password-reset/confirm` - Confirm with token
-- `GET /api/alerts` - Get user price alerts
-- `POST /api/alerts` - Create price alert
-- `PATCH /api/alerts/{id}` - Update alert
-- `DELETE /api/alerts/{id}` - Delete alert
-- `POST /api/wallet/deposit/create` - Create deposit invoice
-- `GET /api/admin/stats` - Admin statistics
-- `GET /api/admin/users` - User management
-- `GET /api/admin/trades` - Trade monitoring
+### ✅ Phase 1: Backend API Completion (COMPLETED - Jan 25, 2026)
 
-## Prioritized Backlog
+#### 1.1 Transactions Service
+- [x] GET /api/transactions (pagination + filters)
+- [x] GET /api/transactions/{id}
+- [x] POST /api/transactions/export (CSV/JSON)
+- [x] Audit log events on all writes
+- [x] Rate limit enforcement (100 req/min/user)
+- [x] Real-time update via Socket.IO
 
-### P0 (Critical - Next Sprint)
-- [ ] NOWPayments webhook integration for deposit confirmation
-- [ ] Firebase FCM push notification implementation
-- [ ] Real-time WebSocket for price updates
-- [ ] Email templates for password reset
+#### 1.2 Wallet Management
+- [x] GET /api/wallet/balance
+- [x] POST /api/wallet/deposit/create
+- [x] GET /api/wallet/deposit/{order_id}
+- [x] P2P transfers via /api/transfers/p2p
+- [x] Business rules: daily limits, AML stubs
 
-### P1 (High Priority)
-- [ ] Two-factor authentication (2FA)
-- [ ] Advanced charting with technical indicators
-- [ ] Order execution with exchange integration
-- [ ] KYC verification flow
+#### 1.3 Auth Flow
+- [x] Complete cookie-based authentication
+- [x] Token refresh without body requirement
+- [x] Profile update endpoint
+- [x] Logout with token invalidation
 
-### P2 (Medium Priority)
-- [ ] Multi-language support (i18n)
-- [ ] Social trading features
-- [ ] API key management
-- [ ] Tax reporting exports
+### ✅ Phase 2: Database Optimization (COMPLETED - Jan 25, 2026)
+- [x] users.email (unique index)
+- [x] users.email_verification_token (sparse)
+- [x] users.password_reset_token (sparse)
+- [x] transactions.user_id + created_at (compound, descending)
+- [x] wallets.user_id (unique)
+- [x] audit_logs.user_id + created_at
+- [x] TTL indexes for token expiration
+- [x] Safe index creation with conflict resolution
 
-### P3 (Future Considerations)
-- [ ] Staking and yield features
-- [ ] NFT marketplace integration
-- [ ] Mobile app (React Native)
-- [ ] Advanced order types (limit, stop-loss)
+### ✅ Phase 3: Frontend Integration (COMPLETED - Jan 25, 2026)
+- [x] apiClient.ts aligned with backend endpoints
+- [x] Cookie credentials properly handled
+- [x] Token refresh interceptor working
+- [x] /api/config loaded before initialization
+- [x] Socket.IO connection established
 
-## Testing Checklist
-| Feature | Desktop | Mobile | Backend |
-|---------|---------|--------|---------|
-| Live Price Ticker | ✅ | ✅ | ✅ |
-| Flash Animations | ✅ | ✅ | N/A |
-| Social Proof | ✅ | ✅ | N/A |
-| Password Reset | ✅ | ✅ | ✅ |
-| Wallet Deposit | ✅ | ✅ | ✅ |
-| Price Alerts | ✅ | ✅ | ✅ |
-| Admin Dashboard | ✅ | ✅ | ✅ |
-| Auth Flow | ✅ | ✅ | ✅ |
+---
 
-## Deployment Notes
+## Critical Bug Fixes Applied
+1. **JWT SecretStr**: Fixed auth.py to call `.get_secret_value()` on SecretStr
+2. **Duplicate Set-Cookie Headers**: Fixed RequestIDMiddleware and SecurityHeadersMiddleware to preserve header lists
+3. **Socket.IO Mounting**: Changed uvicorn to use `server:socket_app` instead of `server:app`
+4. **Content-Type Validation**: Exempted `/api/auth/refresh` and `/api/auth/logout` from body requirement
 
-### Vercel (Frontend)
-1. Connect GitHub repository
-2. Set environment variables from `.env.example`
-3. Update `VITE_API_BASE` to Render backend URL
-4. Enable Vercel Analytics
+---
 
-### Render (Backend)
-1. Connect GitHub repository
-2. Set environment variables from `backend/.env.example`
-3. Configure health check endpoint: `/api/health`
-4. Set CORS_ORIGINS to production domains
+## Remaining Work (P0/P1/P2)
 
-## Environment Variables Required
-See `.env.example` files in both `/frontend` and `/backend` directories.
+### P0 - Critical
+- [ ] Configure CoinCap API properly (currently using mock prices)
+- [ ] Verify production CORS settings with actual domains
+- [ ] Set up Sentry error tracking in production
+
+### P1 - Important
+- [ ] Phase 4: Production deployment validation
+- [ ] Phase 5: Full monitoring and alerting setup
+- [ ] Load testing for P95 latency targets
+- [ ] 2FA implementation completion
+
+### P2 - Nice to Have
+- [ ] Advanced caching with Service Workers
+- [ ] Offline-first architecture
+- [ ] Regional distribution
+
+---
+
+## Next Actions
+1. Deploy updated backend to Render
+2. Verify cross-origin cookie behavior in production
+3. Configure real CoinCap API key for live prices
+4. Enable Sentry in production environment
+5. Run load tests against transaction endpoints
+
+---
+
+## Technical Debt
+- Some middleware could be refactored to use Starlette middleware properly
+- Consider using pydantic-settings v2 validators for cleaner config parsing
+- Socket.IO could benefit from Redis adapter for multi-instance scaling
+
+---
+
+*Last Updated: January 25, 2026*
