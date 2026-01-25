@@ -17,17 +17,28 @@
 #### What Was Done:
 1. **Deep Investigation & Audit** of all frontend↔backend communication paths
 2. **Created Fly.io Configuration**:
-   - `fly.toml` - Production-ready Fly.io deployment config
+   - `fly.toml` - Production-ready Fly.io deployment config with auto-scaling (1-3 instances)
    - `Dockerfile.fly` - Optimized multi-stage Docker build
    - `deploy-fly.sh` - Automated deployment script
+   - `verify-fly-deployment.sh` - Post-deployment verification (20+ checks)
    - `.env.fly.template` - Secrets template for Fly.io
-3. **Updated Frontend Configuration**:
+   - `FLY_SECRETS_GUIDE.md` - Step-by-step secrets setup
+3. **Added Fly.io-Specific Endpoints**:
+   - `GET /api/fly/status` - Full deployment info (region, machine ID, IPs)
+   - `GET /api/fly/region` - Quick region check for latency testing
+   - `GET /api/fly/instances` - Instance info for debugging auto-scaling
+   - `GET /api/fly/health/fly` - Fly.io-specific health check
+4. **Updated Frontend Configuration**:
    - `vercel.json` - Rewrites now point to `cryptovault-api.fly.dev`
    - `.env.production` - Updated `VITE_API_BASE_URL`
-4. **Updated Backend Configuration**:
+5. **Updated Backend Configuration**:
    - `.env` - Added `PUBLIC_API_URL` and `PUBLIC_WS_URL` for Fly.io
    - Added Fly.io URL to `CORS_ORIGINS`
-5. **Full Technical Report** at `/app/FLY_IO_MIGRATION_REPORT.md`
+6. **Auto-Scaling Configuration**:
+   - Minimum: 1 instance (always running, no cold starts)
+   - Maximum: 3 instances during peak trading
+   - Scale trigger: When connections exceed 70 (soft limit)
+7. **Full Technical Report** at `/app/FLY_IO_MIGRATION_REPORT.md`
 
 #### Key Configuration Changes:
 | File | Change |
