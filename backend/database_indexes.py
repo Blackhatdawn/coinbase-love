@@ -360,8 +360,10 @@ async def create_indexes(db: AsyncIOMotorDatabase):
         await audit_logs_collection.create_index([("resource", ASCENDING)])
         
         # TTL index for old audit logs (delete after 7 years)
-        await audit_logs_collection.create_index(
+        await safe_create_index(
+            audit_logs_collection,
             [("created_at", ASCENDING)],
+            name="created_at_ttl",
             expireAfterSeconds=7 * 365 * 24 * 60 * 60  # 7 years
         )
         
