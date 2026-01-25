@@ -238,11 +238,8 @@ class PriceStreamService:
                     "close_timeout": 10,
                 }
                 
-                # Add API key header if available
-                if self.api_key:
-                    connect_kwargs["additional_headers"] = {
-                        "Authorization": f"Bearer {self.api_key}"
-                    }
+                # Note: CoinCap API key is passed via query parameter, not header
+                # Header auth was removed in their latest API version
                 
                 async with websockets.connect(
                     self.COINCAP_WS,
