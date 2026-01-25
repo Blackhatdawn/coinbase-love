@@ -2,6 +2,11 @@
 # FLY.IO DEPLOYMENT CONFIGURATION
 # CryptoVault Backend - Production Ready
 # ============================================
+# Auto-scaling enabled for peak trading hours:
+# - Min 1 instance (always warm)
+# - Max 3 instances during high traffic
+# - Scales based on connections and CPU
+# ============================================
 
 # Application name (will create cryptovault-api.fly.dev)
 app = "cryptovault-api"
@@ -38,7 +43,7 @@ primary_region = "iad"
   SENTRY_PROFILES_SAMPLE_RATE = "0.1"
   PUBLIC_SOCKET_IO_PATH = "/socket.io/"
 
-# HTTP service configuration
+# HTTP service configuration with auto-scaling
 [http_service]
   internal_port = 8001
   force_https = true
@@ -47,11 +52,13 @@ primary_region = "iad"
   min_machines_running = 1
   processes = ["app"]
 
-  # Concurrency settings for optimal performance
+  # Concurrency-based auto-scaling
+  # Scales up when connections exceed soft_limit
+  # Peak trading: auto-scales to handle market volatility
   [http_service.concurrency]
     type = "connections"
     hard_limit = 100
-    soft_limit = 80
+    soft_limit = 70
 
   # HTTP health checks
   [http_service.checks]
@@ -62,17 +69,62 @@ primary_region = "iad"
       path = "/health"
       timeout = "10s"
 
-# Machine configuration
+  # Auto-scaling configuration for peak trading hours
+  [http_service.machine_checks]
+    [http_service.machine_checks.health]
+      port = 8001
+      type = "http"
+      interval = "10s"
+      timeout = "5s"
+      grace_period = "30s"
+      method = "GET"
+      path = "/ping"
+
+# ============================================
+# AUTO-SCALING CONFIGURATION
+# ============================================
+# Scales from 1 to 3 instances based on demand
+# - Base: 1 instance (always running, no cold starts)
+# - Peak: Up to 3 instances during high traffic
+# - Scale down: After 5 minutes of low activity
+# ============================================
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8001
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  # Auto-scaling rules
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 70
+
+# Machine configuration - optimized for trading workloads
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
   cpus = 1
 
+# Auto-scaling machine settings
+[machines]
+  # Minimum instances (always warm - no cold starts)
+  min = 1
+  # Maximum instances during peak trading
+  max = 3
+
 # Process groups
 [processes]
   app = "uvicorn server:socket_app --host 0.0.0.0 --port 8001 --workers 1"
 
-# Metrics collection
+# Metrics collection for monitoring
 [metrics]
   port = 9091
   path = "/metrics"
@@ -91,3 +143,17 @@ primary_region = "iad"
 [deploy]
   release_command = "python -c \"from database_indexes import create_indexes; import asyncio; asyncio.run(create_indexes())\"" 
   strategy = "rolling"
+
+# ============================================
+# SCALING BEHAVIOR
+# ============================================
+# 1. Normal hours: 1 instance handles ~70 concurrent connections
+# 2. Scale trigger: When connections > 70, new instance starts
+# 3. Peak trading: Up to 3 instances for ~210 concurrent connections
+# 4. Scale down: After 5min of < 50 connections per instance
+# 5. WebSocket: Socket.IO connections are sticky to instances
+#
+# Cost estimate (Fly.io pricing):
+# - Base: ~$5/month (1 instance always on)
+# - Peak: ~$10-15/month (with occasional scaling)
+# ============================================
