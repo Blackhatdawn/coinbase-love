@@ -52,11 +52,12 @@ class PriceStreamService:
     This service is disabled by default. Set COINCAP_API_KEY in .env to enable.
     """
     
-    # Track only major coins
+    # Track only major coins - using correct CoinCap asset IDs
+    # Note: CoinCap uses specific IDs, not all coins use the same ID as their name
     TRACKED_ASSETS = [
-        "bitcoin", "ethereum", "binancecoin", "solana", 
-        "ripple", "cardano", "dogecoin", "polkadot",
-        "chainlink", "litecoin", "avalanche-2", "polygon"
+        "bitcoin", "ethereum", "tether", "solana", 
+        "xrp", "cardano", "dogecoin", "polkadot",
+        "chainlink", "litecoin", "avalanche", "matic-network"
     ]
     
     def __init__(self):
