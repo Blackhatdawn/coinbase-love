@@ -27,18 +27,22 @@ def set_limiter(limiter):
 
 
 def get_db():
-    """Get database connection dependency."""
+    """Get database instance dependency."""
     if not _db_connection:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database not connected"
         )
-    return _db_connection
+    return _db_connection.db
 
 
-# Expose db_connection for direct access (use get_db() in routes)
-@property
-def db_connection():
+def get_db_connection():
+    """Get database connection object dependency."""
+    if not _db_connection:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not connected"
+        )
     return _db_connection
 
 
