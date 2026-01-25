@@ -874,3 +874,14 @@ async def get_socketio_stats():
     """Get Socket.IO connection statistics."""
     return socketio_manager.get_stats()
 
+
+# ============================================
+# SOCKET.IO ASGI APP (must be at the end after all routes)
+# ============================================
+
+# Mount Socket.IO ASGI app for real-time communication
+# This wraps the FastAPI app and provides /socket.io/ endpoint
+from socketio import ASGIApp
+socket_app = ASGIApp(socketio_manager.sio, app)
+logger.info("✅ Socket.IO mounted at /socket.io/")
+
