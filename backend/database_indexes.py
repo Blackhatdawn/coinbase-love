@@ -21,21 +21,31 @@ async def safe_create_index(collection, keys, **kwargs):
         return await collection.create_index(keys, **kwargs)
     except OperationFailure as e:
         if e.code == 85:  # IndexOptionsConflict
-            # Extract index name from keys
-            index_name = kwargs.get('name')
-            if not index_name:
-                # Generate default name from keys
-                index_name = '_'.join([f"{k[0]}_{k[1]}" for k in keys])
+            logger.warning(f"Index conflict detected for {collection.name}, attempting to resolve...")
             
-            logger.warning(f"Index conflict detected for {collection.name}.{index_name}, dropping and recreating...")
-            
+            # Get existing indexes to find conflicting one
             try:
-                await collection.drop_index(index_name)
-            except OperationFailure:
-                # Try dropping by key pattern
-                pass
+                indexes = await collection.index_information()
+                # Find the conflicting index by matching key pattern
+                key_pattern = {k: v for k, v in keys}
+                for idx_name, idx_info in indexes.items():
+                    if idx_name == "_id_":
+                        continue
+                    # Check if key pattern matches
+                    idx_keys = {k: v for k, v in idx_info.get('key', [])}
+                    if idx_keys == key_pattern:
+                        logger.info(f"Dropping conflicting index: {idx_name}")
+                        await collection.drop_index(idx_name)
+                        break
+            except Exception as drop_error:
+                logger.warning(f"Error while trying to drop conflicting index: {drop_error}")
             
-            return await collection.create_index(keys, **kwargs)
+            # Retry index creation
+            try:
+                return await collection.create_index(keys, **kwargs)
+            except OperationFailure:
+                logger.warning(f"Could not recreate index, skipping...")
+                return None
         raise
 
 
