@@ -54,6 +54,7 @@ const WalletWithdraw = lazy(() => import("@/pages/WalletWithdraw"));
 const P2PTransfer = lazy(() => import("@/pages/P2PTransfer"));
 const PriceAlerts = lazy(() => import("@/pages/PriceAlerts"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const Referrals = lazy(() => import("@/pages/Referrals"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const DashboardSecurity = lazy(() => import("@/pages/DashboardSecurity"));
