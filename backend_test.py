@@ -12,15 +12,34 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class CryptoVaultAPITester:
-    def __init__(self, base_url: str = "https://cryptovault-dash.preview.emergentagent.com"):
+    def __init__(self, base_url: str = None):
+        # Get the backend URL from frontend .env file
+        if base_url is None:
+            try:
+                with open('/app/frontend/.env', 'r') as f:
+                    env_content = f.read()
+                    for line in env_content.split('\n'):
+                        if line.startswith('REACT_APP_BACKEND_URL='):
+                            backend_url = line.split('=', 1)[1].strip()
+                            if backend_url:
+                                base_url = backend_url
+                                break
+                if not base_url:
+                    # Fallback to localhost for testing
+                    base_url = "http://localhost:8001"
+            except:
+                base_url = "http://localhost:8001"
+        
         self.base_url = base_url
         self.api_base = f"{base_url}/api"
         self.monitoring_base = f"{base_url}/monitoring"
-        self.token = None
+        self.session = requests.Session()  # Use session for cookie-based auth
         self.user_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        
+        print(f"🔗 Testing backend at: {self.base_url}")
 
     def log_test(self, name: str, success: bool, details: str = "", response_data: Any = None):
         """Log test result"""
