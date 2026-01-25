@@ -2,23 +2,13 @@
 # FLY.IO DEPLOYMENT CONFIGURATION
 # CryptoVault Backend - Production Ready
 # ============================================
-# Auto-scaling enabled for peak trading hours:
-# - Min 1 instance (always warm)
-# - Max 3 instances during high traffic
-# - Scales based on connections and CPU
-# ============================================
 
-# Application name (will create cryptovault-api.fly.dev)
 app = "coinbase-love"
-
-# Primary deployment region (US East - matches Vercel)
 primary_region = "iad"
 
-# Build configuration
 [build]
   dockerfile = "Dockerfile.fly"
 
-# Non-secret environment variables
 [env]
   ENVIRONMENT = "production"
   DB_NAME = "cryptovault"
@@ -43,117 +33,29 @@ primary_region = "iad"
   SENTRY_PROFILES_SAMPLE_RATE = "0.1"
   PUBLIC_SOCKET_IO_PATH = "/socket.io/"
 
-# HTTP service configuration with auto-scaling
 [http_service]
   internal_port = 8001
   force_https = true
   auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
 
-  # Concurrency-based auto-scaling
-  # Scales up when connections exceed soft_limit
-  # Peak trading: auto-scales to handle market volatility
   [http_service.concurrency]
     type = "connections"
     hard_limit = 100
     soft_limit = 70
 
-  # HTTP health checks
-  [http_service.checks]
-    [http_service.checks.health]
-      grace_period = "60s"
-      interval = "15s"
-      method = "GET"
-      path = "/health"
-      timeout = "10s"
-
-  # Auto-scaling configuration for peak trading hours
-  [http_service.machine_checks]
-    [http_service.machine_checks.health]
-      port = 8001
-      type = "http"
-      interval = "10s"
-      timeout = "5s"
-      grace_period = "30s"
-      method = "GET"
-      path = "/ping"
-
-# ============================================
-# AUTO-SCALING CONFIGURATION
-# ============================================
-# Scales from 1 to 3 instances based on demand
-# - Base: 1 instance (always running, no cold starts)
-# - Peak: Up to 3 instances during high traffic
-# - Scale down: After 5 minutes of low activity
-# ============================================
-
-[[services]]
-  protocol = "tcp"
-  internal_port = 8001
-
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  # Auto-scaling rules
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 100
-    soft_limit = 70
-
-# Machine configuration - optimized for trading workloads
 [[vm]]
-  size = "shared-cpu-1x"
   memory = "512mb"
+  cpu_kind = "shared"
   cpus = 1
 
-# Auto-scaling machine settings
-[machines]
-  # Minimum instances (always warm - no cold starts)
-  min = 1
-  # Maximum instances during peak trading
-  max = 3
-
-# Process groups
-[processes]
-  app = "uvicorn server:socket_app --host 0.0.0.0 --port 8001 --workers 1"
-
-# Metrics collection for monitoring
-[metrics]
-  port = 9091
-  path = "/metrics"
-
-# Statics (none for API backend)
-[[statics]]
-  guest_path = "/app/static"
-  url_prefix = "/static"
-
-# Restart policy
-[restart]
-  policy = "always"
-  max_retries = 5
-
-# Deploy configuration
-[deploy]
-  release_command = "python -c \"from database_indexes import create_indexes; import asyncio; asyncio.run(create_indexes())\"" 
-  strategy = "rolling"
-
-# ============================================
-# SCALING BEHAVIOR
-# ============================================
-# 1. Normal hours: 1 instance handles ~70 concurrent connections
-# 2. Scale trigger: When connections > 70, new instance starts
-# 3. Peak trading: Up to 3 instances for ~210 concurrent connections
-# 4. Scale down: After 5min of < 50 connections per instance
-# 5. WebSocket: Socket.IO connections are sticky to instances
-#
-# Cost estimate (Fly.io pricing):
-# - Base: ~$5/month (1 instance always on)
-# - Peak: ~$10-15/month (with occasional scaling)
-# ============================================
+[checks]
+  [checks.health]
+    port = 8001
+    type = "http"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/health"
