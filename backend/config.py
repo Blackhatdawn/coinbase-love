@@ -102,8 +102,8 @@ class Settings(BaseSettings):
     # MONGODB CONFIGURATION
     # ============================================
     mongo_url: str = Field(
-        default="mongodb+srv://team_db_user:mWPe3V6ZhoNNEWUk@cryptovaultcluster.vobw2w8.mongodb.net/?appName=CryptoVaultCluster",
-        description="MongoDB Atlas connection URL"
+        default="",
+        description="MongoDB Atlas connection URL (REQUIRED - set in environment)"
     )
     db_name: str = Field(default="cryptovault", description="Database name")
     mongo_max_pool_size: int = Field(default=10, description="MongoDB connection pool size")
