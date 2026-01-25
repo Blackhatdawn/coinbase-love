@@ -109,7 +109,7 @@ class PriceStreamService:
             "avalanche": "AVAX",
             "polkadot": "DOT",
             "chainlink": "LINK",
-            "matic-network": "MATIC",
+            "uniswap": "UNI",
             "litecoin": "LTC",
         }
         
