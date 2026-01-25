@@ -134,9 +134,10 @@ class RequestIDMiddleware:
         
         async def send_with_request_id(message):
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
-                headers[b"x-request-id"] = request_id.encode()
-                message["headers"] = [(k, v) for k, v in headers.items()]
+                # Keep headers as list to preserve duplicates (like set-cookie)
+                existing_headers = list(message.get("headers", []))
+                existing_headers.append((b"x-request-id", request_id.encode()))
+                message["headers"] = existing_headers
             await send(message)
         
         start_time = time.time()
