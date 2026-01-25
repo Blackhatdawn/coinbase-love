@@ -391,6 +391,14 @@ SENTRY_DSN=<existing>
 - **Sentry integration** for error tracking
 - **Health check endpoints** for monitoring
 
+### New Fly.io-Specific Endpoints
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/fly/status` | Full deployment info (region, machine ID, IPs) |
+| `/api/fly/region` | Quick region check for latency testing |
+| `/api/fly/instances` | Instance info for debugging auto-scaling |
+| `/api/fly/health/fly` | Fly.io-specific health check |
+
 ### Recommended Enhancements for Fly.io
 1. **Add Fly.io metrics** - Use fly-metrics for auto-collected metrics
 2. **Log shipping** - Stream logs to external service (Datadog, Papertrail)
