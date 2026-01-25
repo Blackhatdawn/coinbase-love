@@ -36,6 +36,19 @@ def get_db():
     return _db_connection
 
 
+# Expose db_connection for direct access (use get_db() in routes)
+@property
+def db_connection():
+    return _db_connection
+
+
+# Make db_connection accessible as module attribute
+def __getattr__(name):
+    if name == "db_connection":
+        return _db_connection
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def get_limiter():
     """Get rate limiter dependency."""
     if not _limiter:
