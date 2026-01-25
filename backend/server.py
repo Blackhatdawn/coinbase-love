@@ -711,6 +711,14 @@ app.include_router(websocket.router)
 app.include_router(monitoring.router, prefix="/api")
 app.include_router(deep_investigation.router, prefix="/api")
 
+# Performance optimization endpoints
+try:
+    from routers.optimization import router as optimization_router
+    app.include_router(optimization_router, prefix="/api")
+    logger.info("✅ Optimization endpoints mounted at /api/optimization/")
+except ImportError as e:
+    logger.warning(f"⚠️ Optimization router not available: {e}")
+
 # Fly.io deployment status (for multi-region and auto-scaling debugging)
 try:
     from routers.fly_status import router as fly_router
