@@ -16,7 +16,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 # JWT settings
-SECRET_KEY = settings.jwt_secret
+SECRET_KEY = settings.jwt_secret.get_secret_value()
 ALGORITHM = settings.jwt_algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
