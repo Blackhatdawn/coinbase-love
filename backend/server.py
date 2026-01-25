@@ -199,7 +199,11 @@ class SecurityHeadersMiddleware:
             if message["type"] == "http.response.start":
                 # Get existing headers as a list to preserve duplicates (like set-cookie)
                 existing_headers = list(message.get("headers", []))
-                existing_keys = {k.lower() for k, v in existing_headers}
+                existing_keys = set()
+                for k, v in existing_headers:
+                    # Don't track set-cookie as it can have duplicates
+                    if k.lower() != b"set-cookie":
+                        existing_keys.add(k.lower())
                 
                 # Baseline security headers - valid values per HTTP spec
                 security_headers = [
