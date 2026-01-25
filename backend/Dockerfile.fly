@@ -75,4 +75,5 @@ STOPSIGNAL SIGTERM
 
 # Start command - Socket.IO compatible
 # Single worker for WebSocket state consistency
-CMD ["uvicorn", "server:socket_app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1", "--loop", "uvloop", "--http", "httptools"]
+# Using asyncio event loop (uvloop optional)
+CMD ["uvicorn", "server:socket_app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
