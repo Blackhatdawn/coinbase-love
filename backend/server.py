@@ -693,6 +693,10 @@ app.include_router(transfers.router, prefix="/api", tags=["legacy"])
 app.include_router(users.router, prefix="/api", tags=["legacy"])
 app.include_router(config.router, prefix="/api")
 
+# Admin dashboard (custom prefix already in router)
+from routers.admin import router as admin_dashboard_router
+app.include_router(admin_dashboard_router)
+
 # WebSocket (no versioning)
 app.include_router(websocket.router)
 
