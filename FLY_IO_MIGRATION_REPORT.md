@@ -414,6 +414,24 @@ SENTRY_DSN=<existing>
 2. **Health check interval** - 15s keeps machine alive
 3. **Frontend health check** - 4-min interval keeps API warm
 
+### Auto-Scaling for Peak Trading Hours
+The Fly.io configuration now includes auto-scaling:
+- **Minimum**: 1 instance (always running, no cold starts)
+- **Maximum**: 3 instances during peak trading
+- **Scale trigger**: When connections exceed 70 (soft limit)
+- **Scale down**: After 5 minutes of low activity
+
+**Scaling Behavior:**
+| Connections | Instances | Capacity |
+|-------------|-----------|----------|
+| 0-70 | 1 | Normal hours |
+| 71-140 | 2 | Moderate traffic |
+| 141-210 | 3 | Peak trading |
+
+**Cost Estimate:**
+- Base: ~$5/month (1 instance always on)
+- Peak: ~$10-15/month (with occasional scaling)
+
 ---
 
 ## 10. SECURITY CHECKLIST
