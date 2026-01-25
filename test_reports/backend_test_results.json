@@ -1,337 +1,106 @@
 {
-  "total_tests": 47,
-  "passed_tests": 45,
-  "failed_tests": 2,
-  "success_rate": 95.74468085106383,
+  "total_tests": 14,
+  "passed_tests": 13,
+  "failed_tests": 1,
+  "success_rate": 92.85714285714286,
   "test_results": [
     {
-      "test": "Legacy Health Check (/api/health)",
+      "test": "Health Check - GET /health",
       "success": true,
       "details": "Status: healthy",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:04.723762"
+      "timestamp": "2026-01-25T04:23:28.202647"
     },
     {
-      "test": "Versioned Auth Endpoint (/api/v1/auth/login)",
+      "test": "Config Endpoint - GET /api/config",
       "success": true,
-      "details": "Endpoint exists (status: 405)",
+      "details": "Config data retrieved",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:04.776073"
+      "timestamp": "2026-01-25T04:23:28.205726"
     },
     {
-      "test": "Kubernetes Liveness Probe",
-      "success": true,
-      "details": "Status: alive",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:04.820514"
-    },
-    {
-      "test": "Kubernetes Readiness Probe",
-      "success": true,
-      "details": "Status: ready",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:04.863727"
-    },
-    {
-      "test": "JSON Metrics Endpoint",
-      "success": true,
-      "details": "Metrics available: ['timestamp', 'application', 'system']",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.032215"
-    },
-    {
-      "test": "Circuit Breakers Endpoint",
-      "success": true,
-      "details": "Circuit breakers: ['coingecko', 'coincap', 'nowpayments', 'sendgrid']",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.069120"
-    },
-    {
-      "test": "Password Reset - Invalid Email Validation",
-      "success": true,
-      "details": "422 validation error returned",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.107186"
-    },
-    {
-      "test": "Password Reset - Valid Email",
-      "success": true,
-      "details": "Password reset request accepted",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.493855"
-    },
-    {
-      "test": "Password Reset - Weak Password Validation",
-      "success": true,
-      "details": "Validation error returned: 400",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.576351"
-    },
-    {
-      "test": "Password Reset - Password Mismatch Validation",
-      "success": true,
-      "details": "Validation error returned: 400",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.641708"
-    },
-    {
-      "test": "Legacy Crypto Endpoint (/api/crypto)",
-      "success": true,
-      "details": "Legacy endpoint working",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.820184"
-    },
-    {
-      "test": "Versioned Crypto Endpoint (/api/v1/crypto)",
-      "success": true,
-      "details": "V1 endpoint working",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:05.947629"
-    },
-    {
-      "test": "Circuit Breaker - Coingecko",
-      "success": true,
-      "details": "State: closed, Failures: 0",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.007841"
-    },
-    {
-      "test": "Circuit Breaker - Coincap",
-      "success": true,
-      "details": "State: closed, Failures: 0",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.007853"
-    },
-    {
-      "test": "Circuit Breaker - Nowpayments",
-      "success": true,
-      "details": "State: closed, Failures: 0",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.007857"
-    },
-    {
-      "test": "Circuit Breaker - Sendgrid",
-      "success": true,
-      "details": "State: closed, Failures: 0",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.007861"
-    },
-    {
-      "test": "Circuit Breaker System",
-      "success": true,
-      "details": "Found breakers: coingecko:closed, coincap:closed, nowpayments:closed, sendgrid:closed",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.007865"
-    },
-    {
-      "test": "Application Metrics",
-      "success": true,
-      "details": "Uptime: 15.9s, Requests: 0, Error Rate: 0.000",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.142728"
-    },
-    {
-      "test": "System Metrics",
-      "success": true,
-      "details": "CPU: 5.0%, Memory: 50.9%, Disk: 15.9%",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.142740"
-    },
-    {
-      "test": "Rate Limiting Headers",
-      "success": true,
-      "details": "Headers present: {'X-RateLimit-Limit': '60', 'X-RateLimit-Remaining': None, 'X-RateLimit-Reset': None, 'X-RateLimit-Policy': '60;w=60'}",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.210827"
-    },
-    {
-      "test": "Rate Limiting Functionality",
-      "success": true,
-      "details": "3 requests completed in 0.50s (no rate limiting triggered)",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.708480"
-    },
-    {
-      "test": "User Email Index Performance",
-      "success": true,
-      "details": "Email lookup completed in 0.066s (likely indexed)",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.775617"
-    },
-    {
-      "test": "Crypto Symbol Index Performance",
-      "success": true,
-      "details": "Symbol lookup completed in 0.143s (likely indexed)",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.918293"
-    },
-    {
-      "test": "Root Endpoint",
-      "success": true,
-      "details": "Frontend is serving root correctly",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:06.956780"
-    },
-    {
-      "test": "Health Check",
-      "success": true,
-      "details": "API is healthy",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.024103"
-    },
-    {
-      "test": "CoinGecko API Integration",
-      "success": true,
-      "details": "Price data retrieved successfully with 10 cryptocurrencies",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.155147"
-    },
-    {
-      "test": "CoinGecko Real Data",
-      "success": true,
-      "details": "BTC price: $92,599.51 (appears to be real data)",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.155214"
-    },
-    {
-      "test": "Price Feed Status Endpoint (Alternative)",
-      "success": true,
-      "details": "Alternative endpoint working: {'enabled': False, 'state': 'disabled', 'is_running': False, 'prices_cached': 0, 'last_update': '2026-01-19T03:01:50.110030', 'message_count': 0, 'error_count': 0}",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.238504"
-    },
-    {
-      "test": "Redis Cache Endpoints",
-      "success": true,
-      "details": "Multiple crypto endpoints accessible",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.500374"
-    },
-    {
-      "test": "Redis Cache Performance",
-      "success": true,
-      "details": "Repeat request very fast (0.110s) - likely cached",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.610512"
-    },
-    {
-      "test": "Redis Cache Data Structure",
+      "test": "Crypto Prices - GET /api/crypto/prices",
       "success": false,
-      "details": "No obvious caching metadata in response",
+      "details": "Failed: {'error': {'code': 'NOT_FOUND', 'message': 'Cryptocurrency not found', 'request_id': '6316a63d-443e-4c9a-aab9-4da4dcae1c70', 'timestamp': '2026-01-25T04:23:28.855654'}}",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.610537"
+      "timestamp": "2026-01-25T04:23:28.857272"
     },
     {
-      "test": "Sentry Graceful Degradation",
+      "test": "Socket.IO Connection - /socket.io/",
       "success": true,
-      "details": "API works correctly with empty Sentry DSN",
+      "details": "Socket.IO endpoint accessible (status: 400)",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.676167"
+      "timestamp": "2026-01-25T04:23:28.870655"
     },
     {
-      "test": "Sentry Error Handling",
+      "test": "Auth Signup Flow - POST /api/auth/signup",
       "success": true,
-      "details": "API handles errors gracefully even with Sentry configuration",
+      "details": "User created with ID: 45bcc1cb-384c-4474-bbc2-73431c680e00",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:07.921577"
+      "timestamp": "2026-01-25T04:23:33.605400"
     },
     {
-      "test": "Get All Cryptocurrencies",
+      "test": "Auth Login Flow - POST /api/auth/login",
       "success": true,
-      "details": "Retrieved 10 cryptocurrencies",
+      "details": "Login successful with cookie-based auth",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.055084"
+      "timestamp": "2026-01-25T04:23:33.957666"
     },
     {
-      "test": "Get Bitcoin Details",
+      "test": "Auth Profile Retrieval - GET /api/auth/me",
       "success": true,
-      "details": "Bitcoin details retrieved successfully",
+      "details": "Profile retrieved successfully",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.166833"
+      "timestamp": "2026-01-25T04:23:34.008893"
     },
     {
-      "test": "Password Reset Request",
+      "test": "Auth Token Refresh - POST /api/auth/refresh",
       "success": true,
-      "details": "Password reset endpoint working",
+      "details": "Token refreshed successfully",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.411416"
+      "timestamp": "2026-01-25T04:23:34.017859"
     },
     {
-      "test": "Alerts Endpoint (Auth Required)",
+      "test": "Wallet Balance - GET /api/wallet/balance",
       "success": true,
-      "details": "Alerts endpoint correctly requires authentication",
+      "details": "Balance retrieved: {'USD': 0.0}",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.446208"
+      "timestamp": "2026-01-25T04:23:34.068161"
     },
     {
-      "test": "Admin Stats Endpoint (Auth Required)",
+      "test": "Transactions List - GET /api/transactions",
       "success": true,
-      "details": "Admin stats endpoint correctly requires authentication",
+      "details": "Retrieved 0 transactions",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.480428"
+      "timestamp": "2026-01-25T04:23:34.143450"
     },
     {
-      "test": "Wallet Deposit Endpoint (Auth Required)",
+      "test": "Auth Logout - POST /api/auth/logout",
       "success": true,
-      "details": "Wallet deposit endpoint correctly requires authentication",
+      "details": "Logout successful",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.558090"
+      "timestamp": "2026-01-25T04:23:34.209087"
     },
     {
-      "test": "Wallet Balance Endpoint (Auth Required)",
-      "success": true,
-      "details": "Wallet balance endpoint correctly requires authentication",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.593513"
-    },
-    {
-      "test": "Transactions Endpoint (Auth Required)",
-      "success": true,
-      "details": "Transactions endpoint correctly requires authentication",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:08.631655"
-    },
-    {
-      "test": "User Signup",
-      "success": true,
-      "details": "User created with ID: 5c8cf77d-b62f-4beb-9264-d90ae0621d28",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.125446"
-    },
-    {
-      "test": "User Login",
-      "success": false,
-      "details": "Email verification required (expected for new accounts)",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.416217"
-    },
-    {
-      "test": "Portfolio Endpoint (Auth Required)",
+      "test": "Auth Me (No Auth) - GET /api/auth/me",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.449229"
+      "timestamp": "2026-01-25T04:23:34.211708"
     },
     {
-      "test": "Orders Endpoint (Auth Required)",
+      "test": "Wallet Balance (No Auth) - GET /api/wallet/balance",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.483865"
+      "timestamp": "2026-01-25T04:23:34.214177"
     },
     {
-      "test": "CORS Configuration",
+      "test": "Transactions (No Auth) - GET /api/transactions",
       "success": true,
-      "details": "CORS may be configured (headers not visible in same-origin requests)",
+      "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.546150"
-    },
-    {
-      "test": "Security Headers",
-      "success": true,
-      "details": "Security headers present: {'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'X-XSS-Protection': '1; mode=block', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'}",
-      "response_data": null,
-      "timestamp": "2026-01-19T03:02:09.546164"
+      "timestamp": "2026-01-25T04:23:34.216392"
     }
   ]
 }
