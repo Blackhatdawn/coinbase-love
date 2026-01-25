@@ -82,4 +82,7 @@ android-sdk/
 # Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
 
-.aider*
+.aider*-e 
+# Environment files
+*.env
+*.env.*
