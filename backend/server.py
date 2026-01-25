@@ -694,12 +694,8 @@ app.include_router(deep_investigation.router, prefix="/api")
 # SOCKET.IO INTEGRATION
 # ============================================
 
-# Mount Socket.IO ASGI app for real-time communication
-from socketio import ASGIApp
-socket_app = ASGIApp(socketio_manager.sio, app)
-
 # Socket.IO endpoints will be available at /socket.io/
-logger.info("✅ Socket.IO mounted at /socket.io/")
+logger.info("✅ Socket.IO ready to be mounted")
 
 # ============================================
 # ROOT & HEALTH ENDPOINTS
