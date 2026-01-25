@@ -1,159 +1,23 @@
-# ============================================
-# FLY.IO DEPLOYMENT CONFIGURATION
-# CryptoVault Backend - Production Ready
-# ============================================
-# Auto-scaling enabled for peak trading hours:
-# - Min 1 instance (always warm)
-# - Max 3 instances during high traffic
-# - Scales based on connections and CPU
-# ============================================
-
-# Application name (will create cryptovault-api.fly.dev)
-app = "cryptovault-api"
-
-# Primary deployment region (US East - matches Vercel)
-primary_region = "iad"
-
-# Build configuration
-[build]
-  dockerfile = "Dockerfile.fly"
-
-# Non-secret environment variables
-[env]
-  ENVIRONMENT = "production"
-  DB_NAME = "cryptovault"
-  PORT = "8001"
-  USE_REDIS = "true"
-  USE_MOCK_PRICES = "false"
-  USE_CROSS_SITE_COOKIES = "true"
-  LOG_LEVEL = "INFO"
-  DEBUG = "false"
-  JWT_ALGORITHM = "HS256"
-  ACCESS_TOKEN_EXPIRE_MINUTES = "30"
-  REFRESH_TOKEN_EXPIRE_DAYS = "7"
-  RATE_LIMIT_PER_MINUTE = "60"
-  COINCAP_RATE_LIMIT = "50"
-  MONGO_MAX_POOL_SIZE = "10"
-  MONGO_TIMEOUT_MS = "5000"
-  EMAIL_SERVICE = "sendgrid"
-  EMAIL_FROM = "teams@cryptovault.financial"
-  EMAIL_FROM_NAME = "CryptoVault Financial"
-  NOWPAYMENTS_SANDBOX = "false"
-  SENTRY_TRACES_SAMPLE_RATE = "0.1"
-  SENTRY_PROFILES_SAMPLE_RATE = "0.1"
-  PUBLIC_SOCKET_IO_PATH = "/socket.io/"
-
-# HTTP service configuration with auto-scaling
-[http_service]
-  internal_port = 8001
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
-
-  # Concurrency-based auto-scaling
-  # Scales up when connections exceed soft_limit
-  # Peak trading: auto-scales to handle market volatility
-  [http_service.concurrency]
-    type = "connections"
-    hard_limit = 100
-    soft_limit = 70
-
-  # HTTP health checks
-  [http_service.checks]
-    [http_service.checks.health]
-      grace_period = "60s"
-      interval = "15s"
-      method = "GET"
-      path = "/health"
-      timeout = "10s"
-
-  # Auto-scaling configuration for peak trading hours
-  [http_service.machine_checks]
-    [http_service.machine_checks.health]
-      port = 8001
-      type = "http"
-      interval = "10s"
-      timeout = "5s"
-      grace_period = "30s"
-      method = "GET"
-      path = "/ping"
-
-# ============================================
-# AUTO-SCALING CONFIGURATION
-# ============================================
-# Scales from 1 to 3 instances based on demand
-# - Base: 1 instance (always running, no cold starts)
-# - Peak: Up to 3 instances during high traffic
-# - Scale down: After 5 minutes of low activity
-# ============================================
-
-[[services]]
-  protocol = "tcp"
-  internal_port = 8001
-
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  # Auto-scaling rules
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 100
-    soft_limit = 70
-
-# Machine configuration - optimized for trading workloads
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "512mb"
-  cpus = 1
-
-# Auto-scaling machine settings
-[machines]
-  # Minimum instances (always warm - no cold starts)
-  min = 1
-  # Maximum instances during peak trading
-  max = 3
-
-# Process groups
-[processes]
-  app = "uvicorn server:socket_app --host 0.0.0.0 --port 8001 --workers 1"
-
-# Metrics collection for monitoring
-[metrics]
-  port = 9091
-  path = "/metrics"
-
-# Statics (none for API backend)
-[[statics]]
-  guest_path = "/app/static"
-  url_prefix = "/static"
-
-# Restart policy
-[restart]
-  policy = "always"
-  max_retries = 5
-
-# Deploy configuration
-[deploy]
-  release_command = "python -c \"from database_indexes import create_indexes; import asyncio; asyncio.run(create_indexes())\"" 
-  strategy = "rolling"
-
-# ============================================
-# SCALING BEHAVIOR
-# ============================================
-# 1. Normal hours: 1 instance handles ~70 concurrent connections
-# 2. Scale trigger: When connections > 70, new instance starts
-# 3. Peak trading: Up to 3 instances for ~210 concurrent connections
-# 4. Scale down: After 5min of < 50 connections per instance
-# 5. WebSocket: Socket.IO connections are sticky to instances
+# fly.toml app configuration file generated for backend-summer-pond-1741 on 2026-01-25T16:06:08Z
 #
-# Cost estimate (Fly.io pricing):
-# - Base: ~$5/month (1 instance always on)
-# - Peak: ~$10-15/month (with occasional scaling)
-# ============================================
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'backend-summer-pond-1741'
+primary_region = 'iad'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
