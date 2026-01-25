@@ -63,19 +63,16 @@ class CryptoVaultAPITester:
         """Make HTTP request and validate response"""
         url = f"{self.api_base}/{endpoint.lstrip('/')}"
         headers = {'Content-Type': 'application/json'}
-        
-        if auth_required and self.token:
-            headers['Authorization'] = f'Bearer {self.token}'
 
         try:
             if method.upper() == 'GET':
-                response = requests.get(url, headers=headers, timeout=10)
+                response = self.session.get(url, headers=headers, timeout=10)
             elif method.upper() == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
+                response = self.session.post(url, json=data, headers=headers, timeout=10)
             elif method.upper() == 'PUT':
-                response = requests.put(url, json=data, headers=headers, timeout=10)
+                response = self.session.put(url, json=data, headers=headers, timeout=10)
             elif method.upper() == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=10)
+                response = self.session.delete(url, headers=headers, timeout=10)
             else:
                 return False, {"error": f"Unsupported method: {method}"}
 
