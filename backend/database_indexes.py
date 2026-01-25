@@ -6,8 +6,37 @@ Creates compound indexes based on common query patterns.
 import logging
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING, TEXT
+from pymongo.errors import OperationFailure
 
 logger = logging.getLogger(__name__)
+
+
+async def safe_create_index(collection, keys, **kwargs):
+    """
+    Safely create an index, handling conflicts with existing indexes.
+    If an index with the same key pattern but different options exists,
+    drop it first then recreate with new options.
+    """
+    try:
+        return await collection.create_index(keys, **kwargs)
+    except OperationFailure as e:
+        if e.code == 85:  # IndexOptionsConflict
+            # Extract index name from keys
+            index_name = kwargs.get('name')
+            if not index_name:
+                # Generate default name from keys
+                index_name = '_'.join([f"{k[0]}_{k[1]}" for k in keys])
+            
+            logger.warning(f"Index conflict detected for {collection.name}.{index_name}, dropping and recreating...")
+            
+            try:
+                await collection.drop_index(index_name)
+            except OperationFailure:
+                # Try dropping by key pattern
+                pass
+            
+            return await collection.create_index(keys, **kwargs)
+        raise
 
 
 async def create_indexes(db: AsyncIOMotorDatabase):
