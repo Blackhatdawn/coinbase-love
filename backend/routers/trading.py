@@ -117,27 +117,16 @@ async def create_order(
                 detail=f"Insufficient balance. Required: ${required_amount:.2f} (including ${trading_fee:.2f} fee), Available: ${current_balance:.2f}"
             )
 
-        # Deduct USD from wallet
+        # Atomically update wallet balances
+        crypto_symbol = order_data.trading_pair.split("/")[0]
         await wallets_collection.update_one(
             {"user_id": user_id},
             {
-                "$set": {
-                    f"balances.USD": current_balance - required_amount,
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-
-        # Add crypto to wallet
-        crypto_symbol = order_data.trading_pair.split("/")[0]  # e.g., BTC from BTC/USD
-        current_crypto = wallet.get("balances", {}).get(crypto_symbol, 0)
-        await wallets_collection.update_one(
-            {"user_id": user_id},
-            {
-                "$set": {
-                    f"balances.{crypto_symbol}": current_crypto + order_data.amount,
-                    "updated_at": datetime.utcnow()
-                }
+                "$inc": {
+                    f"balances.USD": -required_amount,
+                    f"balances.{crypto_symbol}": order_data.amount
+                },
+                "$set": {"updated_at": datetime.utcnow()}
             }
         )
     else:  # sell order
@@ -150,27 +139,16 @@ async def create_order(
                 detail=f"Insufficient {crypto_symbol}. Required: {order_data.amount}, Available: {current_crypto}"
             )
 
-        # Deduct crypto from wallet
-        await wallets_collection.update_one(
-            {"user_id": user_id},
-            {
-                "$set": {
-                    f"balances.{crypto_symbol}": current_crypto - order_data.amount,
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-
-        # Add USD to wallet (minus fee)
-        current_usd = wallet.get("balances", {}).get("USD", 0)
+        # Atomically update wallet balances
         net_proceeds = total_value - trading_fee
         await wallets_collection.update_one(
             {"user_id": user_id},
             {
-                "$set": {
-                    f"balances.USD": current_usd + net_proceeds,
-                    "updated_at": datetime.utcnow()
-                }
+                "$inc": {
+                    f"balances.{crypto_symbol}": -order_data.amount,
+                    f"balances.USD": net_proceeds
+                },
+                "$set": {"updated_at": datetime.utcnow()}
             }
         )
 

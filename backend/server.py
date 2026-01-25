@@ -336,6 +336,77 @@ def get_rate_limit_key(request: Request) -> str:
 limiter = Limiter(key_func=get_rate_limit_key)
 
 # ============================================
+# LIFESPAN MANAGEMENT (STARTUP & SHUTDOWN)
+# ============================================
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manage application startup and shutdown events.
+    """
+    # STARTUP LOGIC
+    global db_connection
+
+    logger.info("=" * 70)
+    logger.info("🚀 CRYPTOVAULT API SERVER - STARTING")
+    logger.info("=" * 70)
+    logger.info(f"   Version: 1.0.0")
+    logger.info(f"   Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    logger.info(f"   Host: {settings.host}")
+    logger.info(f"   Port: {settings.port}")
+    logger.info("=" * 70)
+
+    try:
+        logger.info("📋 Validating environment configuration...")
+        validate_startup_environment()
+
+        db_connection = DatabaseConnection(
+            mongo_url=settings.database_url,
+            db_name="cryptovault",
+            max_pool_size=20,
+            min_pool_size=10,
+            server_selection_timeout_ms=5000
+        )
+        await db_connection.connect()
+
+        dependencies.set_db_connection(db_connection)
+        dependencies.set_limiter(limiter)
+
+        if db_connection.is_connected:
+            from database_indexes import create_indexes as create_database_indexes
+            await create_database_indexes(db_connection.db)
+
+        await price_stream_service.start()
+        await price_feed.start()
+
+        logger.info("="*70)
+        logger.info("✅ Server startup complete!")
+        logger.info(f"📍 Environment: {settings.environment}")
+        logger.info("="*70)
+
+    except Exception as e:
+        logger.critical(f"💥 Startup failed: {str(e)}")
+        raise
+
+    yield
+
+    # SHUTDOWN LOGIC
+    logger.info("="*70)
+    logger.info("🛑 Shutting down CryptoVault API Server")
+    logger.info("="*70)
+
+    await price_stream_service.stop()
+    await price_feed.stop()
+
+    if db_connection:
+        await db_connection.disconnect()
+
+    logger.info("✅ Graceful shutdown complete")
+
+
+# ============================================
 # CREATE FASTAPI APP
 # ============================================
 
@@ -346,6 +417,7 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -801,119 +873,3 @@ async def get_socketio_stats():
     """Get Socket.IO connection statistics."""
     return socketio_manager.get_stats()
 
-# ============================================
-# STARTUP & SHUTDOWN EVENTS
-# ============================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup with crash-safe environment validation."""
-    global db_connection
-    
-    logger.info("=" * 70)
-    logger.info("🚀 CRYPTOVAULT API SERVER - STARTING")
-    logger.info("=" * 70)
-    logger.info(f"   Version: 1.0.0")
-    logger.info(f"   Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
-    logger.info(f"   Host: {settings.host}")
-    logger.info(f"   Port: {settings.port}")
-    logger.info("=" * 70)
-
-    try:
-        # CRITICAL: Validate all required environment variables before proceeding
-        # This ensures crash-safe startup - fail fast if misconfigured
-        logger.info("📋 Validating environment configuration...")
-        try:
-            validation_result = validate_startup_environment()
-            if validation_result["status"] == "success":
-                logger.info("✅ Environment Validated - All required variables present")
-            else:
-                logger.error(f"❌ Environment validation failed: {validation_result}")
-                raise Exception("Environment validation failed")
-        except Exception as e:
-            logger.critical(f"💥 FATAL: Environment validation failed: {str(e)}")
-            logger.critical("   Server cannot start without proper configuration.")
-            logger.critical("   Please check your .env file or environment variables.")
-            raise
-        
-        # Connect to database
-        # Note: DatabaseConnection uses DATABASE_URL (MongoDB connection string)
-        db_connection = DatabaseConnection(
-            mongo_url=settings.database_url,
-            db_name="cryptovault",
-            max_pool_size=20,
-            min_pool_size=10,
-            server_selection_timeout_ms=5000
-        )
-        await db_connection.connect()
-        
-        # Set global database connection for dependencies
-        dependencies.set_db_connection(db_connection)
-        dependencies.set_limiter(limiter)
-        
-        # Create database indexes
-        try:
-            if db_connection and db_connection.is_connected:
-                from database_indexes import create_indexes as create_database_indexes
-                await create_database_indexes(db_connection.db)
-                logger.info("✅ Database indexes ensured")
-        except Exception as e:
-            logger.warning(f"⚠️ Index creation failed (non-critical): {str(e)}")
-
-        # Start real-time price stream service (PRIMARY - CoinCap WebSocket)
-        # This connects to CoinCap WebSocket for real-time streaming
-        try:
-            await price_stream_service.start()
-            logger.info("✅ Real-time price stream service started (CoinCap WebSocket)")
-        except Exception as e:
-            logger.warning(f"⚠️ Price stream service failed to start: {str(e)}")
-
-        # Start WebSocket price feed (CoinCap REST API for HTTP polling)
-        # This fetches from CoinCap API for clients that connect via our WebSocket
-        try:
-            await price_feed.start()
-            logger.info("✅ WebSocket price feed started (CoinCap API)")
-        except Exception as e:
-            logger.warning(f"⚠️ Price feed failed to start: {str(e)}")
-
-        logger.info("="*70)
-        logger.info("✅ Server startup complete!")
-        logger.info(f"📍 Environment: {settings.environment}")
-        logger.info(f"💾 Database: cryptovault")
-        logger.info(f"🔐 JWT Algorithm: {settings.password_algorithm}")
-        logger.info(f"⏱️ Rate Limit: {settings.rate_limit_requests_per_minute} req/min")
-        logger.info("🔌 Socket.IO: Enabled at /socket.io/")
-        logger.info("📦 Compression: GZip enabled")
-        logger.info("="*70)
-
-    except Exception as e:
-        logger.critical(f"💥 Startup failed: {str(e)}")
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean up resources on shutdown."""
-    logger.info("="*70)
-    logger.info("🛑 Shutting down CryptoVault API Server")
-    logger.info("="*70)
-
-    # Stop real-time price stream service
-    try:
-        await price_stream_service.stop()
-        logger.info("✅ Real-time price stream service stopped")
-    except Exception as e:
-        logger.warning(f"⚠️ Price stream service stop error: {str(e)}")
-
-    # Stop WebSocket price feed
-    try:
-        await price_feed.stop()
-        logger.info("✅ WebSocket price feed stopped")
-    except Exception as e:
-        logger.warning(f"⚠️ Price feed stop error: {str(e)}")
-    
-    # Disconnect database
-    if db_connection:
-        await db_connection.disconnect()
-    
-    logger.info("✅ Graceful shutdown complete")

@@ -143,8 +143,8 @@ class Settings(BaseSettings):
     # CORS CONFIGURATION
     # ============================================
     cors_origins: List[str] = Field(
-        default="http://localhost:3000,http://localhost:5173,https://www.cryptovault.financial",
-        description="Comma-separated list of allowed CORS origins"
+        default=[],
+        description="List of allowed CORS origins. Can be set via comma-separated string or JSON array in env."
     )
 
     # ============================================
@@ -256,11 +256,32 @@ class Settings(BaseSettings):
 
     @validator("cors_origins", pre=True)
     def validate_cors_origins(cls, v):
-        """Parse comma-separated CORS origins into a list."""
+        """
+        Parse CORS origins from various formats into a list of strings.
+        Handles:
+        - A list of strings (no change)
+        - A comma-separated string ("http://a.com,http://b.com")
+        - A JSON array string ('["http://a.com", "http://b.com"]')
+        - None or empty values (returns empty list)
+        """
+        if v is None:
+            return []
         if isinstance(v, list):
             return v
         if isinstance(v, str):
+            if not v.strip():
+                return []
+            # Handle JSON-encoded list
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    import json
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    # Fallback for malformed JSON, treat as string
+                    pass
+            # Handle comma-separated string
             return [origin.strip() for origin in v.split(",") if origin.strip()]
+        # If it's not a recognized type, return an empty list to prevent errors
         return []
 
     @validator("environment")
