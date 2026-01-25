@@ -252,13 +252,13 @@ async def log_admin_action(
     ip_address: str = None
 ):
     """Log admin actions for audit trail"""
-    from dependencies import db_connection
+    from dependencies import get_db
     
-    if not db_connection or not db_connection.is_connected:
+    try:
+        db = get_db()
+    except Exception:
         logger.warning("Cannot log admin action - database not connected")
         return
-    
-    db = db_connection.db
     
     log_entry = {
         "id": secrets.token_hex(16),
