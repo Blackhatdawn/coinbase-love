@@ -9,7 +9,7 @@
 # ============================================
 
 # Application name (will create cryptovault-api.fly.dev)
-app = "cryptovault-api"
+app = "coinbase-love"
 
 # Primary deployment region (US East - matches Vercel)
 primary_region = "iad"
