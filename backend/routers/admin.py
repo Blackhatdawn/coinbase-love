@@ -95,7 +95,7 @@ async def admin_login(
     Admin login with enhanced security.
     Returns JWT token and sets secure cookie.
     """
-    db = await get_database()
+    db = get_db()
     
     # Find admin by email
     admin = await db.admins.find_one({"email": credentials.email.lower()})
@@ -240,7 +240,7 @@ async def get_admin_profile(current_admin: dict = Depends(get_current_admin)):
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(current_admin: dict = Depends(get_current_admin)):
     """Get real-time dashboard statistics."""
-    db = await get_database()
+    db = get_db()
     
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -308,7 +308,7 @@ async def get_dashboard_charts(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Get chart data for dashboard visualizations"""
-    db = await get_database()
+    db = get_db()
     now = datetime.now(timezone.utc)
     
     if period == "day":
@@ -369,7 +369,7 @@ async def list_users(
     current_admin: dict = Depends(get_current_admin)
 ):
     """List all users with filtering and pagination."""
-    db = await get_database()
+    db = get_db()
     
     query = {}
     if search:
@@ -416,7 +416,7 @@ async def list_users(
 @router.get("/users/{user_id}")
 async def get_user_detail(user_id: str, current_admin: dict = Depends(get_current_admin)):
     """Get detailed user information"""
-    db = await get_database()
+    db = get_db()
     
     user = await db.users.find_one({"id": user_id}, {"password_hash": 0, "two_factor_secret": 0})
     if not user:
@@ -440,7 +440,7 @@ async def perform_user_action(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Perform administrative action on a user."""
-    db = await get_database()
+    db = get_db()
     
     user = await db.users.find_one({"id": user_id})
     if not user:
@@ -525,7 +525,7 @@ async def adjust_wallet(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Manually adjust user wallet balance."""
-    db = await get_database()
+    db = get_db()
     
     user = await db.users.find_one({"id": adjustment.user_id})
     if not user:
@@ -596,7 +596,7 @@ async def list_all_transactions(
     current_admin: dict = Depends(get_current_admin)
 ):
     """List all transactions with filtering"""
-    db = await get_database()
+    db = get_db()
     
     query = {}
     if user_id:
@@ -620,7 +620,7 @@ async def list_all_transactions(
 @router.get("/system/health")
 async def get_system_health(current_admin: dict = Depends(get_current_admin)):
     """Get comprehensive system health status"""
-    db = await get_database()
+    db = get_db()
     
     health = {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "services": {}}
     
@@ -669,7 +669,7 @@ async def get_audit_logs(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Get admin audit logs"""
-    db = await get_database()
+    db = get_db()
     
     query = {}
     if admin_id:
@@ -694,7 +694,7 @@ async def list_admins(current_admin: dict = Depends(get_current_admin)):
     if current_admin["role"] != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin access required")
     
-    db = await get_database()
+    db = get_db()
     admins = await db.admins.find({}, {"password_hash": 0, "two_factor_secret": 0}).to_list(100)
     return {"admins": admins}
 
@@ -709,7 +709,7 @@ async def create_admin(
     if current_admin["role"] != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin access required")
     
-    db = await get_database()
+    db = get_db()
     
     existing = await db.admins.find_one({"email": admin_data.email.lower()})
     if existing:
