@@ -207,6 +207,19 @@ class SecurityHeadersMiddleware:
                         existing_keys.add(k.lower())
                 
                 # Baseline security headers - valid values per HTTP spec
+                # Build CSP dynamically from config
+                api_url = settings.public_api_url or "https://cryptovault-api.onrender.com"
+                ws_url = api_url.replace("https://", "wss://").replace("http://", "ws://")
+                coincap_api = settings.coincap_api_url.replace("/v2", "") if settings.coincap_api_url else "https://api.coincap.io"
+                coincap_ws = settings.coincap_ws_url.split("?")[0] if settings.coincap_ws_url else "wss://ws.coincap.io"
+                
+                csp_connect_src = (
+                    f"'self' {api_url} {ws_url} ws://{api_url.split('://')[1] if '://' in api_url else api_url} "
+                    f"{coincap_api} {coincap_ws} wss://{coincap_ws.split('://')[1] if '://' in coincap_ws else coincap_ws} "
+                    f"https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
+                    f"https://vercel.live wss://vercel.live https://*.vercel.live"
+                )
+                
                 security_headers = [
                     (b"strict-transport-security", b"max-age=31536000; includeSubDomains; preload"),
                     (b"x-frame-options", b"DENY"),
@@ -220,10 +233,7 @@ class SecurityHeadersMiddleware:
                         b"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                         b"font-src 'self' https://fonts.gstatic.com data:; "
                         b"img-src 'self' data: https: blob:; "
-                        b"connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com "
-                        b"https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io "
-                        b"https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
-                        b"https://vercel.live wss://vercel.live https://*.vercel.live; "
+                        b"connect-src " + csp_connect_src.encode() + b"; "
                         b"frame-ancestors 'none'; "
                         b"base-uri 'self'; "
                         b"form-action 'self'; "
