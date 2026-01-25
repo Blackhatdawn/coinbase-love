@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-CryptoVault Backend API Testing Suite - Enterprise Transformation Validation
-Comprehensive testing for production readiness including monitoring, security, and validation
+CryptoVault Backend API Testing Suite - Production Readiness Investigation
+Deep investigation for production deployment readiness including:
+- Security (CORS, HTTPS, CSRF, rate limiting)
+- Deployment readiness (Vercel frontend, Render backend)
+- End-to-end functionality testing
+- Sentry monitoring validation
 """
 
 import requests
