@@ -123,6 +123,8 @@ async def get_current_admin(request: Request) -> Dict:
     Dependency to get the current authenticated admin.
     Checks both cookie and Authorization header.
     """
+    from dependencies import get_db
+    
     # Try cookie first
     token = request.cookies.get("admin_token")
     
@@ -146,14 +148,14 @@ async def get_current_admin(request: Request) -> Dict:
         )
     
     # Verify admin still exists and is active
-    from dependencies import db_connection
-    if not db_connection or not db_connection.is_connected:
+    try:
+        db = get_db()
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database unavailable"
         )
     
-    db = db_connection.db
     admin = await db.admins.find_one({"id": payload["sub"], "is_active": True})
     
     if not admin:
