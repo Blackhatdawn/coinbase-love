@@ -12,7 +12,7 @@
 
 ## Latest Updates (January 25, 2026)
 
-### Render → Fly.io Migration Complete ✅
+### Production Optimizations Complete ✅
 
 #### What Was Done:
 1. **Deep Investigation & Audit** of all frontend↔backend communication paths
@@ -28,17 +28,30 @@
    - `GET /api/fly/region` - Quick region check for latency testing
    - `GET /api/fly/instances` - Instance info for debugging auto-scaling
    - `GET /api/fly/health/fly` - Fly.io-specific health check
-4. **Updated Frontend Configuration**:
-   - `vercel.json` - Rewrites now point to `cryptovault-api.fly.dev`
-   - `.env.production` - Updated `VITE_API_BASE_URL`
-5. **Updated Backend Configuration**:
-   - `.env` - Added `PUBLIC_API_URL` and `PUBLIC_WS_URL` for Fly.io
-   - Added Fly.io URL to `CORS_ORIGINS`
-6. **Auto-Scaling Configuration**:
-   - Minimum: 1 instance (always running, no cold starts)
-   - Maximum: 3 instances during peak trading
-   - Scale trigger: When connections exceed 70 (soft limit)
-7. **Full Technical Report** at `/app/FLY_IO_MIGRATION_REPORT.md`
+4. **Backend Performance Optimizations**:
+   - `performance_optimizations.py` - Response caching, query optimization, batch processing
+   - Connection pool monitoring with P95 metrics
+   - Memory-efficient streaming for large responses
+5. **Security Hardening**:
+   - `security_hardening.py` - Input sanitization, NoSQL injection prevention
+   - Anomaly detection with automatic IP blocking
+   - Request fingerprinting for fraud detection
+   - Security audit logging
+6. **Optimization Monitoring Endpoints**:
+   - `GET /api/optimization/metrics` - Cache and security stats
+   - `GET /api/optimization/cache/stats` - Detailed cache statistics
+   - `GET /api/optimization/security/status` - Security monitoring status
+   - `POST /api/optimization/cache/invalidate` - Cache invalidation
+7. **Frontend Performance**:
+   - Enhanced Vite config with aggressive code splitting (12+ chunks)
+   - `performanceUtils.ts` - LRU cache, debounce/throttle, virtual scrolling
+   - Web Vitals monitoring (LCP, FID, CLS)
+   - Resource hints (preconnect, prefetch, dns-prefetch)
+8. **Security Headers**:
+   - HSTS, X-Frame-Options, X-Content-Type-Options
+   - CSP with dynamic connect-src
+   - Rate limiting headers (X-RateLimit-*)
+9. **Full Technical Report** at `/app/FLY_IO_MIGRATION_REPORT.md`
 
 #### Key Configuration Changes:
 | File | Change |
