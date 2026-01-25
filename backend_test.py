@@ -1179,6 +1179,176 @@ class CryptoVaultAPITester:
         except Exception as e:
             self.log_test("Socket.IO Connection", False, f"Error: {str(e)}")
 
+    def test_admin_authentication_flows(self):
+        """Test admin authentication flows"""
+        print("\n🔐 Testing Admin Authentication Flows...")
+        
+        # Clear any existing session
+        self.session.cookies.clear()
+        
+        # Test admin login with default credentials
+        admin_login_data = {
+            "email": "admin@cryptovault.financial",
+            "password": "CryptoVault@Admin2026!"
+        }
+        
+        success, data = self.make_request('POST', '/admin/login', admin_login_data)
+        if success and 'admin' in data and 'token' in data:
+            self.log_test("Admin Login - POST /api/admin/login", True, f"Admin login successful: {data['admin']['email']}")
+            
+            # Test admin profile retrieval - GET /api/admin/me
+            success, data = self.make_request('GET', '/admin/me')
+            if success and 'admin' in data:
+                self.log_test("Admin Profile - GET /api/admin/me", True, f"Admin profile retrieved: {data['admin']['role']}")
+            else:
+                self.log_test("Admin Profile - GET /api/admin/me", False, f"Failed: {data}")
+            
+            # Test admin dashboard stats - GET /api/admin/dashboard/stats
+            success, data = self.make_request('GET', '/admin/dashboard/stats')
+            if success and 'users' in data and 'transactions' in data:
+                self.log_test("Admin Dashboard Stats - GET /api/admin/dashboard/stats", True, 
+                            f"Stats retrieved: {data['users']['total']} users, {data['transactions']['total']} transactions")
+            else:
+                self.log_test("Admin Dashboard Stats - GET /api/admin/dashboard/stats", False, f"Failed: {data}")
+            
+            # Test admin users list - GET /api/admin/users
+            success, data = self.make_request('GET', '/admin/users')
+            if success and 'users' in data:
+                self.log_test("Admin Users List - GET /api/admin/users", True, 
+                            f"Retrieved {len(data['users'])} users, total: {data.get('total', 0)}")
+            else:
+                self.log_test("Admin Users List - GET /api/admin/users", False, f"Failed: {data}")
+            
+            # Test system health - GET /api/admin/system/health
+            success, data = self.make_request('GET', '/admin/system/health')
+            if success and 'status' in data and 'services' in data:
+                self.log_test("Admin System Health - GET /api/admin/system/health", True, 
+                            f"System status: {data['status']}, services: {list(data['services'].keys())}")
+            else:
+                self.log_test("Admin System Health - GET /api/admin/system/health", False, f"Failed: {data}")
+            
+            # Test admin logout - POST /api/admin/logout
+            success, data = self.make_request('POST', '/admin/logout')
+            if success:
+                self.log_test("Admin Logout - POST /api/admin/logout", True, "Admin logout successful")
+            else:
+                self.log_test("Admin Logout - POST /api/admin/logout", False, f"Failed: {data}")
+                
+        else:
+            self.log_test("Admin Login - POST /api/admin/login", False, f"Admin login failed: {data}")
+    
+    def test_admin_protected_endpoints(self):
+        """Test admin protected endpoints return 401 without auth"""
+        print("\n🔒 Testing Admin Protected Endpoints Return 401...")
+        
+        # Clear any authentication
+        self.session.cookies.clear()
+        
+        admin_protected_endpoints = [
+            ('/admin/me', 'GET'),
+            ('/admin/dashboard/stats', 'GET'),
+            ('/admin/users', 'GET'),
+            ('/admin/system/health', 'GET'),
+            ('/admin/logout', 'POST')
+        ]
+        
+        for endpoint, method in admin_protected_endpoints:
+            success, data = self.make_request(method, endpoint, expected_status=401)
+            if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
+                self.log_test(f"Admin Protected Endpoint 401 - {method} {endpoint}", True, "Correctly returns 401")
+            else:
+                self.log_test(f"Admin Protected Endpoint 401 - {method} {endpoint}", False, 
+                            f"Should return 401: {data}")
+
+    def test_admin_user_management(self):
+        """Test admin user management functionality"""
+        print("\n👥 Testing Admin User Management...")
+        
+        # First login as admin
+        admin_login_data = {
+            "email": "admin@cryptovault.financial",
+            "password": "CryptoVault@Admin2026!"
+        }
+        
+        success, data = self.make_request('POST', '/admin/login', admin_login_data)
+        if success and 'admin' in data:
+            # Create a test user first
+            test_email = f"admintest_{datetime.now().strftime('%Y%m%d_%H%M%S')}@example.com"
+            signup_data = {
+                "email": test_email,
+                "name": "Admin Test User",
+                "password": "AdminTest123!"
+            }
+            
+            # Create user using regular signup
+            success, user_data = self.make_request('POST', '/auth/signup', signup_data)
+            if success and 'user' in user_data:
+                user_id = user_data['user']['id']
+                
+                # Test get user details - GET /api/admin/users/{user_id}
+                success, data = self.make_request('GET', f'/admin/users/{user_id}')
+                if success and 'user' in data:
+                    self.log_test("Admin Get User Details", True, f"Retrieved user details for {user_id}")
+                    
+                    # Test user action - verify email
+                    action_data = {
+                        "action": "verify",
+                        "reason": "Admin verification for testing"
+                    }
+                    success, data = self.make_request('POST', f'/admin/users/{user_id}/action', action_data)
+                    if success:
+                        self.log_test("Admin User Action - Verify", True, "User email verified successfully")
+                    else:
+                        self.log_test("Admin User Action - Verify", False, f"Failed: {data}")
+                    
+                    # Test wallet adjustment
+                    wallet_data = {
+                        "user_id": user_id,
+                        "currency": "USD",
+                        "amount": 100.0,
+                        "reason": "Admin test adjustment"
+                    }
+                    success, data = self.make_request('POST', '/admin/wallets/adjust', wallet_data)
+                    if success:
+                        self.log_test("Admin Wallet Adjustment", True, f"Wallet adjusted: {data.get('message', 'Success')}")
+                    else:
+                        self.log_test("Admin Wallet Adjustment", False, f"Failed: {data}")
+                        
+                else:
+                    self.log_test("Admin Get User Details", False, f"Failed: {data}")
+            else:
+                self.log_test("Admin User Management", False, "Could not create test user for admin testing")
+        else:
+            self.log_test("Admin User Management", False, "Could not login as admin for user management test")
+
+    def test_admin_broadcast_functionality(self):
+        """Test admin broadcast functionality"""
+        print("\n📢 Testing Admin Broadcast Functionality...")
+        
+        # Login as admin first
+        admin_login_data = {
+            "email": "admin@cryptovault.financial",
+            "password": "CryptoVault@Admin2026!"
+        }
+        
+        success, data = self.make_request('POST', '/admin/login', admin_login_data)
+        if success and 'admin' in data:
+            # Test broadcast message
+            broadcast_data = {
+                "title": "Test Broadcast",
+                "message": "This is a test broadcast message from admin testing",
+                "type": "info",
+                "target": "all"
+            }
+            
+            success, data = self.make_request('POST', '/admin/system/broadcast', broadcast_data)
+            if success:
+                self.log_test("Admin Broadcast Message", True, "Broadcast message sent successfully")
+            else:
+                self.log_test("Admin Broadcast Message", False, f"Failed: {data}")
+        else:
+            self.log_test("Admin Broadcast Functionality", False, "Could not login as admin for broadcast test")
+
     def test_auth_flows(self):
         """Test authentication flows from review request"""
         print("\n🔐 Testing Authentication Flows...")
