@@ -79,8 +79,17 @@ class PriceStreamService:
         self.max_backoff = 120
         self.last_reconnect_time = 0
         
-        # WebSocket endpoint - CoinCap provides free public WebSocket
-        self.COINCAP_WS = f"wss://ws.coincap.io/prices?assets={','.join(self.TRACKED_ASSETS)}"
+        # WebSocket endpoint - CoinCap requires API key via query parameter
+        # API key is passed via the 'apiKey' query parameter
+        ws_base = settings.coincap_ws_url or "wss://ws.coincap.io/prices"
+        assets_param = f"assets={','.join(self.TRACKED_ASSETS)}"
+        
+        if self.api_key:
+            self.COINCAP_WS = f"{ws_base}?{assets_param}&apiKey={self.api_key}"
+            logger.info(f"🔑 CoinCap WebSocket configured with API key: {self.api_key[:8]}...")
+        else:
+            self.COINCAP_WS = f"{ws_base}?{assets_param}"
+            logger.warning("⚠️ CoinCap WebSocket configured WITHOUT API key - may be rate limited")
         
         # Price tracking
         self.prices: Dict[str, float] = {}
