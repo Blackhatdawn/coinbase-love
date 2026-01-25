@@ -101,7 +101,7 @@ class PriceFeedManager:
         logger.info(f"📡 WebSocket disconnected (total: {len(self.connections)})")
     
     async def _fetch_prices(self) -> Dict[str, Any]:
-        """Fetch prices from CoinCap API with rate limiting"""
+        """Fetch prices from CoinCap API with rate limiting and fallback"""
         # Enforce minimum interval between API calls
         if self.last_api_call:
             time_since_last = (datetime.now() - self.last_api_call).total_seconds()
@@ -115,11 +115,15 @@ class PriceFeedManager:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
+                logger.debug(f"🔑 Using CoinCap API key: {self.api_key[:8]}...")
+            
+            # Get URL from config or use default
+            coincap_api_url = getattr(settings, 'coincap_api_url', 'https://api.coincap.io/v2')
             
             async with httpx.AsyncClient(timeout=15) as client:
                 # CoinCap /assets endpoint returns all top cryptocurrencies
                 response = await client.get(
-                    "https://api.coincap.io/v2/assets",
+                    f"{coincap_api_url}/assets",
                     params={"limit": 50},  # Get top 50 coins
                     headers=headers
                 )
@@ -129,31 +133,59 @@ class PriceFeedManager:
                 if response.status_code == 200:
                     self.consecutive_errors = 0
                     self.backoff_multiplier = 1
-                    return response.json()
+                    data = response.json()
+                    logger.info(f"✅ Fetched {len(data.get('data', []))} prices from CoinCap API")
+                    return data
                 elif response.status_code == 429:
                     # Rate limited - increase backoff
                     self.consecutive_errors += 1
                     self.backoff_multiplier = min(self.backoff_multiplier * 2, 8)
-                    logger.warning(f"⚠️ CoinCap rate limited (429). Backoff: {self.backoff_multiplier}x")
+                    logger.warning(
+                        f"⚠️ CoinCap rate limited (429). Backoff: {self.backoff_multiplier}x. "
+                        f"ACTION: Consider upgrading API plan or reducing request frequency"
+                    )
+                    return {}
+                elif response.status_code == 401:
+                    logger.error(
+                        "❌ CoinCap API authentication failed (401). "
+                        "ACTION: Verify COINCAP_API_KEY is correct in environment variables"
+                    )
                     return {}
                 else:
-                    logger.warning(f"CoinCap API returned {response.status_code}")
+                    logger.warning(f"CoinCap API returned {response.status_code}: {response.text[:200]}")
                     return {}
                     
         except httpx.TimeoutException:
-            logger.warning("⏱️ CoinCap API timeout")
+            logger.warning(
+                "⏱️ CoinCap API timeout. "
+                "ACTION: Check network latency or increase timeout value"
+            )
             self.consecutive_errors += 1
             return {}
         except httpx.ConnectError as e:
+            error_str = str(e)
             # DNS or connection errors - try fallback
-            if "Name or service not known" in str(e) or "getaddrinfo failed" in str(e):
-                logger.warning("🌐 DNS resolution failed for CoinCap API - possible network issue")
+            if "Name or service not known" in error_str or "getaddrinfo failed" in error_str:
+                logger.warning(
+                    "🌐 DNS resolution failed for CoinCap API. "
+                    "ACTION: Check network connectivity and DNS settings. "
+                    "If on Render, ensure outbound network access is enabled. "
+                    "Falling back to cached/mock data."
+                )
+            elif "Connection refused" in error_str:
+                logger.warning(
+                    "🔌 Connection refused by CoinCap API. "
+                    "ACTION: CoinCap may be blocking this IP or experiencing issues"
+                )
             else:
                 logger.warning(f"🔌 Connection error: {e}")
             self.consecutive_errors += 1
             return {}
         except Exception as e:
-            logger.error(f"Price fetch error: {e}")
+            logger.error(
+                f"❌ Price fetch error: {e}. "
+                f"ACTION: Review exception and check CoinCap API status"
+            )
             self.consecutive_errors += 1
             return {}
     
