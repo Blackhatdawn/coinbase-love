@@ -191,12 +191,18 @@ def require_permission(permission: str):
 
 async def create_default_admin():
     """Create default super admin if none exists"""
-    db = await get_database()
+    from dependencies import db_connection
+    
+    if not db_connection or not db_connection.is_connected:
+        logger.warning("Database not connected, skipping admin initialization")
+        return
+    
+    db = db_connection.db
     
     # Check if any admin exists
     existing = await db.admins.find_one({})
     if existing:
-        logger.info("Admin account already exists")
+        logger.info("✅ Admin account already exists")
         return
     
     # Create default super admin
