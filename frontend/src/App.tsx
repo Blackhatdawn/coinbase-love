@@ -189,6 +189,13 @@ const AppContent = () => {
           <Route path="/risk-disclosure" element={<RiskDisclosure />} />
 
           {/* ============================================ */}
+          {/* ADMIN ROUTES - Separate from user dashboard */}
+          {/* ============================================ */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          {/* ============================================ */}
           {/* PROTECTED ROUTES - With AppLayout (Dashboard layout) */}
           {/* No heavy footer, slim sidebar, professional dashboard UI */}
           {/* ============================================ */}
@@ -205,7 +212,6 @@ const AppContent = () => {
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/security" element={<DashboardSecurity />} />
-            <Route path="/admin" element={<AdminDashboard />} />
           </Route>
 
           {/* 404 */}
