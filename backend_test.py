@@ -1449,17 +1449,28 @@ class CryptoVaultAPITester:
             self.log_test("Transactions (No Auth) - GET /api/transactions", False, f"Should require auth: {data}")
 
     def run_all_tests(self):
-        """Run comprehensive test suite for CryptoVault Production Readiness"""
+        """Run comprehensive test suite for CryptoVault Admin Dashboard Testing"""
         print("="*70)
-        print("🚀 CryptoVault Production Readiness Investigation")
+        print("🚀 CryptoVault Admin Dashboard Testing")
         print("="*70)
         
-        # Run production readiness investigation
-        self.test_production_readiness_investigation()
+        # Basic health checks
+        self.test_health_check()
+        self.test_root_endpoint()
+        
+        # Admin-specific tests
+        self.test_admin_protected_endpoints()
+        self.test_admin_authentication_flows()
+        self.test_admin_user_management()
+        self.test_admin_broadcast_functionality()
+        
+        # Regular auth flows for comparison
+        self.test_auth_flows()
+        self.test_protected_endpoints_without_auth()
         
         # Print summary
         print("\n" + "="*70)
-        print("📊 PRODUCTION READINESS TEST SUMMARY")
+        print("📊 ADMIN DASHBOARD TEST SUMMARY")
         print("="*70)
         print(f"Total Tests: {self.tests_run}")
         print(f"Passed: {self.tests_passed}")
