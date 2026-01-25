@@ -430,20 +430,27 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         
         # Validate Content-Type for POST/PUT requests
         if request.method in ["POST", "PUT", "PATCH"]:
-            content_type = request.headers.get("content-type", "")
-            
-            # Allow JSON and form data
-            allowed_types = [
-                "application/json",
-                "application/x-www-form-urlencoded",
-                "multipart/form-data"
+            # Skip content-type validation for endpoints that don't require a body
+            no_body_endpoints = [
+                "/api/auth/refresh",
+                "/api/auth/logout"
             ]
             
-            if not any(allowed in content_type.lower() for allowed in allowed_types):
-                return JSONResponse(
-                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                    content={"error": "Unsupported content type"}
-                )
+            if request.url.path not in no_body_endpoints:
+                content_type = request.headers.get("content-type", "")
+                
+                # Allow JSON and form data
+                allowed_types = [
+                    "application/json",
+                    "application/x-www-form-urlencoded",
+                    "multipart/form-data"
+                ]
+                
+                if not any(allowed in content_type.lower() for allowed in allowed_types):
+                    return JSONResponse(
+                        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                        content={"error": "Unsupported content type"}
+                    )
         
         return await call_next(request)
 
