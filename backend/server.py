@@ -711,6 +711,14 @@ app.include_router(websocket.router)
 app.include_router(monitoring.router, prefix="/api")
 app.include_router(deep_investigation.router, prefix="/api")
 
+# Fly.io deployment status (for multi-region and auto-scaling debugging)
+try:
+    from routers.fly_status import router as fly_router
+    app.include_router(fly_router, prefix="/api")
+    logger.info("✅ Fly.io status endpoints mounted at /api/fly/")
+except ImportError as e:
+    logger.warning(f"⚠️ Fly.io status router not available: {e}")
+
 # ============================================
 # SOCKET.IO INTEGRATION
 # ============================================
