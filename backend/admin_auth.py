@@ -146,7 +146,14 @@ async def get_current_admin(request: Request) -> Dict:
         )
     
     # Verify admin still exists and is active
-    db = await get_database()
+    from dependencies import db_connection
+    if not db_connection or not db_connection.is_connected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable"
+        )
+    
+    db = db_connection.db
     admin = await db.admins.find_one({"id": payload["sub"], "is_active": True})
     
     if not admin:
