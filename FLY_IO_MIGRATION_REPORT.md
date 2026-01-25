@@ -482,7 +482,39 @@ The Fly.io configuration now includes auto-scaling:
 
 ---
 
-## 13. NEXT STEPS
+## 13. DEPLOYMENT SCRIPTS & TOOLS
+
+### Scripts Created
+| Script | Purpose |
+|--------|---------|
+| `deploy-fly.sh` | One-command deployment to Fly.io |
+| `verify-fly-deployment.sh` | Post-deployment verification (20+ checks) |
+
+### Guides Created
+| Guide | Purpose |
+|-------|---------|
+| `FLY_SECRETS_GUIDE.md` | Step-by-step secrets setup |
+| `FLY_IO_MIGRATION_REPORT.md` | Full technical audit |
+
+### Post-Deployment Verification
+Run after deployment:
+```bash
+./verify-fly-deployment.sh https://cryptovault-api.fly.dev
+```
+
+This script checks:
+- ✅ All health endpoints (5 checks)
+- ✅ API endpoints (4 checks)
+- ✅ Monitoring endpoints (4 checks)
+- ✅ Fly.io-specific endpoints (4 checks)
+- ✅ Response validation (3 checks)
+- ✅ CORS headers
+- ✅ Security headers
+- ✅ Latency
+
+---
+
+## 14. NEXT STEPS
 
 1. **Create Fly.io account** and install `flyctl` CLI
 2. **Run `flyctl launch`** in backend directory
