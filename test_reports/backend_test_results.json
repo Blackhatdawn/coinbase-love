@@ -1,169 +1,141 @@
 {
-  "total_tests": 23,
-  "passed_tests": 22,
-  "failed_tests": 1,
-  "success_rate": 95.65217391304348,
+  "total_tests": 19,
+  "passed_tests": 17,
+  "failed_tests": 2,
+  "success_rate": 89.47368421052632,
   "test_results": [
     {
       "test": "Health Check with DB Connection",
       "success": true,
       "details": "Status: healthy, Database: connected",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.354293"
+      "timestamp": "2026-01-25T05:44:16.203564"
     },
     {
       "test": "CORS Production Origin",
       "success": true,
       "details": "Origin: https://www.cryptovault.financial, Credentials: true",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.356860"
+      "timestamp": "2026-01-25T05:44:16.206596"
     },
     {
       "test": "CORS Blocks Unauthorized Origins",
       "success": true,
       "details": "Malicious origin blocked, returned: None",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.364325"
+      "timestamp": "2026-01-25T05:44:16.209953"
     },
     {
       "test": "Security Headers Present",
       "success": true,
       "details": "Found 7/7 headers: ['Strict-Transport-Security', 'X-Frame-Options', 'X-Content-Type-Options', 'X-XSS-Protection', 'Referrer-Policy', 'Content-Security-Policy', 'Permissions-Policy']",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.397494"
+      "timestamp": "2026-01-25T05:44:16.240574"
     },
     {
       "test": "HSTS Header Configuration",
       "success": true,
       "details": "HSTS: max-age=31536000; includeSubDomains; preload",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.397510"
+      "timestamp": "2026-01-25T05:44:16.240584"
     },
     {
       "test": "Rate Limit Headers Present",
       "success": true,
       "details": "Headers found: {'X-RateLimit-Limit': '60', 'X-RateLimit-Policy': '60;w=60'}",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:42.430864"
+      "timestamp": "2026-01-25T05:44:16.300648"
     },
     {
       "test": "Complete Auth Flow - Signup",
       "success": true,
-      "details": "User created: e067cdb3-4077-49ba-8a19-c3ebaaa56630",
+      "details": "User created: 11a57fa7-03a2-4ec1-a481-d9592f9f8467",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:46.649540"
+      "timestamp": "2026-01-25T05:44:20.478518"
     },
     {
       "test": "Complete Auth Flow - Login",
       "success": true,
       "details": "Login successful",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:46.973290"
+      "timestamp": "2026-01-25T05:44:20.848990"
     },
     {
       "test": "Complete Auth Flow - Profile",
-      "success": true,
-      "details": "Profile retrieved",
+      "success": false,
+      "details": "Profile failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': 'e1320878-b6bc-4883-94e2-55767e6bb34a', 'timestamp': '2026-01-25T05:44:20.850605'}}",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:47.016397"
-    },
-    {
-      "test": "Complete Auth Flow - Refresh",
-      "success": true,
-      "details": "Token refreshed",
-      "response_data": null,
-      "timestamp": "2026-01-25T05:09:47.019136"
-    },
-    {
-      "test": "Complete Auth Flow - Logout",
-      "success": true,
-      "details": "Logout successful",
-      "response_data": null,
-      "timestamp": "2026-01-25T05:09:47.081518"
-    },
-    {
-      "test": "Complete Auth Flow - End-to-End",
-      "success": true,
-      "details": "Full auth flow completed successfully",
-      "response_data": null,
-      "timestamp": "2026-01-25T05:09:47.081525"
+      "timestamp": "2026-01-25T05:44:20.851681"
     },
     {
       "test": "Dual Cookie Headers",
       "success": true,
       "details": "Both access_token and refresh_token cookies set (1 total)",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.596661"
+      "timestamp": "2026-01-25T05:44:25.365999"
     },
     {
       "test": "Protected Endpoint 401 - GET /auth/me",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.599016"
+      "timestamp": "2026-01-25T05:44:25.368525"
     },
     {
       "test": "Protected Endpoint 401 - GET /wallet/balance",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.601239"
+      "timestamp": "2026-01-25T05:44:25.370721"
     },
     {
       "test": "Protected Endpoint 401 - GET /transactions",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.603281"
+      "timestamp": "2026-01-25T05:44:25.372905"
     },
     {
       "test": "Protected Endpoint 401 - GET /portfolio",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.605470"
+      "timestamp": "2026-01-25T05:44:25.380784"
     },
     {
       "test": "Protected Endpoint 401 - POST /auth/logout",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:51.607372"
+      "timestamp": "2026-01-25T05:44:25.383024"
     },
     {
       "test": "Wallet Balance Functionality",
-      "success": true,
-      "details": "Wallet balance retrieved: {'USD': 0.0}",
-      "response_data": null,
-      "timestamp": "2026-01-25T05:09:56.195767"
-    },
-    {
-      "test": "Transactions List",
-      "success": true,
-      "details": "Retrieved 0 transactions",
-      "response_data": null,
-      "timestamp": "2026-01-25T05:09:56.269639"
-    },
-    {
-      "test": "Transactions Pagination",
       "success": false,
-      "details": "No pagination info returned",
+      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': '189f3b04-143f-4ffc-bb51-72a7fd8f7a6f', 'timestamp': '2026-01-25T05:44:29.923426'}}",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:56.269652"
+      "timestamp": "2026-01-25T05:44:29.924398"
+    },
+    {
+      "test": "Transactions with Pagination",
+      "success": true,
+      "details": "Correctly requires authentication (cannot test pagination without auth)",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:44:29.926813"
     },
     {
       "test": "Socket.IO Connection",
       "success": true,
       "details": "Socket.IO endpoint accessible (400 - needs proper handshake)",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:56.286602"
+      "timestamp": "2026-01-25T05:44:29.938372"
     },
     {
       "test": "Socket.IO Handshake",
       "success": true,
       "details": "Socket.IO handshake successful",
       "response_data": null,
-      "timestamp": "2026-01-25T05:09:56.287486"
+      "timestamp": "2026-01-25T05:44:29.939242"
     }
   ]
 }
