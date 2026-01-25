@@ -1,5 +1,5 @@
 # Render.yaml - CryptoVault Backend Configuration
-# Deploy to Render.com
+# Enterprise-Grade Production Deployment
 
 services:
   - type: web
@@ -7,34 +7,113 @@ services:
     runtime: python
     region: oregon
     plan: starter
-    root: .
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: python run_server.py
+    
+    # Build & Start
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: uvicorn server:socket_app --host 0.0.0.0 --port $PORT --workers 1
+    
+    # Health Monitoring
     healthCheckPath: /health
+    
+    # Auto-deploy settings
+    autoDeploy: true
+    
+    # Environment Variables (set in Render Dashboard)
     envVars:
+      # === REQUIRED - Set in Dashboard ===
+      - key: MONGO_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CSRF_SECRET
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: COINCAP_API_KEY
+        sync: false
+      - key: NOWPAYMENTS_API_KEY
+        sync: false
+      - key: NOWPAYMENTS_IPN_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      
+      # === CONFIGURED VALUES ===
       - key: ENVIRONMENT
         value: production
-      - key: PORT
-        generateValue: true
-      - key: MONGO_URL
-        sync: false  # Set manually in dashboard
       - key: DB_NAME
-        value: cryptovault_db
-      - key: JWT_SECRET
-        generateValue: false
+        value: cryptovault
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      
+      # CORS - Production domains only
       - key: CORS_ORIGINS
-        value: '["https://cryptovault.financial", "https://www.cryptovault.financial", "https://cryptovault.vercel.app", "https://cryptovault-git-main-blackhatdawn.vercel.app", "http://localhost:3000"]'
+        value: '["https://www.cryptovault.financial","https://cryptovault.financial"]'
+      - key: USE_CROSS_SITE_COOKIES
+        value: "true"
+      
+      # URLs
+      - key: APP_URL
+        value: https://www.cryptovault.financial
+      - key: PUBLIC_API_URL
+        value: https://cryptovault-api.onrender.com
+      - key: PUBLIC_WS_URL
+        value: wss://cryptovault-api.onrender.com
+      - key: PUBLIC_SOCKET_IO_PATH
+        value: /socket.io/
+      
+      # Email
       - key: EMAIL_SERVICE
         value: sendgrid
-      - key: SENDGRID_API_KEY
-        sync: false  # Set manually in dashboard
-      - key: COINGECKO_API_KEY
-        sync: false  # Set manually in dashboard
-      - key: USE_MOCK_PRICES
-        value: "false"
+      - key: EMAIL_FROM
+        value: teams@cryptovault.financial
+      - key: EMAIL_FROM_NAME
+        value: CryptoVault Financial
+      
+      # Features
       - key: USE_REDIS
         value: "true"
-      - key: UPSTASH_REDIS_REST_URL
-        sync: false  # Set manually in dashboard
-      - key: UPSTASH_REDIS_REST_TOKEN
-        sync: false  # Set manually in dashboard
+      - key: USE_MOCK_PRICES
+        value: "false"
+      - key: NOWPAYMENTS_SANDBOX
+        value: "false"
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: COINCAP_RATE_LIMIT
+        value: "50"
+      
+      # Monitoring
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.1"
+      - key: SENTRY_PROFILES_SAMPLE_RATE
+        value: "0.1"
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEBUG
+        value: "false"
+      
+      # Database Pool
+      - key: MONGO_MAX_POOL_SIZE
+        value: "10"
+      - key: MONGO_TIMEOUT_MS
+        value: "5000"
+
+# Database (if using Render PostgreSQL - optional)
+# databases:
+#   - name: cryptovault-db
+#     plan: starter
+#     region: oregon
