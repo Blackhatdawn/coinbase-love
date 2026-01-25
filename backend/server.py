@@ -197,23 +197,19 @@ class SecurityHeadersMiddleware:
         
         async def send_with_security_headers(message):
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
+                # Get existing headers as a list to preserve duplicates (like set-cookie)
+                existing_headers = list(message.get("headers", []))
+                existing_keys = {k.lower() for k, v in existing_headers}
                 
                 # Baseline security headers - valid values per HTTP spec
-                security_headers = {
-                    # HSTS with preload - force HTTPS for 1 year
-                    b"strict-transport-security": b"max-age=31536000; includeSubDomains; preload",
-                    # Prevent clickjacking
-                    b"x-frame-options": b"DENY",
-                    # Prevent MIME sniffing
-                    b"x-content-type-options": b"nosniff",
-                    # Legacy XSS protection (modern browsers use CSP)
-                    b"x-xss-protection": b"1; mode=block",
-                    # Control referrer information
-                    b"referrer-policy": b"strict-origin-when-cross-origin",
-                    # Disable unused browser features - valid directives only
-                    b"permissions-policy": b"geolocation=(), microphone=(), camera=(), payment=(), usb=()",
-                    b"content-security-policy": (
+                security_headers = [
+                    (b"strict-transport-security", b"max-age=31536000; includeSubDomains; preload"),
+                    (b"x-frame-options", b"DENY"),
+                    (b"x-content-type-options", b"nosniff"),
+                    (b"x-xss-protection", b"1; mode=block"),
+                    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+                    (b"permissions-policy", b"geolocation=(), microphone=(), camera=(), payment=(), usb=()"),
+                    (b"content-security-policy", (
                         b"default-src 'self'; "
                         b"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "
                         b"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
@@ -227,11 +223,15 @@ class SecurityHeadersMiddleware:
                         b"base-uri 'self'; "
                         b"form-action 'self'; "
                         b"upgrade-insecure-requests"
-                    ),
-                }
+                    )),
+                ]
                 
-                headers.update(security_headers)
-                message["headers"] = [(k, v) for k, v in headers.items()]
+                # Only add security headers that don't already exist
+                for key, value in security_headers:
+                    if key.lower() not in existing_keys:
+                        existing_headers.append((key, value))
+                
+                message["headers"] = existing_headers
             
             await send(message)
         
