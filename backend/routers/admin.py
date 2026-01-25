@@ -1,570 +1,730 @@
-"""Admin dashboard and management endpoints."""
+"""
+Admin Dashboard API Routes
+Complete admin control panel with real-time capabilities
+"""
 
-from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import StreamingResponse
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-import uuid
-import csv
-from io import StringIO
+import logging
+import secrets
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Dict, Any
 
-from dependencies import get_current_user_id, get_db
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, Query, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, EmailStr, Field
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+from database import get_database
+from admin_auth import (
+    AdminLoginRequest, AdminLoginResponse, AdminUser,
+    get_current_admin, create_admin_token, verify_password,
+    hash_password, log_admin_action, ADMIN_PERMISSIONS
+)
+from config import settings
+from socketio_server import socketio_manager
 
+logger = logging.getLogger(__name__)
 
-def percent_change(previous: float, current: float) -> float:
-    """Calculate percentage change with zero-safe handling."""
-    if previous == 0:
-        return 0.0 if current == 0 else 100.0
-    return ((current - previous) / previous) * 100
-
-
-def normalize_audit_log(log: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize audit log fields for consistent export/response."""
-    if "_id" in log:
-        log["_id"] = str(log["_id"])
-    if "timestamp" not in log and "created_at" in log:
-        log["timestamp"] = log["created_at"]
-    return log
+router = APIRouter(prefix="/api/admin", tags=["Admin Dashboard"])
 
 
-@router.post("/setup-first-admin")
-async def setup_first_admin(
+# ============================================
+# PYDANTIC MODELS
+# ============================================
+
+class UserActionRequest(BaseModel):
+    """Request to perform action on user"""
+    action: str  # suspend, unsuspend, verify, delete, reset_password
+    reason: Optional[str] = None
+    duration_hours: Optional[int] = None  # For temporary suspensions
+
+
+class WalletAdjustRequest(BaseModel):
+    """Request to adjust user wallet"""
+    user_id: str
+    currency: str
+    amount: float
+    reason: str
+    transaction_type: str = "admin_adjustment"
+
+
+class AdminCreateRequest(BaseModel):
+    """Request to create new admin"""
+    email: EmailStr
+    name: str
+    password: str
+    role: str = "admin"
+
+
+class SystemConfigUpdate(BaseModel):
+    """System configuration update"""
+    key: str
+    value: Any
+    description: Optional[str] = None
+
+
+class BroadcastMessage(BaseModel):
+    """Broadcast message to users"""
+    title: str
+    message: str
+    type: str = "info"  # info, warning, critical
+    target: str = "all"  # all, verified, active
+    expires_at: Optional[datetime] = None
+
+
+# ============================================
+# ADMIN AUTHENTICATION
+# ============================================
+
+@router.post("/login", response_model=AdminLoginResponse)
+async def admin_login(
     request: Request,
-    db = Depends(get_db)
+    response: Response,
+    credentials: AdminLoginRequest
 ):
     """
-    Create the first admin user if no admins exist.
-    This is a one-time setup endpoint.
+    Admin login with enhanced security.
+    Returns JWT token and sets secure cookie.
     """
-    users_collection = db.get_collection("users")
+    db = await get_database()
     
-    # Check if any admin users already exist
-    existing_admin = await users_collection.find_one({"is_admin": True})
-    if existing_admin:
+    # Find admin by email
+    admin = await db.admins.find_one({"email": credentials.email.lower()})
+    
+    if not admin:
+        logger.warning(f"Admin login attempt with unknown email: {credentials.email}")
+        await log_admin_action(
+            admin_id="unknown",
+            action="login_failed",
+            resource_type="admin",
+            resource_id="unknown",
+            details={"email": credentials.email, "reason": "unknown_email"},
+            ip_address=request.client.host
+        )
         raise HTTPException(
-            status_code=400, 
-            detail="Admin user already exists. Use regular admin interface to manage users."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
         )
     
-    body = await request.json()
-    email = body.get("email")
+    # Verify password
+    if not verify_password(credentials.password, admin["password_hash"]):
+        logger.warning(f"Admin login failed for: {credentials.email}")
+        await log_admin_action(
+            admin_id=admin["id"],
+            action="login_failed",
+            resource_type="admin",
+            resource_id=admin["id"],
+            details={"reason": "invalid_password"},
+            ip_address=request.client.host
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
     
-    if not email:
-        raise HTTPException(status_code=400, detail="Email is required")
+    # Check if account is active
+    if not admin.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin account is deactivated"
+        )
     
-    # Find user by email
-    user = await users_collection.find_one({"email": email})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found. Please create an account first, then use this endpoint.")
+    # Check 2FA if enabled
+    if admin.get("two_factor_enabled"):
+        if not credentials.totp_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="2FA code required"
+            )
     
-    if not user.get("email_verified"):
-        raise HTTPException(status_code=400, detail="Email must be verified before becoming admin")
-    
-    # Make user an admin
-    await users_collection.update_one(
-        {"id": user["id"]},
-        {"$set": {"is_admin": True}}
+    # Create token
+    token, expires_at = create_admin_token(
+        admin["id"],
+        admin["email"],
+        admin["role"]
     )
     
+    # Update last login
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {
+            "$set": {"last_login": datetime.now(timezone.utc)},
+            "$push": {
+                "login_history": {
+                    "$each": [{
+                        "timestamp": datetime.now(timezone.utc),
+                        "ip_address": request.client.host,
+                        "user_agent": request.headers.get("user-agent", "unknown")
+                    }],
+                    "$slice": -20
+                }
+            }
+        }
+    )
+    
+    # Log successful login
+    await log_admin_action(
+        admin_id=admin["id"],
+        action="login_success",
+        resource_type="admin",
+        resource_id=admin["id"],
+        details={"user_agent": request.headers.get("user-agent", "unknown")},
+        ip_address=request.client.host
+    )
+    
+    # Set secure cookie
+    response.set_cookie(
+        key="admin_token",
+        value=token,
+        httponly=True,
+        secure=settings.use_cross_site_cookies,
+        samesite="lax" if not settings.use_cross_site_cookies else "none",
+        max_age=8 * 60 * 60,
+        path="/api/admin"
+    )
+    
+    logger.info(f"Admin login successful: {admin['email']}")
+    
     return {
-        "message": "User has been granted admin privileges",
-        "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "name": user["name"],
-            "is_admin": True
+        "admin": {
+            "id": admin["id"],
+            "email": admin["email"],
+            "name": admin["name"],
+            "role": admin["role"],
+            "permissions": admin.get("permissions", ADMIN_PERMISSIONS.get(admin["role"], []))
+        },
+        "token": token,
+        "expires_at": expires_at
+    }
+
+
+@router.post("/logout")
+async def admin_logout(
+    response: Response,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Admin logout - clear session"""
+    response.delete_cookie("admin_token", path="/api/admin")
+    
+    await log_admin_action(
+        admin_id=current_admin["id"],
+        action="logout",
+        resource_type="admin",
+        resource_id=current_admin["id"],
+        details={},
+        ip_address=None
+    )
+    
+    return {"message": "Logged out successfully"}
+
+
+@router.get("/me")
+async def get_admin_profile(current_admin: dict = Depends(get_current_admin)):
+    """Get current admin profile"""
+    return {"admin": current_admin}
+
+
+# ============================================
+# DASHBOARD OVERVIEW
+# ============================================
+
+@router.get("/dashboard/stats")
+async def get_dashboard_stats(current_admin: dict = Depends(get_current_admin)):
+    """Get real-time dashboard statistics."""
+    db = await get_database()
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=7)
+    month_start = today_start - timedelta(days=30)
+    
+    # User statistics
+    total_users = await db.users.count_documents({})
+    active_users = await db.users.count_documents({"is_active": True})
+    verified_users = await db.users.count_documents({"email_verified": True})
+    suspended_users = await db.users.count_documents({"is_suspended": True})
+    new_users_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
+    new_users_week = await db.users.count_documents({"created_at": {"$gte": week_start}})
+    
+    # Transaction statistics
+    total_transactions = await db.transactions.count_documents({})
+    transactions_today = await db.transactions.count_documents({"created_at": {"$gte": today_start}})
+    
+    # Volume calculation
+    pipeline = [
+        {"$match": {"created_at": {"$gte": today_start}, "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    volume_result = await db.transactions.aggregate(pipeline).to_list(1)
+    volume_today = volume_result[0]["total"] if volume_result else 0
+    
+    # Pending items
+    pending_withdrawals = await db.withdrawals.count_documents({"status": "pending"})
+    pending_deposits = await db.deposits.count_documents({"status": "pending"})
+    
+    # Active sessions
+    active_connections = socketio_manager.get_stats().get("active_connections", 0)
+    
+    return {
+        "users": {
+            "total": total_users,
+            "active": active_users,
+            "verified": verified_users,
+            "suspended": suspended_users,
+            "new_today": new_users_today,
+            "new_week": new_users_week,
+            "growth_rate": round((new_users_week / max(total_users - new_users_week, 1)) * 100, 2)
+        },
+        "transactions": {
+            "total": total_transactions,
+            "today": transactions_today,
+            "volume_today": round(volume_today, 2)
+        },
+        "pending": {
+            "withdrawals": pending_withdrawals,
+            "deposits": pending_deposits,
+            "total": pending_withdrawals + pending_deposits
+        },
+        "system": {
+            "active_connections": active_connections,
+            "server_time": now.isoformat(),
+            "environment": settings.environment
         }
     }
 
 
-async def is_admin(user_id: str = Depends(get_current_user_id), db = Depends(get_db)) -> bool:
-    """Check if user is an admin."""
-    users_collection = db.get_collection("users")
-    user = await users_collection.find_one({"id": user_id})
-    
-    if not user or not user.get("is_admin", False):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    return True
-
-
-@router.get("/stats")
-async def get_admin_stats(
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+@router.get("/dashboard/charts")
+async def get_dashboard_charts(
+    period: str = Query("week", regex="^(day|week|month|year)$"),
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Get platform statistics for admin dashboard."""
-    users_collection = db.get_collection("users")
-    orders_collection = db.get_collection("orders")
-    alerts_collection = db.get_collection("price_alerts")
+    """Get chart data for dashboard visualizations"""
+    db = await get_database()
+    now = datetime.now(timezone.utc)
     
-    # Get user stats
-    total_users = await users_collection.count_documents({})
-    verified_users = await users_collection.count_documents({"email_verified": True})
+    if period == "day":
+        start_date = now - timedelta(days=1)
+        group_format = "%Y-%m-%d %H:00"
+    elif period == "week":
+        start_date = now - timedelta(weeks=1)
+        group_format = "%Y-%m-%d"
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+        group_format = "%Y-%m-%d"
+    else:
+        start_date = now - timedelta(days=365)
+        group_format = "%Y-%m"
     
-    # Get trading stats (last 24h)
-    now = datetime.utcnow()
-    yesterday = now - timedelta(days=1)
-    day_before = now - timedelta(days=2)
-    trades_24h = await orders_collection.count_documents({
-        "created_at": {"$gte": yesterday}
-    })
-    
-    # Calculate total trading volume (last 24h)
-    pipeline = [
-        {"$match": {"created_at": {"$gte": yesterday}}},
-        {"$group": {"_id": None, "total": {"$sum": {"$multiply": ["$amount", "$price"]}}}}
+    # User registrations over time
+    user_pipeline = [
+        {"$match": {"created_at": {"$gte": start_date}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": group_format, "date": "$created_at"}},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"_id": 1}}
     ]
-    volume_result = await orders_collection.aggregate(pipeline).to_list(1)
-    volume_24h = volume_result[0]["total"] if volume_result else 0
+    user_data = await db.users.aggregate(user_pipeline).to_list(100)
     
-    # Calculate previous 24h volume for change percentage
-    previous_volume_pipeline = [
-        {
-            "$match": {
-                "created_at": {
-                    "$gte": day_before,
-                    "$lt": yesterday
-                }
-            }
-        },
-        {"$group": {"_id": None, "total": {"$sum": {"$multiply": ["$amount", "$price"]}}}}
+    # Transaction volume over time
+    tx_pipeline = [
+        {"$match": {"created_at": {"$gte": start_date}, "status": "completed"}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": group_format, "date": "$created_at"}},
+            "volume": {"$sum": "$amount"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"_id": 1}}
     ]
-    previous_volume_result = await orders_collection.aggregate(previous_volume_pipeline).to_list(1)
-    previous_volume_24h = previous_volume_result[0]["total"] if previous_volume_result else 0
-
-    # Active users (logged in last 7 days)
-    week_ago = now - timedelta(days=7)
-    active_users = await users_collection.count_documents({
-        "last_login": {"$gte": week_ago}
-    })
-
-    # User growth (last 7 days vs previous 7 days)
-    previous_week = now - timedelta(days=14)
-    new_users_current = await users_collection.count_documents({
-        "created_at": {"$gte": week_ago}
-    })
-    new_users_previous = await users_collection.count_documents({
-        "created_at": {"$gte": previous_week, "$lt": week_ago}
-    })
-
-    # Active alerts
-    total_alerts = await alerts_collection.count_documents({"is_active": True})
-
-    user_growth = percent_change(new_users_previous, new_users_current)
-    volume_change = percent_change(previous_volume_24h, volume_24h)
+    tx_data = await db.transactions.aggregate(tx_pipeline).to_list(100)
     
     return {
-        "totalUsers": total_users,
-        "activeUsers": active_users,
-        "volume24h": round(volume_24h, 2),
-        "totalAlerts": total_alerts,
-        "userGrowth": round(user_growth, 2),
-        "volumeChange": round(volume_change, 2),
-        "users": {
-            "total": total_users,
-            "verified": verified_users,
-            "active_7d": active_users
-        },
-        "trading": {
-            "trades_24h": trades_24h,
-            "volume_24h": round(volume_24h, 2)
-        },
-        "timestamp": now.isoformat()
+        "period": period,
+        "user_registrations": [{"date": d["_id"], "count": d["count"]} for d in user_data],
+        "transaction_volume": [{"date": d["_id"], "volume": d["volume"], "count": d["count"]} for d in tx_data]
     }
 
+
+# ============================================
+# USER MANAGEMENT
+# ============================================
 
 @router.get("/users")
-async def get_users(
-    skip: int = 0,
-    limit: int = 50,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Get list of users (paginated)."""
-    users_collection = db.get_collection("users")
-    wallets_collection = db.get_collection("wallets")
+    """List all users with filtering and pagination."""
+    db = await get_database()
     
-    users = await users_collection.find(
-        {},
-        {"password_hash": 0, "two_factor_secret": 0, "backup_codes": 0}
-    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    query = {}
+    if search:
+        query["$or"] = [
+            {"email": {"$regex": search, "$options": "i"}},
+            {"name": {"$regex": search, "$options": "i"}},
+            {"id": search}
+        ]
+    if status:
+        if status == "active":
+            query["is_active"] = True
+            query["is_suspended"] = {"$ne": True}
+        elif status == "suspended":
+            query["is_suspended"] = True
+        elif status == "verified":
+            query["email_verified"] = True
+        elif status == "unverified":
+            query["email_verified"] = {"$ne": True}
     
-    total = await users_collection.count_documents({})
-
-    user_ids = [user.get("id") for user in users if user.get("id")]
-    wallets = []
-    if user_ids:
-        wallets = await wallets_collection.find({"user_id": {"$in": user_ids}}).to_list(len(user_ids))
-    wallets_by_user = {wallet.get("user_id"): wallet for wallet in wallets}
-
-    formatted_users = []
-    now = datetime.utcnow()
+    sort_direction = -1 if sort_order == "desc" else 1
+    
+    cursor = db.users.find(
+        query,
+        {"password_hash": 0, "two_factor_secret": 0, "email_verification_token": 0, "password_reset_token": 0}
+    ).sort(sort_by, sort_direction).skip(skip).limit(limit)
+    
+    users = await cursor.to_list(limit)
+    total = await db.users.count_documents(query)
+    
+    enriched_users = []
     for user in users:
-        wallet = wallets_by_user.get(user.get("id"), {})
-        balances = wallet.get("balances", {}) if wallet else {}
-        usd_balance = balances.get("USD", 0.0)
-
-        status = "active"
-        if not user.get("email_verified"):
-            status = "pending"
-        locked_until = user.get("locked_until")
-        if locked_until and locked_until > now:
-            status = "suspended"
-
-        created_at = user.get("created_at")
-        last_login = user.get("last_login")
-
-        formatted_users.append({
-            "id": user.get("id"),
-            "email": user.get("email"),
-            "name": user.get("name", ""),
-            "status": status,
-            "balance": float(usd_balance) if usd_balance is not None else 0.0,
-            "joinedAt": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
-            "lastLogin": last_login.isoformat() if hasattr(last_login, "isoformat") else None,
-            "is_admin": user.get("is_admin", False)
+        wallet = await db.wallets.find_one({"user_id": user["id"]})
+        enriched_users.append({
+            **user,
+            "_id": str(user.get("_id", "")),
+            "wallet_balance": wallet.get("balances", {}) if wallet else {},
+            "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
+            "last_login": user.get("last_activity").isoformat() if user.get("last_activity") else None
         })
     
+    return {"users": enriched_users, "total": total, "skip": skip, "limit": limit}
+
+
+@router.get("/users/{user_id}")
+async def get_user_detail(user_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Get detailed user information"""
+    db = await get_database()
+    
+    user = await db.users.find_one({"id": user_id}, {"password_hash": 0, "two_factor_secret": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    wallet = await db.wallets.find_one({"user_id": user_id})
+    transactions = await db.transactions.find({"user_id": user_id}).sort("created_at", -1).limit(20).to_list(20)
+    
     return {
-        "users": formatted_users,
-        "total": total,
-        "skip": skip,
-        "limit": limit
+        "user": {**user, "_id": str(user.get("_id", "")), "created_at": user.get("created_at").isoformat() if user.get("created_at") else None},
+        "wallet": wallet,
+        "recent_transactions": transactions
     }
 
 
-@router.get("/trades")
-async def get_trades(
-    skip: int = 0,
-    limit: int = 100,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+@router.post("/users/{user_id}/action")
+async def perform_user_action(
+    request: Request,
+    user_id: str,
+    action_request: UserActionRequest,
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Get list of recent trades (paginated)."""
-    orders_collection = db.get_collection("orders")
-    users_collection = db.get_collection("users")
+    """Perform administrative action on a user."""
+    db = await get_database()
     
-    trades = await orders_collection.find({}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
-    total = await orders_collection.count_documents({})
-
-    user_ids = [trade.get("user_id") for trade in trades if trade.get("user_id")]
-    users = []
-    if user_ids:
-        users = await users_collection.find(
-            {"id": {"$in": list(set(user_ids))}},
-            {"id": 1, "email": 1}
-        ).to_list(len(set(user_ids)))
-    users_by_id = {user.get("id"): user.get("email") for user in users}
-
-    formatted_trades = []
-    for trade in trades:
-        trading_pair = trade.get("trading_pair", "")
-        symbol = trading_pair.split("/")[0] if trading_pair else None
-        created_at = trade.get("created_at")
-        formatted_trades.append({
-            "id": trade.get("id"),
-            "userId": trade.get("user_id"),
-            "userEmail": users_by_id.get(trade.get("user_id")),
-            "type": (trade.get("side") or "").lower(),
-            "symbol": symbol,
-            "amount": trade.get("amount"),
-            "price": trade.get("price"),
-            "status": trade.get("status", "filled"),
-            "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else None
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    action = action_request.action
+    updates = {}
+    notification_message = None
+    
+    if action == "suspend":
+        updates["is_suspended"] = True
+        updates["suspended_at"] = datetime.now(timezone.utc)
+        updates["suspended_reason"] = action_request.reason
+        updates["suspended_by"] = current_admin["id"]
+        if action_request.duration_hours:
+            updates["suspension_expires"] = datetime.now(timezone.utc) + timedelta(hours=action_request.duration_hours)
+        notification_message = f"Your account has been suspended. Reason: {action_request.reason or 'Policy violation'}"
+        
+    elif action == "unsuspend":
+        updates["is_suspended"] = False
+        updates["suspended_at"] = None
+        updates["suspended_reason"] = None
+        notification_message = "Your account suspension has been lifted."
+        
+    elif action == "verify":
+        updates["email_verified"] = True
+        updates["email_verified_at"] = datetime.now(timezone.utc)
+        notification_message = "Your email has been verified by an administrator."
+        
+    elif action == "delete":
+        updates["is_active"] = False
+        updates["deleted_at"] = datetime.now(timezone.utc)
+        updates["deleted_by"] = current_admin["id"]
+        
+    elif action == "force_logout":
+        await db.sessions.delete_many({"user_id": user_id})
+        notification_message = "You have been logged out of all sessions."
+        
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+    
+    if updates:
+        await db.users.update_one({"id": user_id}, {"$set": updates})
+    
+    if notification_message:
+        await db.notifications.insert_one({
+            "id": secrets.token_hex(16),
+            "user_id": user_id,
+            "type": "admin_action",
+            "title": f"Account {action}",
+            "message": notification_message,
+            "read": False,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        await socketio_manager.send_to_user(user_id, "notification", {
+            "type": "admin_action",
+            "action": action,
+            "message": notification_message
         })
     
-    return {
-        "trades": formatted_trades,
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
+    await log_admin_action(
+        admin_id=current_admin["id"],
+        action=f"user_{action}",
+        resource_type="user",
+        resource_id=user_id,
+        details={"reason": action_request.reason, "user_email": user.get("email")},
+        ip_address=request.client.host
+    )
+    
+    return {"message": f"Action '{action}' performed successfully", "user_id": user_id, "action": action}
 
 
-@router.get("/audit-logs")
-async def get_audit_logs(
-    skip: int = 0,
-    limit: int = 100,
+# ============================================
+# WALLET MANAGEMENT
+# ============================================
+
+@router.post("/wallets/adjust")
+async def adjust_wallet(
+    request: Request,
+    adjustment: WalletAdjustRequest,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Manually adjust user wallet balance."""
+    db = await get_database()
+    
+    user = await db.users.find_one({"id": adjustment.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    wallet = await db.wallets.find_one({"user_id": adjustment.user_id})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    current_balance = wallet.get("balances", {}).get(adjustment.currency, 0)
+    new_balance = current_balance + adjustment.amount
+    
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail=f"Adjustment would result in negative balance")
+    
+    await db.wallets.update_one(
+        {"user_id": adjustment.user_id},
+        {"$set": {f"balances.{adjustment.currency}": new_balance}}
+    )
+    
+    tx_id = secrets.token_hex(16)
+    await db.transactions.insert_one({
+        "id": tx_id,
+        "user_id": adjustment.user_id,
+        "type": adjustment.transaction_type,
+        "amount": adjustment.amount,
+        "currency": adjustment.currency,
+        "status": "completed",
+        "description": f"Admin adjustment: {adjustment.reason}",
+        "metadata": {
+            "admin_id": current_admin["id"],
+            "reason": adjustment.reason,
+            "previous_balance": current_balance,
+            "new_balance": new_balance
+        },
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    await log_admin_action(
+        admin_id=current_admin["id"],
+        action="wallet_adjustment",
+        resource_type="wallet",
+        resource_id=adjustment.user_id,
+        details={"currency": adjustment.currency, "amount": adjustment.amount, "reason": adjustment.reason},
+        ip_address=request.client.host
+    )
+    
+    await socketio_manager.send_to_user(adjustment.user_id, "wallet_update", {
+        "currency": adjustment.currency,
+        "balance": new_balance,
+        "change": adjustment.amount
+    })
+    
+    return {"message": "Wallet adjusted successfully", "transaction_id": tx_id, "previous_balance": current_balance, "new_balance": new_balance}
+
+
+# ============================================
+# TRANSACTIONS MANAGEMENT
+# ============================================
+
+@router.get("/transactions")
+async def list_all_transactions(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     user_id: Optional[str] = None,
-    action: Optional[str] = None,
-    export: bool = False,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+    type: Optional[str] = None,
+    status: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """
-    Get audit logs with optional filters.
-
-    Query Parameters:
-    - skip: Number of records to skip (pagination)
-    - limit: Number of records to return (max 1000 for export)
-    - user_id: Filter by user ID
-    - action: Filter by action type
-    - export: If true, return as CSV file download instead of JSON
-    """
-    audit_collection = db.get_collection("audit_logs")
-
+    """List all transactions with filtering"""
+    db = await get_database()
+    
     query = {}
     if user_id:
         query["user_id"] = user_id
-    if action:
-        query["action"] = action
-
-    # For export, fetch all matching records (or up to 10000 for safety)
-    if export:
-        export_limit = min(limit, 10000) if limit else 10000
-        logs = await audit_collection.find(query).sort("created_at", -1).to_list(export_limit)
-        logs = [normalize_audit_log(log) for log in logs]
-
-        # Generate CSV
-        if not logs:
-            # Return empty CSV with headers
-            output = StringIO()
-            writer = csv.DictWriter(output, fieldnames=["timestamp", "user_id", "action", "resource", "ip_address", "details"])
-            writer.writeheader()
-            return StreamingResponse(
-                iter([output.getvalue()]),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=audit_logs.csv"}
-            )
-
-        # Write CSV to string buffer
-        output = StringIO()
-
-        # Get all unique field names from logs
-        fieldnames = set()
-        for log in logs:
-            fieldnames.update(log.keys() if isinstance(log, dict) else [])
-        fieldnames = sorted(list(fieldnames))
-
-        # Prioritize important fields first
-        important_fields = ["timestamp", "user_id", "action", "resource", "ip_address", "details", "request_id"]
-        ordered_fields = [f for f in important_fields if f in fieldnames]
-        other_fields = [f for f in fieldnames if f not in ordered_fields]
-        all_fields = ordered_fields + other_fields
-
-        writer = csv.DictWriter(output, fieldnames=all_fields, restval="")
-        writer.writeheader()
-
-        for log in logs:
-            # Convert ObjectId and datetime to strings
-            cleaned_log = {}
-            for field in all_fields:
-                value = log.get(field, "")
-                if isinstance(value, datetime):
-                    value = value.isoformat()
-                elif hasattr(value, '__dict__'):
-                    value = str(value)
-                cleaned_log[field] = value
-            writer.writerow(cleaned_log)
-
-        csv_content = output.getvalue()
-        return StreamingResponse(
-            iter([csv_content]),
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=audit_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"}
-        )
-
-    # Standard JSON response
-    logs = await audit_collection.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
-    logs = [normalize_audit_log(log) for log in logs]
-    total = await audit_collection.count_documents(query)
-
-    return {
-        "logs": logs,
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
-
-
-@router.get("/withdrawals")
-async def get_pending_withdrawals(
-    skip: int = 0,
-    limit: int = 50,
-    status: str = "pending",
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
-):
-    """Get withdrawal requests for admin review."""
-    withdrawals_collection = db.get_collection("withdrawals")
-    users_collection = db.get_collection("users")
-    
-    query = {}
+    if type:
+        query["type"] = type
     if status:
         query["status"] = status
     
-    withdrawals = await withdrawals_collection.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
-    total = await withdrawals_collection.count_documents(query)
+    cursor = db.transactions.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    transactions = await cursor.to_list(limit)
+    total = await db.transactions.count_documents(query)
     
-    # Enrich with user information
-    for withdrawal in withdrawals:
-        user = await users_collection.find_one({"id": withdrawal["user_id"]})
-        if user:
-            withdrawal["user_email"] = user.get("email")
-            withdrawal["user_name"] = user.get("name")
-    
-    return {
-        "withdrawals": withdrawals,
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
+    return {"transactions": transactions, "total": total, "skip": skip, "limit": limit}
 
 
-@router.post("/withdrawals/{withdrawal_id}/approve")
-async def approve_withdrawal(
-    withdrawal_id: str,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+# ============================================
+# SYSTEM MANAGEMENT
+# ============================================
+
+@router.get("/system/health")
+async def get_system_health(current_admin: dict = Depends(get_current_admin)):
+    """Get comprehensive system health status"""
+    db = await get_database()
+    
+    health = {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "services": {}}
+    
+    try:
+        await db.command("ping")
+        health["services"]["mongodb"] = {"status": "healthy"}
+    except Exception as e:
+        health["services"]["mongodb"] = {"status": "unhealthy", "error": str(e)}
+        health["status"] = "degraded"
+    
+    try:
+        from redis_cache import redis_cache
+        is_connected = await redis_cache.is_connected()
+        health["services"]["redis"] = {"status": "healthy" if is_connected else "disconnected"}
+    except:
+        health["services"]["redis"] = {"status": "error"}
+    
+    stats = socketio_manager.get_stats()
+    health["services"]["socketio"] = {"status": "healthy", "active_connections": stats.get("active_connections", 0)}
+    
+    return health
+
+
+@router.post("/system/broadcast")
+async def broadcast_message(message: BroadcastMessage, current_admin: dict = Depends(get_current_admin)):
+    """Broadcast message to all connected users"""
+    await socketio_manager.broadcast("announcement", {
+        "title": message.title,
+        "message": message.message,
+        "type": message.type,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"message": "Broadcast sent successfully"}
+
+
+# ============================================
+# AUDIT LOGS
+# ============================================
+
+@router.get("/audit-logs")
+async def get_audit_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    admin_id: Optional[str] = None,
+    action: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Approve a withdrawal request (changes status to processing)."""
-    withdrawals_collection = db.get_collection("withdrawals")
+    """Get admin audit logs"""
+    db = await get_database()
     
-    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
-    if not withdrawal:
-        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    if action:
+        query["action"] = action
     
-    if withdrawal["status"] != "pending":
-        raise HTTPException(status_code=400, detail="Only pending withdrawals can be approved")
+    cursor = db.admin_audit_logs.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+    logs = await cursor.to_list(limit)
+    total = await db.admin_audit_logs.count_documents(query)
     
-    await withdrawals_collection.update_one(
-        {"id": withdrawal_id},
-        {
-            "$set": {
-                "status": "processing",
-                "processed_at": datetime.utcnow()
-            }
-        }
-    )
-    
-    return {"message": "Withdrawal approved and is now processing"}
+    return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
 
-@router.post("/withdrawals/{withdrawal_id}/complete")
-async def complete_withdrawal(
-    withdrawal_id: str,
+# ============================================
+# ADMIN MANAGEMENT
+# ============================================
+
+@router.get("/admins")
+async def list_admins(current_admin: dict = Depends(get_current_admin)):
+    """List all admin accounts"""
+    if current_admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    db = await get_database()
+    admins = await db.admins.find({}, {"password_hash": 0, "two_factor_secret": 0}).to_list(100)
+    return {"admins": admins}
+
+
+@router.post("/admins")
+async def create_admin(
     request: Request,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
+    admin_data: AdminCreateRequest,
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Mark withdrawal as completed with transaction hash."""
-    body = await request.json()
-    transaction_hash = body.get("transaction_hash")
+    """Create new admin account"""
+    if current_admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
     
-    if not transaction_hash:
-        raise HTTPException(status_code=400, detail="Transaction hash is required")
+    db = await get_database()
     
-    withdrawals_collection = db.get_collection("withdrawals")
+    existing = await db.admins.find_one({"email": admin_data.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
-    if not withdrawal:
-        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    admin_id = secrets.token_hex(16)
     
-    if withdrawal["status"] not in ["pending", "processing"]:
-        raise HTTPException(status_code=400, detail="Only pending or processing withdrawals can be completed")
-    
-    await withdrawals_collection.update_one(
-        {"id": withdrawal_id},
-        {
-            "$set": {
-                "status": "completed",
-                "transaction_hash": transaction_hash,
-                "completed_at": datetime.utcnow()
-            }
-        }
-    )
-    
-    # Update transaction record
-    transactions_collection = db.get_collection("transactions")
-    await transactions_collection.update_one(
-        {"reference": withdrawal_id, "type": "withdrawal"},
-        {
-            "$set": {
-                "status": "completed",
-                "transaction_hash": transaction_hash
-            }
-        }
-    )
-    
-    return {"message": "Withdrawal marked as completed", "transaction_hash": transaction_hash}
-
-
-@router.post("/withdrawals/{withdrawal_id}/reject")
-async def reject_withdrawal(
-    withdrawal_id: str,
-    request: Request,
-    admin_check: bool = Depends(is_admin),
-    db = Depends(get_db)
-):
-    """Reject a withdrawal request and refund the user."""
-    body = await request.json()
-    reason = body.get("reason", "Withdrawal rejected by administrator")
-    
-    withdrawals_collection = db.get_collection("withdrawals")
-    
-    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
-    if not withdrawal:
-        raise HTTPException(status_code=404, detail="Withdrawal not found")
-    
-    if withdrawal["status"] != "pending":
-        raise HTTPException(status_code=400, detail="Only pending withdrawals can be rejected")
-    
-    # Refund the user's wallet
-    wallets_collection = db.get_collection("wallets")
-    wallet = await wallets_collection.find_one({"user_id": withdrawal["user_id"]})
-    
-    if wallet:
-        currency = withdrawal["currency"]
-        total_amount = withdrawal.get("total_amount", withdrawal["amount"] + withdrawal["fee"])
-        current_balance = wallet.get("balances", {}).get(currency, 0)
-        
-        await wallets_collection.update_one(
-            {"user_id": withdrawal["user_id"]},
-            {
-                "$set": {
-                    f"balances.{currency}": current_balance + total_amount,
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-    
-    # Update withdrawal status
-    await withdrawals_collection.update_one(
-        {"id": withdrawal_id},
-        {
-            "$set": {
-                "status": "cancelled",
-                "notes": reason,
-                "processed_at": datetime.utcnow()
-            }
-        }
-    )
-    
-    # Update transaction records
-    transactions_collection = db.get_collection("transactions")
-    await transactions_collection.update_many(
-        {"reference": withdrawal_id},
-        {
-            "$set": {
-                "status": "cancelled"
-            }
-        }
-    )
-    
-    # Create refund transaction
-    await transactions_collection.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": withdrawal["user_id"],
-        "type": "refund",
-        "amount": withdrawal["amount"] + withdrawal["fee"],
-        "currency": withdrawal["currency"],
-        "status": "completed",
-        "reference": withdrawal_id,
-        "description": f"Refund for rejected withdrawal: {reason}",
-        "created_at": datetime.utcnow()
+    await db.admins.insert_one({
+        "id": admin_id,
+        "email": admin_data.email.lower(),
+        "password_hash": hash_password(admin_data.password),
+        "name": admin_data.name,
+        "role": admin_data.role,
+        "permissions": ADMIN_PERMISSIONS.get(admin_data.role, []),
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc),
+        "created_by": current_admin["id"]
     })
     
-    return {"message": "Withdrawal rejected and user refunded", "reason": reason}
+    await log_admin_action(
+        admin_id=current_admin["id"],
+        action="admin_create",
+        resource_type="admin",
+        resource_id=admin_id,
+        details={"email": admin_data.email, "role": admin_data.role},
+        ip_address=request.client.host
+    )
+    
+    return {"message": "Admin created successfully", "admin_id": admin_id}
