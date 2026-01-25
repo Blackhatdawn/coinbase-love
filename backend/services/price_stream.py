@@ -97,19 +97,19 @@ class PriceStreamService:
         self.last_update = datetime.now()
         self.last_message_time = datetime.now()
         
-        # Symbol mapping
+        # Symbol mapping - CoinCap IDs to common symbols
         self.symbol_mapping = {
             "bitcoin": "BTC",
             "ethereum": "ETH",
-            "binancecoin": "BNB",
+            "tether": "USDT",
             "solana": "SOL",
-            "ripple": "XRP",
+            "xrp": "XRP",
             "cardano": "ADA",
             "dogecoin": "DOGE",
-            "avalanche-2": "AVAX",
+            "avalanche": "AVAX",
             "polkadot": "DOT",
             "chainlink": "LINK",
-            "polygon": "MATIC",
+            "matic-network": "MATIC",
             "litecoin": "LTC",
         }
         
