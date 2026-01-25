@@ -221,3 +221,4 @@ hf-xet==1.2.0
 s5cmd==0.2.0
 packaging==25.0
 zipp==3.23.0
+uvloop==0.21.0

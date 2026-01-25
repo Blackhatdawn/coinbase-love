@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for coinbase-love on 2026-01-25T17:17:25Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
+# ============================================
+# FLY.IO DEPLOYMENT CONFIGURATION
+# CryptoVault Backend - Production Ready
+# ============================================
 
-app = 'coinbase-love'
-primary_region = 'iad'
+app = "coinbase-love"
+primary_region = "ord"
 
 [build]
 
