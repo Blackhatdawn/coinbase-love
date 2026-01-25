@@ -57,7 +57,7 @@ class PriceStreamService:
     TRACKED_ASSETS = [
         "bitcoin", "ethereum", "tether", "solana", 
         "xrp", "cardano", "dogecoin", "polkadot",
-        "chainlink", "litecoin", "avalanche", "matic-network"
+        "chainlink", "litecoin", "avalanche", "uniswap"
     ]
     
     def __init__(self):
