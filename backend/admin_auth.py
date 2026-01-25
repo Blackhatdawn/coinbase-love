@@ -250,7 +250,13 @@ async def log_admin_action(
     ip_address: str = None
 ):
     """Log admin actions for audit trail"""
-    db = await get_database()
+    from dependencies import db_connection
+    
+    if not db_connection or not db_connection.is_connected:
+        logger.warning("Cannot log admin action - database not connected")
+        return
+    
+    db = db_connection.db
     
     log_entry = {
         "id": secrets.token_hex(16),
