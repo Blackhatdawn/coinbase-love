@@ -19,8 +19,12 @@ class NOWPaymentsService:
     """NOWPayments API integration for crypto deposits (with mock fallback)"""
     
     def __init__(self):
-        self.api_key = settings.nowpayments_api_key or ""
-        self.ipn_secret = settings.nowpayments_ipn_secret or ""
+        # Handle SecretStr types properly
+        api_key = settings.nowpayments_api_key
+        ipn_secret = settings.nowpayments_ipn_secret
+        
+        self.api_key = api_key.get_secret_value() if api_key else ""
+        self.ipn_secret = ipn_secret.get_secret_value() if ipn_secret else ""
         self.sandbox = settings.nowpayments_sandbox
         
         # Enable mock mode if no API key
