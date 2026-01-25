@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from database import get_database
-from dependencies import db_connection
+from dependencies import get_db
 from admin_auth import (
     AdminLoginRequest, AdminLoginResponse, AdminUser,
     get_current_admin, create_admin_token, verify_password,
@@ -25,16 +25,6 @@ from socketio_server import socketio_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Dashboard"])
-
-
-def get_db():
-    """Get database instance from dependencies"""
-    if not db_connection or not db_connection.is_connected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database unavailable"
-        )
-    return db_connection.db
 
 
 # ============================================
