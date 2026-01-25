@@ -181,9 +181,17 @@ class Settings(BaseSettings):
     # ============================================
     coincap_api_key: Optional[str] = Field(
         default=None,
-        description="CoinCap API key"
+        description="CoinCap API key for higher rate limits"
     )
-    coincap_rate_limit: int = Field(default=50, description="CoinCap API rate limit")
+    coincap_api_url: str = Field(
+        default="https://api.coincap.io/v2",
+        description="CoinCap API base URL"
+    )
+    coincap_ws_url: str = Field(
+        default="wss://ws.coincap.io/prices",
+        description="CoinCap WebSocket URL for real-time prices"
+    )
+    coincap_rate_limit: int = Field(default=50, description="CoinCap API rate limit per minute")
     use_mock_prices: bool = Field(default=False, description="Use mock price data for testing")
     
     # NowPayments (Payment Processing)
