@@ -21,23 +21,23 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://cryptovault-api.onrender.com/api/:path*"
+      "destination": "https://cryptovault-api.fly.dev/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://cryptovault-api.onrender.com/health"
+      "destination": "https://cryptovault-api.fly.dev/health"
     },
     {
       "source": "/ping",
-      "destination": "https://cryptovault-api.onrender.com/ping"
+      "destination": "https://cryptovault-api.fly.dev/ping"
     },
     {
       "source": "/csrf",
-      "destination": "https://cryptovault-api.onrender.com/csrf"
+      "destination": "https://cryptovault-api.fly.dev/csrf"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://cryptovault-api.onrender.com/socket.io/:path*"
+      "destination": "https://cryptovault-api.fly.dev/socket.io/:path*"
     },
     {
       "source": "/((?!api|health|ping|csrf|socket\\.io).*)",
