@@ -1,106 +1,169 @@
 {
-  "total_tests": 14,
-  "passed_tests": 13,
+  "total_tests": 23,
+  "passed_tests": 22,
   "failed_tests": 1,
-  "success_rate": 92.85714285714286,
+  "success_rate": 95.65217391304348,
   "test_results": [
     {
-      "test": "Health Check - GET /health",
+      "test": "Health Check with DB Connection",
       "success": true,
-      "details": "Status: healthy",
+      "details": "Status: healthy, Database: connected",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:28.202647"
+      "timestamp": "2026-01-25T05:09:42.354293"
     },
     {
-      "test": "Config Endpoint - GET /api/config",
+      "test": "CORS Production Origin",
       "success": true,
-      "details": "Config data retrieved",
+      "details": "Origin: https://www.cryptovault.financial, Credentials: true",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:28.205726"
+      "timestamp": "2026-01-25T05:09:42.356860"
     },
     {
-      "test": "Crypto Prices - GET /api/crypto/prices",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'NOT_FOUND', 'message': 'Cryptocurrency not found', 'request_id': '6316a63d-443e-4c9a-aab9-4da4dcae1c70', 'timestamp': '2026-01-25T04:23:28.855654'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T04:23:28.857272"
-    },
-    {
-      "test": "Socket.IO Connection - /socket.io/",
+      "test": "CORS Blocks Unauthorized Origins",
       "success": true,
-      "details": "Socket.IO endpoint accessible (status: 400)",
+      "details": "Malicious origin blocked, returned: None",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:28.870655"
+      "timestamp": "2026-01-25T05:09:42.364325"
     },
     {
-      "test": "Auth Signup Flow - POST /api/auth/signup",
+      "test": "Security Headers Present",
       "success": true,
-      "details": "User created with ID: 45bcc1cb-384c-4474-bbc2-73431c680e00",
+      "details": "Found 7/7 headers: ['Strict-Transport-Security', 'X-Frame-Options', 'X-Content-Type-Options', 'X-XSS-Protection', 'Referrer-Policy', 'Content-Security-Policy', 'Permissions-Policy']",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:33.605400"
+      "timestamp": "2026-01-25T05:09:42.397494"
     },
     {
-      "test": "Auth Login Flow - POST /api/auth/login",
+      "test": "HSTS Header Configuration",
       "success": true,
-      "details": "Login successful with cookie-based auth",
+      "details": "HSTS: max-age=31536000; includeSubDomains; preload",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:33.957666"
+      "timestamp": "2026-01-25T05:09:42.397510"
     },
     {
-      "test": "Auth Profile Retrieval - GET /api/auth/me",
+      "test": "Rate Limit Headers Present",
       "success": true,
-      "details": "Profile retrieved successfully",
+      "details": "Headers found: {'X-RateLimit-Limit': '60', 'X-RateLimit-Policy': '60;w=60'}",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.008893"
+      "timestamp": "2026-01-25T05:09:42.430864"
     },
     {
-      "test": "Auth Token Refresh - POST /api/auth/refresh",
+      "test": "Complete Auth Flow - Signup",
       "success": true,
-      "details": "Token refreshed successfully",
+      "details": "User created: e067cdb3-4077-49ba-8a19-c3ebaaa56630",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.017859"
+      "timestamp": "2026-01-25T05:09:46.649540"
     },
     {
-      "test": "Wallet Balance - GET /api/wallet/balance",
+      "test": "Complete Auth Flow - Login",
       "success": true,
-      "details": "Balance retrieved: {'USD': 0.0}",
+      "details": "Login successful",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.068161"
+      "timestamp": "2026-01-25T05:09:46.973290"
     },
     {
-      "test": "Transactions List - GET /api/transactions",
+      "test": "Complete Auth Flow - Profile",
       "success": true,
-      "details": "Retrieved 0 transactions",
+      "details": "Profile retrieved",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.143450"
+      "timestamp": "2026-01-25T05:09:47.016397"
     },
     {
-      "test": "Auth Logout - POST /api/auth/logout",
+      "test": "Complete Auth Flow - Refresh",
+      "success": true,
+      "details": "Token refreshed",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:47.019136"
+    },
+    {
+      "test": "Complete Auth Flow - Logout",
       "success": true,
       "details": "Logout successful",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.209087"
+      "timestamp": "2026-01-25T05:09:47.081518"
     },
     {
-      "test": "Auth Me (No Auth) - GET /api/auth/me",
+      "test": "Complete Auth Flow - End-to-End",
       "success": true,
-      "details": "Correctly requires authentication",
+      "details": "Full auth flow completed successfully",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.211708"
+      "timestamp": "2026-01-25T05:09:47.081525"
     },
     {
-      "test": "Wallet Balance (No Auth) - GET /api/wallet/balance",
+      "test": "Dual Cookie Headers",
       "success": true,
-      "details": "Correctly requires authentication",
+      "details": "Both access_token and refresh_token cookies set (1 total)",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.214177"
+      "timestamp": "2026-01-25T05:09:51.596661"
     },
     {
-      "test": "Transactions (No Auth) - GET /api/transactions",
+      "test": "Protected Endpoint 401 - GET /auth/me",
       "success": true,
-      "details": "Correctly requires authentication",
+      "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T04:23:34.216392"
+      "timestamp": "2026-01-25T05:09:51.599016"
+    },
+    {
+      "test": "Protected Endpoint 401 - GET /wallet/balance",
+      "success": true,
+      "details": "Correctly returns 401",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:51.601239"
+    },
+    {
+      "test": "Protected Endpoint 401 - GET /transactions",
+      "success": true,
+      "details": "Correctly returns 401",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:51.603281"
+    },
+    {
+      "test": "Protected Endpoint 401 - GET /portfolio",
+      "success": true,
+      "details": "Correctly returns 401",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:51.605470"
+    },
+    {
+      "test": "Protected Endpoint 401 - POST /auth/logout",
+      "success": true,
+      "details": "Correctly returns 401",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:51.607372"
+    },
+    {
+      "test": "Wallet Balance Functionality",
+      "success": true,
+      "details": "Wallet balance retrieved: {'USD': 0.0}",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:56.195767"
+    },
+    {
+      "test": "Transactions List",
+      "success": true,
+      "details": "Retrieved 0 transactions",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:56.269639"
+    },
+    {
+      "test": "Transactions Pagination",
+      "success": false,
+      "details": "No pagination info returned",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:56.269652"
+    },
+    {
+      "test": "Socket.IO Connection",
+      "success": true,
+      "details": "Socket.IO endpoint accessible (400 - needs proper handshake)",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:56.286602"
+    },
+    {
+      "test": "Socket.IO Handshake",
+      "success": true,
+      "details": "Socket.IO handshake successful",
+      "response_data": null,
+      "timestamp": "2026-01-25T05:09:56.287486"
     }
   ]
 }
