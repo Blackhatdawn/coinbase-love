@@ -395,6 +395,13 @@ async def lifespan(app: FastAPI):
 
         await price_stream_service.start()
         await price_feed.start()
+        
+        # Initialize default admin account if none exists
+        try:
+            from admin_auth import create_default_admin
+            await create_default_admin()
+        except Exception as e:
+            logger.warning(f"⚠️ Could not initialize admin account: {e}")
 
         logger.info("="*70)
         logger.info("✅ Server startup complete!")
