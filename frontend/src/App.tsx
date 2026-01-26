@@ -19,6 +19,8 @@ import { healthCheckService } from "@/services/healthCheck";
 import { api } from "@/lib/apiClient";
 import DebugApiStatus from "@/components/DebugApiStatus";
 import { Analytics } from "@vercel/analytics/react";
+import { VersionMismatchBanner, ConnectionStatus } from "@/components/ui/version-banner";
+import { useVersionSync } from "@/hooks/useVersionSync";
 
 // Eager loaded pages (critical path)
 import Index from "@/pages/Index";
