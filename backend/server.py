@@ -208,7 +208,7 @@ class SecurityHeadersMiddleware:
                 
                 # Baseline security headers - valid values per HTTP spec
                 # Build CSP dynamically from config
-                api_url = settings.public_api_url or "https://cryptovault-api.onrender.com"
+                api_url = settings.public_api_url or "https://coinbase-love.fly.dev"
                 ws_url = api_url.replace("https://", "wss://").replace("http://", "ws://")
                 coincap_api = settings.coincap_api_url.replace("/v2", "") if settings.coincap_api_url else "https://api.coincap.io"
                 coincap_ws = settings.coincap_ws_url.split("?")[0] if settings.coincap_ws_url else "wss://ws.coincap.io"
@@ -718,6 +718,14 @@ try:
     logger.info("✅ Optimization endpoints mounted at /api/optimization/")
 except ImportError as e:
     logger.warning(f"⚠️ Optimization router not available: {e}")
+
+# Version and compatibility endpoints
+try:
+    from routers.version import router as version_router
+    app.include_router(version_router, prefix="/api")
+    logger.info("✅ Version endpoints mounted at /api/version/")
+except ImportError as e:
+    logger.warning(f"⚠️ Version router not available: {e}")
 
 # Fly.io deployment status (for multi-region and auto-scaling debugging)
 try:

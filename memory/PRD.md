@@ -1,66 +1,45 @@
 # CryptoVault - Product Requirements Document
 
 ## Project Overview
+- **Application**: CryptoVault - Enterprise Cryptocurrency Trading Platform
 - **Frontend**: React + Vite + TypeScript → Vercel (https://www.cryptovault.financial)
-- **Backend**: FastAPI + Python + MongoDB Atlas → **Fly.io** (https://cryptovault-api.fly.dev)
+- **Backend**: FastAPI + Python + MongoDB Atlas → **Fly.io** (https://coinbase-love.fly.dev)
 - **Real-time**: Socket.IO + CoinCap WebSocket
 - **Database**: MongoDB Atlas (cloud-hosted)
 - **Cache**: Upstash Redis (cloud-hosted)
-- **Admin**: Full admin control panel at /admin
 
 ---
 
 ## Latest Updates (January 25, 2026)
 
-### Production Optimizations Complete ✅
+### Complete Fly.io Migration ✅
 
 #### What Was Done:
-1. **Deep Investigation & Audit** of all frontend↔backend communication paths
-2. **Created Fly.io Configuration**:
-   - `fly.toml` - Production-ready Fly.io deployment config with auto-scaling (1-3 instances)
-   - `Dockerfile.fly` - Optimized multi-stage Docker build
-   - `deploy-fly.sh` - Automated deployment script
-   - `verify-fly-deployment.sh` - Post-deployment verification (20+ checks)
-   - `.env.fly.template` - Secrets template for Fly.io
-   - `FLY_SECRETS_GUIDE.md` - Step-by-step secrets setup
-3. **Added Fly.io-Specific Endpoints**:
-   - `GET /api/fly/status` - Full deployment info (region, machine ID, IPs)
-   - `GET /api/fly/region` - Quick region check for latency testing
-   - `GET /api/fly/instances` - Instance info for debugging auto-scaling
-   - `GET /api/fly/health/fly` - Fly.io-specific health check
-4. **Backend Performance Optimizations**:
-   - `performance_optimizations.py` - Response caching, query optimization, batch processing
-   - Connection pool monitoring with P95 metrics
-   - Memory-efficient streaming for large responses
-5. **Security Hardening**:
-   - `security_hardening.py` - Input sanitization, NoSQL injection prevention
-   - Anomaly detection with automatic IP blocking
-   - Request fingerprinting for fraud detection
-   - Security audit logging
-6. **Optimization Monitoring Endpoints**:
-   - `GET /api/optimization/metrics` - Cache and security stats
-   - `GET /api/optimization/cache/stats` - Detailed cache statistics
-   - `GET /api/optimization/security/status` - Security monitoring status
-   - `POST /api/optimization/cache/invalidate` - Cache invalidation
-7. **Frontend Performance**:
-   - Enhanced Vite config with aggressive code splitting (12+ chunks)
-   - `performanceUtils.ts` - LRU cache, debounce/throttle, virtual scrolling
-   - Web Vitals monitoring (LCP, FID, CLS)
-   - Resource hints (preconnect, prefetch, dns-prefetch)
-8. **Security Headers**:
-   - HSTS, X-Frame-Options, X-Content-Type-Options
-   - CSP with dynamic connect-src
-   - Rate limiting headers (X-RateLimit-*)
-9. **Full Technical Report** at `/app/FLY_IO_MIGRATION_REPORT.md`
+1. **Removed ALL Render References**
+   - Deleted `render.yaml`
+   - Updated CSP headers → fly.dev domains
+   - Updated Sentry trace propagation → fly.dev
+   - Updated fallback URLs → coinbase-love.fly.dev
+   - Cleaned up legacy documentation
 
-#### Key Configuration Changes:
-| File | Change |
-|------|--------|
-| `vercel.json` | Rewrites point to `https://cryptovault-api.fly.dev` |
-| `.env.production` | `VITE_API_BASE_URL=https://cryptovault-api.fly.dev` |
-| `backend/.env` | Added `PUBLIC_API_URL`, `PUBLIC_WS_URL`, updated `CORS_ORIGINS` |
-| `fly.toml` | New Fly.io deployment configuration |
-| `Dockerfile.fly` | Optimized for Fly.io with multi-stage build |
+2. **Enterprise Fly.io Configuration**
+   - `fly.toml` - Production config for `coinbase-love` app
+   - `Dockerfile.fly` - Optimized multi-stage build
+   - Auto-scaling: 1-3 instances based on connections
+   - Health checks at `/health`
+
+3. **Version Sync System** (Prevents Frontend-Backend Mismatches)
+   - `GET /api/version` - Server version info
+   - `GET /api/version/check` - Client compatibility check
+   - `GET /api/version/features` - Feature flags
+   - `GET /api/version/deployment` - Fly.io deployment info
+   - Frontend hook: `useVersionSync()` - Automatic sync
+
+4. **Production Environment**
+   - All secrets configured for Fly.io
+   - CORS includes Fly.io domains
+   - CSP headers updated for Fly.io
+   - Firebase credentials configured
 
 ---
 
@@ -68,119 +47,130 @@
 
 ### Communication Flow
 ```
-Frontend (Vercel)
-    ↓ HTTPS
-Vercel Rewrites → /api/* 
-    ↓
-Backend (Fly.io) → FastAPI + Socket.IO
-    ↓
-MongoDB Atlas | Upstash Redis | CoinCap API
+Frontend (Vercel) ─── HTTPS ───> Vercel Rewrites
+                                      │
+                                      ▼
+                              Fly.io Backend
+                              (coinbase-love.fly.dev)
+                                      │
+                     ┌────────────────┼────────────────┐
+                     ▼                ▼                ▼
+              MongoDB Atlas    Upstash Redis    CoinCap API
 ```
 
-### Core Technologies
-- **Frontend**: React 18, Vite, TypeScript, TailwindCSS, Shadcn UI
-- **Backend**: FastAPI, Python 3.11, Motor (MongoDB), Socket.IO
-- **Authentication**: JWT + HTTP-only cookies + CSRF protection
-- **Real-time**: Socket.IO with WebSocket + polling fallback
-- **Caching**: Upstash Redis REST API
-- **Monitoring**: Sentry (error tracking), structured JSON logging
+### Version Sync Flow
+```
+Frontend (on load/tab focus)
+         │
+         ▼
+GET /api/version/check?client_version=1.0.0
+         │
+         ▼
+Backend validates compatibility
+         │
+         ├── Compatible ──> Continue
+         │
+         └── Incompatible ──> Show refresh toast
+```
 
 ---
 
-## What's Been Implemented
-
-### Core Features ✅
-- User authentication (signup, login, logout, email verification)
-- 2FA authentication with TOTP
-- Password reset flow
-- Portfolio management
-- Cryptocurrency price tracking (20+ coins)
-- Trading interface with order management
-- Wallet management (deposit, withdraw, P2P transfer)
-- Price alerts
-- Transaction history
-- Admin dashboard with user management
-
-### Infrastructure ✅
-- Enterprise-grade CORS configuration
-- Rate limiting (60 req/min per user)
-- Request ID correlation for tracing
-- Structured JSON logging in production
-- Security headers middleware
-- CSRF protection
-- Health check endpoints
-- WebSocket real-time updates
-
----
-
-## Deployment Guide
+## Deployment
 
 ### Backend (Fly.io)
+
+**Step 1: Set Secrets**
 ```bash
-# 1. Install flyctl
-curl -L https://fly.io/install.sh | sh
-
-# 2. Login to Fly.io
-flyctl auth login
-
-# 3. Set secrets
 flyctl secrets set \
   MONGO_URL="mongodb+srv://..." \
   JWT_SECRET="..." \
   CSRF_SECRET="..." \
   SENDGRID_API_KEY="..." \
+  COINCAP_API_KEY="..." \
+  NOWPAYMENTS_API_KEY="..." \
+  NOWPAYMENTS_IPN_SECRET="..." \
   UPSTASH_REDIS_REST_URL="..." \
   UPSTASH_REDIS_REST_TOKEN="..." \
-  COINCAP_API_KEY="..." \
-  SENTRY_DSN="..."
+  SENTRY_DSN="..." \
+  CORS_ORIGINS='["https://www.cryptovault.financial","https://cryptovault.financial","https://coinbase-love.fly.dev"]' \
+  --app coinbase-love
+```
 
-# 4. Deploy
+**Step 2: Deploy**
+```bash
 cd /app/backend
-./deploy-fly.sh production
+flyctl deploy --app coinbase-love
+```
+
+**Step 3: Verify**
+```bash
+curl https://coinbase-love.fly.dev/health
+curl https://coinbase-love.fly.dev/api/version
 ```
 
 ### Frontend (Vercel)
 ```bash
-# Update Vercel environment variables:
-VITE_API_BASE_URL=https://cryptovault-api.fly.dev
-
-# Deploy
-vercel --prod
+# Environment Variables in Vercel Dashboard:
+VITE_API_BASE_URL=https://coinbase-love.fly.dev
 ```
 
 ---
 
-## P0/P1/P2 Features
+## API Endpoints
 
-### P0 (Critical) ✅
-- [x] User authentication
-- [x] Cryptocurrency prices
-- [x] Wallet management
-- [x] Trading interface
+### Core
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/api/health` | GET | API health with DB status |
+| `/ping` | GET | Keep-alive ping |
 
-### P1 (Important) ✅
-- [x] Admin dashboard
-- [x] Price alerts
-- [x] 2FA authentication
-- [x] Email notifications
+### Version (NEW)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/version` | GET | Server version info |
+| `/api/version/check` | GET | Compatibility check |
+| `/api/version/features` | GET | Feature flags |
+| `/api/version/deployment` | GET | Fly.io deployment info |
 
-### P2 (Nice to Have)
-- [ ] Mobile app (React Native)
-- [ ] Advanced charting
-- [ ] Social trading features
-- [ ] Multi-language support
+### Monitoring
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/fly/status` | GET | Fly.io machine info |
+| `/api/fly/region` | GET | Current region |
+| `/api/optimization/metrics` | GET | Cache & security stats |
 
 ---
 
-## Next Tasks
-1. **Deploy to Fly.io** - Run `./deploy-fly.sh` in backend directory
-2. **Update Vercel env vars** - Set `VITE_API_BASE_URL` in Vercel dashboard
-3. **Test production** - Validate all endpoints work on Fly.io
-4. **Monitor** - Check Sentry and Fly.io logs for 24-48 hours
-5. **Custom domain** - Add custom domain to Fly.io if needed
+## Features
+
+### Core Features ✅
+- [x] User authentication (JWT + cookies)
+- [x] 2FA with TOTP
+- [x] Cryptocurrency trading
+- [x] Portfolio management
+- [x] Wallet operations
+- [x] P2P transfers
+- [x] Price alerts
+- [x] Admin dashboard
+
+### Infrastructure ✅
+- [x] Fly.io deployment
+- [x] Auto-scaling (1-3 instances)
+- [x] Version sync system
+- [x] Feature flags
+- [x] Redis caching
+- [x] Sentry monitoring
+- [x] Rate limiting
+- [x] CORS + CSP security
+
+---
+
+## Test Reports
+- Latest: `/app/test_reports/iteration_15.json`
+- Status: 100% pass rate (9/9 tests)
 
 ---
 
 *Last Updated: January 25, 2026*
-*Migration Report: /app/FLY_IO_MIGRATION_REPORT.md*
-*Test Report: /app/test_reports/iteration_13.json*
+*Platform: Fly.io (coinbase-love)*

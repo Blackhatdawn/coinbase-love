@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "build_timestamp": "2026-01-25T00:00:00Z",
+  "git_commit": "latest",
+  "api_version": "v1",
+  "min_frontend_version": "1.0.0",
+  "min_backend_version": "1.0.0",
+  "features": {
+    "trading": true,
+    "wallet": true,
+    "p2p_transfer": true,
+    "price_alerts": true,
+    "two_factor_auth": true,
+    "admin_dashboard": true
+  },
+  "endpoints": {
+    "health": "/health",
+    "api_health": "/api/health",
+    "version": "/api/version",
+    "config": "/api/config"
+  }
+}

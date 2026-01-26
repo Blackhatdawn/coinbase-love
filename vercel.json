@@ -25,43 +25,43 @@
   "rewrites": [
     {
       "source": "/api/docs",
-      "destination": "https://cryptovault-api.onrender.com/api/docs"
+      "destination": "https://coinbase-love.fly.dev/api/docs"
     },
     {
       "source": "/api/docs/:path*",
-      "destination": "https://cryptovault-api.onrender.com/api/docs/:path*"
+      "destination": "https://coinbase-love.fly.dev/api/docs/:path*"
     },
     {
       "source": "/api/redoc",
-      "destination": "https://cryptovault-api.onrender.com/api/redoc"
+      "destination": "https://coinbase-love.fly.dev/api/redoc"
     },
     {
       "source": "/api/openapi.json",
-      "destination": "https://cryptovault-api.onrender.com/api/openapi.json"
+      "destination": "https://coinbase-love.fly.dev/api/openapi.json"
     },
     {
       "source": "/api/v1/:path*",
-      "destination": "https://cryptovault-api.onrender.com/api/v1/:path*"
+      "destination": "https://coinbase-love.fly.dev/api/v1/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://cryptovault-api.onrender.com/api/:path*"
+      "destination": "https://coinbase-love.fly.dev/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://cryptovault-api.onrender.com/health"
+      "destination": "https://coinbase-love.fly.dev/health"
     },
     {
       "source": "/ping",
-      "destination": "https://cryptovault-api.onrender.com/ping"
+      "destination": "https://coinbase-love.fly.dev/ping"
     },
     {
       "source": "/csrf",
-      "destination": "https://cryptovault-api.onrender.com/csrf"
+      "destination": "https://coinbase-love.fly.dev/csrf"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://cryptovault-api.onrender.com/socket.io/:path*"
+      "destination": "https://coinbase-love.fly.dev/socket.io/:path*"
     },
     {
       "source": "/(.*)",
@@ -120,7 +120,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self' https://www.cryptovault.financial; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://www.cryptovault.financial https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io https://*.ingest.sentry.io https://vercel.live wss://vercel.live https://*.vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self' https://www.cryptovault.financial; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://www.cryptovault.financial https://coinbase-love.fly.dev wss://coinbase-love.fly.dev ws://coinbase-love.fly.dev https://*.fly.dev wss://*.fly.dev https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io https://*.ingest.sentry.io https://vercel.live wss://vercel.live https://*.vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
         }
       ]
     },

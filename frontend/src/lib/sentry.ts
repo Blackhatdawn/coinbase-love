@@ -29,7 +29,7 @@ export const initSentry = () => {
           tracePropagationTargets: [
             'localhost',
             /^https?:\/\/[^/]+\.financial/,  // Match any .financial domain
-            /^https?:\/\/[^/]+\.onrender\.com/,  // Match any .onrender.com domain
+            /^https?:\/\/[^/]+\.fly\.dev/,   // Match any .fly.dev domain
             /^\/api\//,  // Relative API paths
           ],
         }),
