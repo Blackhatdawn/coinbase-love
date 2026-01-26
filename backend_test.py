@@ -1514,6 +1514,9 @@ class CryptoVaultAPITester:
         self.test_health_check()
         self.test_root_endpoint()
         
+        # Version sync tests (NEW)
+        self.test_version_sync_endpoints()
+        
         # Admin-specific tests
         self.test_admin_protected_endpoints()
         self.test_admin_authentication_flows()
