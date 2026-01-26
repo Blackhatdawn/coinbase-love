@@ -166,6 +166,15 @@ const AppContent = () => {
 
   return (
     <>
+      {/* Version Mismatch Banner */}
+      {!isCompatible && serverVersion && (
+        <VersionMismatchBanner
+          serverVersion={serverVersion}
+          clientVersion={clientVersion}
+          onRefresh={handleVersionRefresh}
+        />
+      )}
+      
       <OnboardingLoader isLoading={isInitializing} minDisplayTime={2000} />
       <RedirectLoadingSpinner isVisible={isLoading} onLoadComplete={() => setIsLoading(false)} />
       
