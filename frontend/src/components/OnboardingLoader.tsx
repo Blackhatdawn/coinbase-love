@@ -35,6 +35,16 @@ const OnboardingLoader = ({ isLoading, minDisplayTime = 2000 }: OnboardingLoader
     }
   }, [isLoading, hasMinTimeElapsed]);
 
+  // Fallback: Force hide after max 5 seconds regardless of loading state
+  useEffect(() => {
+    const maxTimer = setTimeout(() => {
+      setFadeOut(true);
+      setTimeout(() => setShowLoader(false), 500);
+    }, 5000);
+    
+    return () => clearTimeout(maxTimer);
+  }, []);
+
   if (!showLoader) return null;
 
   return (
