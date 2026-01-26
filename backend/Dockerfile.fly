@@ -2,9 +2,6 @@
 # FLY.IO OPTIMIZED DOCKERFILE
 # CryptoVault Backend - Production Ready
 # ============================================
-# Multi-stage build for minimal image size
-# Optimized for fast cold starts on Fly.io
-# ============================================
 
 # ============================================
 # STAGE 1: Builder
@@ -36,7 +33,7 @@ FROM python:3.11-slim AS production
 
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/* \
@@ -65,15 +62,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Expose port
 EXPOSE 8001
 
-# Health check for Fly.io
-# Uses curl for faster health checks than Python
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-# Graceful shutdown handling
+# Graceful shutdown
 STOPSIGNAL SIGTERM
 
-# Start command - Socket.IO compatible
-# Single worker for WebSocket state consistency
-# Using asyncio event loop (uvloop optional)
-CMD ["uvicorn", "server:socket_app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+# Start uvicorn server
+CMD ["python", "-m", "uvicorn", "server:socket_app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

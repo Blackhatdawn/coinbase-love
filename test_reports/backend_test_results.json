@@ -1,183 +1,141 @@
 {
-  "total_tests": 25,
-  "passed_tests": 13,
-  "failed_tests": 12,
-  "success_rate": 52.0,
+  "total_tests": 19,
+  "passed_tests": 15,
+  "failed_tests": 4,
+  "success_rate": 78.94736842105263,
   "test_results": [
     {
       "test": "Health Check",
       "success": true,
       "details": "API is healthy",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:21.942880"
+      "timestamp": "2026-01-26T02:09:24.636163"
     },
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "Frontend is serving root correctly",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:21.955500"
+      "timestamp": "2026-01-26T02:09:24.639484"
+    },
+    {
+      "test": "Version Info Endpoint - GET /api/version",
+      "success": true,
+      "details": "Version: 1.0.0, API: v1, Features: 8",
+      "response_data": null,
+      "timestamp": "2026-01-26T02:09:24.642547"
+    },
+    {
+      "test": "Version Compatibility Check - GET /api/version/check",
+      "success": true,
+      "details": "Compatible: True, Server: 1.0.0, Client: 1.0.0",
+      "response_data": null,
+      "timestamp": "2026-01-26T02:09:24.685731"
+    },
+    {
+      "test": "Feature Flags Endpoint - GET /api/version/features",
+      "success": true,
+      "details": "Features available: 8, Enabled: 8",
+      "response_data": null,
+      "timestamp": "2026-01-26T02:09:24.728702"
+    },
+    {
+      "test": "Deployment Info Endpoint - GET /api/version/deployment",
+      "success": true,
+      "details": "Platform: fly.io, App: coinbase-love, Region: unknown",
+      "response_data": null,
+      "timestamp": "2026-01-26T02:09:24.771783"
     },
     {
       "test": "Admin Protected Endpoint 401 - GET /admin/me",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:21.958744"
+      "timestamp": "2026-01-26T02:09:24.815783"
     },
     {
       "test": "Admin Protected Endpoint 401 - GET /admin/dashboard/stats",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.009519"
+      "timestamp": "2026-01-26T02:09:24.859801"
     },
     {
       "test": "Admin Protected Endpoint 401 - GET /admin/users",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.053493"
+      "timestamp": "2026-01-26T02:09:24.903719"
     },
     {
       "test": "Admin Protected Endpoint 401 - GET /admin/system/health",
       "success": true,
       "details": "Correctly returns 401",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.097502"
+      "timestamp": "2026-01-26T02:09:24.946689"
     },
     {
       "test": "Admin Protected Endpoint 401 - POST /admin/logout",
-      "success": true,
-      "details": "Correctly returns 401",
+      "success": false,
+      "details": "Should return 401: {'error': {'code': 'CSRF_TOKEN_MISSING', 'message': 'CSRF token is required for this request', 'hint': 'Include X-CSRF-Token header with the token from /csrf endpoint'}}",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.141528"
+      "timestamp": "2026-01-26T02:09:24.988696"
     },
     {
       "test": "Admin Login - POST /api/admin/login",
-      "success": true,
-      "details": "Admin login successful: admin@cryptovault.financial",
+      "success": false,
+      "details": "Admin login failed: {'error': {'code': 'CSRF_TOKEN_MISSING', 'message': 'CSRF token is required for this request', 'hint': 'Include X-CSRF-Token header with the token from /csrf endpoint'}}",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.574547"
+      "timestamp": "2026-01-26T02:09:25.030724"
     },
     {
-      "test": "Admin Profile - GET /api/admin/me",
+      "test": "Admin User Management",
       "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': 'fa46fb05-35e1-4e9c-8ccf-fd3763c41d71', 'timestamp': '2026-01-25T14:52:22.576532'}}",
+      "details": "Could not login as admin for user management test",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.618489"
+      "timestamp": "2026-01-26T02:09:25.072684"
     },
     {
-      "test": "Admin Dashboard Stats - GET /api/admin/dashboard/stats",
+      "test": "Admin Broadcast Functionality",
       "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': '67543467-cca5-4230-b2e6-5550fec5487b', 'timestamp': '2026-01-25T14:52:22.620214'}}",
+      "details": "Could not login as admin for broadcast test",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.662499"
-    },
-    {
-      "test": "Admin Users List - GET /api/admin/users",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': '8e77d0d1-3231-42e5-92b0-3990b1b866ca', 'timestamp': '2026-01-25T14:52:22.664289'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.705487"
-    },
-    {
-      "test": "Admin System Health - GET /api/admin/system/health",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': 'a11df861-916b-429a-beb1-6414738606a2', 'timestamp': '2026-01-25T14:52:22.707304'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.749507"
-    },
-    {
-      "test": "Admin Logout - POST /api/admin/logout",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': '149e8849-47cb-4a93-b5ff-3016d9cb29a5', 'timestamp': '2026-01-25T14:52:22.751407'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:22.793488"
-    },
-    {
-      "test": "Admin Get User Details",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': '7fd7b36e-9f42-49f7-9688-65cd4fcd6c17', 'timestamp': '2026-01-25T14:52:27.397626'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:27.439518"
-    },
-    {
-      "test": "Admin Broadcast Message",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Admin authentication required', 'request_id': '72f832da-09a0-4360-b592-602605b748a2', 'timestamp': '2026-01-25T14:52:27.804861'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:27.846487"
+      "timestamp": "2026-01-26T02:09:25.115756"
     },
     {
       "test": "Auth Signup Flow - POST /api/auth/signup",
       "success": true,
-      "details": "User created with ID: 2d51a419-28d7-4677-8a58-2baf37d1c456",
+      "details": "User created with ID: e1e6f481-7aa9-4faf-bde3-7c9b0ce1effd",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.094527"
+      "timestamp": "2026-01-26T02:09:29.368728"
     },
     {
       "test": "Auth Login Flow - POST /api/auth/login",
       "success": true,
-      "details": "Login successful with cookie-based auth",
+      "details": "Login requires email verification (expected behavior)",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.456530"
-    },
-    {
-      "test": "Auth Profile Retrieval - GET /api/auth/me",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': '153d2eb1-60f9-4445-aee7-76bbea511341', 'timestamp': '2026-01-25T14:52:32.458402'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.500526"
-    },
-    {
-      "test": "Auth Token Refresh - POST /api/auth/refresh",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Refresh token not found', 'request_id': '65ebb728-ac76-4080-8441-6b4816031992', 'timestamp': '2026-01-25T14:52:32.502379'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.544510"
-    },
-    {
-      "test": "Wallet Balance - GET /api/wallet/balance",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': '79a56d9e-c675-4921-85d0-c80c36916f08', 'timestamp': '2026-01-25T14:52:32.546488'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.588527"
-    },
-    {
-      "test": "Transactions List - GET /api/transactions",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': '55bdf2db-c875-47aa-a526-23590da319cc', 'timestamp': '2026-01-25T14:52:32.590460'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.632501"
-    },
-    {
-      "test": "Auth Logout - POST /api/auth/logout",
-      "success": false,
-      "details": "Failed: {'error': {'code': 'UNAUTHORIZED', 'message': 'Not authenticated', 'request_id': '0b3539ae-5467-4a97-bf96-d5e3ec81e17b', 'timestamp': '2026-01-25T14:52:32.634219'}}",
-      "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.676515"
+      "timestamp": "2026-01-26T02:09:29.665761"
     },
     {
       "test": "Auth Me (No Auth) - GET /api/auth/me",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.721484"
+      "timestamp": "2026-01-26T02:09:29.708757"
     },
     {
       "test": "Wallet Balance (No Auth) - GET /api/wallet/balance",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.765501"
+      "timestamp": "2026-01-26T02:09:29.752772"
     },
     {
       "test": "Transactions (No Auth) - GET /api/transactions",
       "success": true,
       "details": "Correctly requires authentication",
       "response_data": null,
-      "timestamp": "2026-01-25T14:52:32.808518"
+      "timestamp": "2026-01-26T02:09:29.796755"
     }
   ]
 }

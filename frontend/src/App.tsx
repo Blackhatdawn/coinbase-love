@@ -19,6 +19,8 @@ import { healthCheckService } from "@/services/healthCheck";
 import { api } from "@/lib/apiClient";
 import DebugApiStatus from "@/components/DebugApiStatus";
 import { Analytics } from "@vercel/analytics/react";
+import { VersionMismatchBanner, ConnectionStatus } from "@/components/ui/version-banner";
+import { useVersionSync } from "@/hooks/useVersionSync";
 
 // Eager loaded pages (critical path)
 import Index from "@/pages/Index";
@@ -97,8 +99,21 @@ const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [apiAvailable, setApiAvailable] = useState(true);
+  
+  // Version sync for frontend-backend compatibility
+  const { 
+    isCompatible, 
+    serverVersion, 
+    clientVersion, 
+    isLoading: versionLoading 
+  } = useVersionSync();
 
   useRedirectSpinner((visible) => setIsLoading(visible));
+
+  // Handle version mismatch refresh
+  const handleVersionRefresh = () => {
+    window.location.reload();
+  };
 
   // Initialize health check and warmup API
   useEffect(() => {
@@ -151,6 +166,15 @@ const AppContent = () => {
 
   return (
     <>
+      {/* Version Mismatch Banner */}
+      {!isCompatible && serverVersion && (
+        <VersionMismatchBanner
+          serverVersion={serverVersion}
+          clientVersion={clientVersion}
+          onRefresh={handleVersionRefresh}
+        />
+      )}
+      
       <OnboardingLoader isLoading={isInitializing} minDisplayTime={2000} />
       <RedirectLoadingSpinner isVisible={isLoading} onLoadComplete={() => setIsLoading(false)} />
       
