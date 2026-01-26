@@ -1,183 +1,139 @@
 {
   "identity": {
-    "name": "CryptoVault Design System",
-    "archetype": "Electric & Neon (Future, Speed, Disruption)",
-    "vibe": "Professional, High-Frequency, Institutional Grade, yet Web3 Native",
-    "principles": [
-      "Fusion over Imitation: Mix Swiss Precision with Cyberpunk Aesthetics",
-      "Data is Art: Charts and numbers are the heroes, not just content",
-      "Dark Mode Only: The market never sleeps, neither does the UI",
-      "Speed: Visuals must feel fast (italics, motion, sharp angles)"
-    ]
+    "name": "CryptoVault",
+    "persona": "E1: The Anti-AI Designer",
+    "tone": "Professional, Secure, High-Tech, Wealth-Oriented",
+    "archetype": "Jewel & Luxury (Archetype 5) mixed with Performance Pro (Archetype 2)",
+    "core_values": ["Fusion over Imitation", "Emotion First", "Content is King", "Contrast", "Negative Space"]
   },
   "typography": {
     "fonts": {
-      "headings": {
-        "family": "Unbounded",
-        "url": "https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700&display=swap",
-        "usage": "Hero titles, Section headers, Big stats",
-        "weights": ["300 (Light)", "600 (SemiBold)"],
-        "letterSpacing": "-0.02em"
-      },
-      "body": {
-        "family": "Manrope",
-        "url": "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap",
-        "usage": "Paragraphs, UI labels, Form inputs",
-        "weights": ["400", "500"]
-      },
-      "mono": {
-        "family": "JetBrains Mono",
-        "url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap",
-        "usage": "Prices, Tickers, Wallet Addresses, Code snippets",
-        "weights": ["400", "500"]
-      }
+      "heading": "Unbounded, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
     },
-    "rules": [
-      "NEVER use Inter for headings.",
-      "Use 'Unbounded' for all text larger than 24px.",
-      "Use 'JetBrains Mono' for ALL financial data (prices, % change, balances).",
-      "Headings should be tight (tracking-tight).",
-      "Overlines/Labels should be uppercase and wide (tracking-widest)."
-    ]
+    "weights": {
+      "heading": ["300", "600", "700"],
+      "body": ["400", "500", "600"]
+    },
+    "usage": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tighter leading-none font-heading",
+      "h2": "text-3xl md:text-5xl font-semibold tracking-tight font-heading",
+      "h3": "text-2xl md:text-3xl font-medium font-heading",
+      "body": "text-base md:text-lg leading-relaxed text-muted-foreground font-body",
+      "caption": "text-xs uppercase tracking-widest font-mono text-muted-foreground/70",
+      "numbers": "font-mono tracking-tight"
+    }
   },
   "colors": {
+    "theme": "dark",
     "palette": {
-      "background": {
-        "default": "#050505",
-        "paper": "#0A0A0A",
-        "subtle": "#121212"
-      },
-      "primary": {
-        "main": "#00F0FF",
-        "glow": "0 0 20px rgba(0, 240, 255, 0.5)",
-        "text": "#000000"
-      },
-      "secondary": {
-        "main": "#7000FF",
-        "glow": "0 0 20px rgba(112, 0, 255, 0.5)"
-      },
-      "accent": {
-        "success": "#00FF94",
-        "error": "#FF2E2E",
-        "warning": "#FFD600"
-      },
-      "text": {
-        "primary": "#FFFFFF",
-        "secondary": "#A1A1AA",
-        "muted": "#52525B"
-      },
-      "border": {
-        "subtle": "rgba(255, 255, 255, 0.08)",
-        "highlight": "rgba(255, 255, 255, 0.15)"
-      }
+      "background": "#050505",
+      "foreground": "#FFFFFF",
+      "card": "#0A0A0A",
+      "card_foreground": "#FFFFFF",
+      "popover": "#0A0A0A",
+      "popover_foreground": "#FFFFFF",
+      "primary": "#00E599",
+      "primary_foreground": "#000000",
+      "secondary": "#FF3B30",
+      "secondary_foreground": "#FFFFFF",
+      "muted": "#1A1A1A",
+      "muted_foreground": "#A1A1AA",
+      "accent": "#FFD700",
+      "accent_foreground": "#000000",
+      "destructive": "#FF3B30",
+      "destructive_foreground": "#FFFFFF",
+      "border": "#27272A",
+      "input": "#27272A",
+      "ring": "#00E599"
     },
     "gradients": {
-      "hero": "linear-gradient(135deg, #050505 0%, #0A0A0A 100%)",
-      "glass": "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)",
-      "glow_text": "linear-gradient(to right, #00F0FF, #7000FF)"
+      "primary": "linear-gradient(135deg, #00E599 0%, #00C288 100%)",
+      "glow": "radial-gradient(circle at center, rgba(0, 229, 153, 0.15) 0%, transparent 70%)",
+      "surface": "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)"
     },
-    "forbidden": [
-      "#1B93A4 (Teal Green)",
-      "#7351B7 (Generic Purple)",
-      "Full screen solid gradients"
-    ]
+    "semantic": {
+      "success": "#00E599",
+      "warning": "#F59E0B",
+      "error": "#FF3B30",
+      "info": "#3B82F6",
+      "up": "#00E599",
+      "down": "#FF3B30"
+    }
   },
   "layout": {
     "spacing": {
-      "scale": ["p-1", "p-2", "p-4", "p-6", "p-8", "p-12", "p-16", "p-24", "p-32"],
-      "rule": "Use 2x more spacing than standard. Dashboards can be dense (p-4), Marketing must be airy (p-24)."
+      "container_padding": "p-6 md:p-12 lg:p-24",
+      "section_gap": "gap-12 md:gap-24",
+      "element_gap": "gap-4 md:gap-8"
     },
     "grids": {
-      "marketing": {
-        "type": "Tetris Grid",
-        "classes": "grid grid-cols-1 md:grid-cols-12 gap-8",
-        "rules": "Asymmetry is key. Use col-span-7 vs col-span-5."
-      },
-      "dashboard": {
-        "type": "Bento Grid",
-        "classes": "grid grid-cols-1 md:grid-cols-4 gap-4",
-        "rules": "Dense. Every pixel used. No jagged bottoms."
-      }
+      "marketing": "grid grid-cols-1 md:grid-cols-12 gap-8",
+      "dashboard": "grid grid-cols-1 md:grid-cols-4 gap-4",
+      "bento": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 auto-rows-[minmax(180px,auto)] gap-4"
     },
-    "containers": {
-      "marketing": "max-w-7xl mx-auto px-6",
-      "dashboard": "w-full px-6 py-4"
+    "container": {
+      "max_width": "max-w-7xl mx-auto",
+      "dashboard_width": "w-full px-4 md:px-6"
     }
   },
   "components": {
-    "cards": {
-      "style": "Glassmorphism",
-      "classes": "bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl",
-      "hover": "hover:border-primary/50 transition-colors duration-300"
-    },
     "buttons": {
-      "primary": {
-        "classes": "bg-primary text-black font-bold px-8 py-3 rounded-none hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all uppercase tracking-wider font-mono"
-      },
-      "secondary": {
-        "classes": "bg-transparent border border-white/20 text-white px-8 py-3 rounded-none hover:bg-white/5 transition-all uppercase tracking-wider font-mono"
-      }
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_-5px_rgba(0,229,153,0.4)] rounded-md font-medium transition-all duration-300",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-md font-medium transition-all duration-300",
+      "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md transition-all duration-300",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-md transition-all duration-300",
+      "marketing_cta": "h-12 px-8 rounded-full text-lg font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform duration-300 shadow-[0_0_30px_-5px_rgba(0,229,153,0.5)]"
+    },
+    "cards": {
+      "dashboard": "bg-card border border-border/40 rounded-xl p-6 hover:border-primary/30 transition-colors duration-300",
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl",
+      "feature": "group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-8 hover:border-primary/50 transition-all duration-500"
     },
     "inputs": {
-      "classes": "bg-black/50 border border-white/10 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary/50 text-white placeholder:text-white/30 font-mono"
+      "default": "bg-input/50 border-input focus:border-primary focus:ring-1 focus:ring-primary/50 rounded-md h-11 transition-all duration-200"
     },
-    "charts": {
-      "library": "Recharts",
-      "style": "Area charts with gradients. No grid lines (or very subtle). Tooltips must be dark glass."
+    "navigation": {
+      "header": "sticky top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60",
+      "sidebar": "fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card/95 backdrop-blur-sm"
     }
   },
-  "visual_enhancers": {
-    "textures": "Add a subtle noise texture overlay to the background (opacity 0.03).",
-    "borders": "Use 'Tracing Beam' effect for active cards.",
-    "glows": "Use colored shadows (shadow-cyan-500/20) instead of black shadows.",
-    "icons": "Phosphor Icons (Duotone) or Lucide React (Thin stroke)."
-  },
-  "image_urls": {
-    "hero_background": {
-      "url": "https://images.unsplash.com/photo-1757970204229-a02cb2ce0af6?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "desc": "Abstract blue squares on black - Use for Hero Section Background with overlay"
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.unsplash.com/photo-1684692862482-8fa5ddbbd90e?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "trader_context": "https://images.pexels.com/photos/5831355/pexels-photo-5831355.jpeg",
+      "abstract_viz": "https://images.unsplash.com/photo-1639152201720-5e536d254d81?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "city_night": "https://images.unsplash.com/photo-1713981272299-355d7038d708?crop=entropy&cs=srgb&fm=jpg&q=85"
     },
-    "section_background": {
-      "url": "https://images.unsplash.com/photo-1641923090346-9d748f38e9b1?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "desc": "Purple/Blue abstract - Use for Features or CTA section background"
-    },
-    "floating_coins": {
-      "url": "https://images.unsplash.com/photo-1642432556591-72cbc671b707?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "desc": "3D Floating Coins - Use for 'Supported Assets' or Hero Image"
-    },
-    "trader_pro": {
-      "url": "https://images.unsplash.com/photo-1639091824355-48221063de7f?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "desc": "Trader with multiple monitors - Use for 'Pro Trading' feature section"
-    },
-    "bitcoin_3d": {
-      "url": "https://images.unsplash.com/photo-1762417108293-91614140073a?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "desc": "Abstract dark 3D texture - Use for card backgrounds or subtle texture"
+    "icons": {
+      "library": "lucide-react",
+      "style": "stroke-1.5"
     }
   },
-  "instructions_to_main_agent": [
-    "1. INSTALL FONTS FIRST: Add Unbounded, Manrope, and JetBrains Mono to index.css via Google Fonts import.",
-    "2. SETUP TAILWIND: Update tailwind.config.js with the new colors (primary: #00F0FF) and fonts.",
-    "3. OVERRIDE SHADCN: Do not use default Shadcn styles. Force the 'Glassmorphism' style on all Cards and Dialogs.",
-    "4. MOCK DATA: Since backend might not be ready, create a 'mockData.js' file for crypto prices and portfolio history.",
-    "5. CHARTS: Use Recharts. Make them look like 'TradingView' (dark bg, green/red candles or area charts).",
-    "6. AUTH PAGES: Make them immersive. Split screen: Left side form, Right side 3D abstract image.",
-    "7. DASHBOARD: Needs a Sidebar (collapsible) and a Topbar (ticker).",
-    "8. TRADING VIEW: 3-column layout. Left: Order Form. Middle: Chart. Right: Order Book/History."
+  "motion": {
+    "transitions": {
+      "default": "transition-all duration-300 ease-out",
+      "slow": "transition-all duration-700 ease-out",
+      "fast": "transition-all duration-150 ease-out"
+    },
+    "animations": {
+      "fade_in": "animate-in fade-in duration-500",
+      "slide_up": "animate-in slide-in-from-bottom-4 duration-500",
+      "scale_in": "animate-in zoom-in-95 duration-300"
+    }
+  },
+  "universal_guidelines": [
+    "Do not use gradients for dark colors.",
+    "Avoid generic centered layouts; use asymmetry.",
+    "Create depth with z-index and layered elements.",
+    "Use glassmorphism with 12-24px blur.",
+    "Do not apply 'transition: all'.",
+    "Do not center align the app container.",
+    "Use micro-animations for all interactions.",
+    "Use 2-3x more spacing than typical.",
+    "Add grain textures or noise overlays for premium feel.",
+    "Ensure all interactive elements have data-testid attributes."
   ],
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
-    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
-    "Create depth through layered design elements with z-index hierarchy",
-    "Use glass-morphism effects with backdrop filters (12-24px blur)",
-    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms.",
-    "You MUST NOT center align the app container.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions.",
-    "Use 2-3x more spacing than feels comfortable.",
-    "Subtle grain textures, noise overlays, custom cursors.",
-    "Prioritize using pre-existing components from src/components/ui when applicable.",
-    "Components MUST use named exports.",
-    "Use sonner for toasts."
-  ]
+  "instructions_to_main_agent": "Follow the design system strictly. Use the provided image URLs. Implement the 'Bento' grid for the dashboard and 'Tetris' grid for marketing pages. Prioritize the 'Jewel & Luxury' aesthetic with the specified color palette. Use 'Unbounded' for all headings and 'Manrope' for body text. Ensure all charts use the 'recharts' library with the specified theme colors."
 }
