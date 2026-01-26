@@ -719,6 +719,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Optimization router not available: {e}")
 
+# Version and compatibility endpoints
+try:
+    from routers.version import router as version_router
+    app.include_router(version_router, prefix="/api")
+    logger.info("✅ Version endpoints mounted at /api/version/")
+except ImportError as e:
+    logger.warning(f"⚠️ Version router not available: {e}")
+
 # Fly.io deployment status (for multi-region and auto-scaling debugging)
 try:
     from routers.fly_status import router as fly_router
