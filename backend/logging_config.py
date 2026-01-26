@@ -47,7 +47,7 @@ class ActionableLogFormatter(logging.Formatter):
     KNOWN_ISSUES = {
         'DNS resolution failed': {
             'action': 'Check network connectivity and DNS settings',
-            'docs': 'https://docs.render.com/troubleshooting#dns-issues'
+            'docs': 'https://docs.fly.io/troubleshooting#dns-issues'
         },
         'rate limited': {
             'action': 'Consider upgrading API plan or implementing backoff',
