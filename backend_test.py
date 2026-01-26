@@ -1448,6 +1448,62 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Transactions (No Auth) - GET /api/transactions", False, f"Should require auth: {data}")
 
+    def test_version_sync_endpoints(self):
+        """Test version sync endpoints for frontend-backend compatibility"""
+        print("\n🔄 Testing Version Sync Endpoints...")
+        
+        # Test version info endpoint - GET /api/version
+        success, data = self.make_request('GET', '/version')
+        if success and 'version' in data and 'api_version' in data:
+            version_info = {
+                'version': data.get('version'),
+                'api_version': data.get('api_version'),
+                'environment': data.get('environment'),
+                'features': data.get('features', {})
+            }
+            self.log_test("Version Info Endpoint - GET /api/version", True, 
+                        f"Version: {version_info['version']}, API: {version_info['api_version']}, Features: {len(version_info['features'])}")
+        else:
+            self.log_test("Version Info Endpoint - GET /api/version", False, f"Failed: {data}")
+        
+        # Test version compatibility check - GET /api/version/check
+        success, data = self.make_request('GET', '/version/check?client_version=1.0.0')
+        if success and 'compatible' in data and 'server_version' in data:
+            compatibility = {
+                'compatible': data.get('compatible'),
+                'server_version': data.get('server_version'),
+                'client_version': data.get('client_version'),
+                'upgrade_required': data.get('upgrade_required', False)
+            }
+            self.log_test("Version Compatibility Check - GET /api/version/check", True, 
+                        f"Compatible: {compatibility['compatible']}, Server: {compatibility['server_version']}, Client: {compatibility['client_version']}")
+        else:
+            self.log_test("Version Compatibility Check - GET /api/version/check", False, f"Failed: {data}")
+        
+        # Test feature flags endpoint - GET /api/version/features
+        success, data = self.make_request('GET', '/version/features')
+        if success and 'features' in data:
+            features = data.get('features', {})
+            enabled_features = [k for k, v in features.items() if v]
+            self.log_test("Feature Flags Endpoint - GET /api/version/features", True, 
+                        f"Features available: {len(features)}, Enabled: {len(enabled_features)}")
+        else:
+            self.log_test("Feature Flags Endpoint - GET /api/version/features", False, f"Failed: {data}")
+        
+        # Test deployment info endpoint - GET /api/version/deployment
+        success, data = self.make_request('GET', '/version/deployment')
+        if success and 'platform' in data:
+            deployment_info = {
+                'platform': data.get('platform'),
+                'app_name': data.get('app_name'),
+                'region': data.get('region'),
+                'environment': data.get('environment')
+            }
+            self.log_test("Deployment Info Endpoint - GET /api/version/deployment", True, 
+                        f"Platform: {deployment_info['platform']}, App: {deployment_info['app_name']}, Region: {deployment_info['region']}")
+        else:
+            self.log_test("Deployment Info Endpoint - GET /api/version/deployment", False, f"Failed: {data}")
+
     def run_all_tests(self):
         """Run comprehensive test suite for CryptoVault Admin Dashboard Testing"""
         print("="*70)
