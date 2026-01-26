@@ -99,8 +99,21 @@ const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [apiAvailable, setApiAvailable] = useState(true);
+  
+  // Version sync for frontend-backend compatibility
+  const { 
+    isCompatible, 
+    serverVersion, 
+    clientVersion, 
+    isLoading: versionLoading 
+  } = useVersionSync();
 
   useRedirectSpinner((visible) => setIsLoading(visible));
+
+  // Handle version mismatch refresh
+  const handleVersionRefresh = () => {
+    window.location.reload();
+  };
 
   // Initialize health check and warmup API
   useEffect(() => {
