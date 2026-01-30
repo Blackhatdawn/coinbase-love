@@ -302,12 +302,12 @@ class CryptoVaultAPITester:
                      "" if success else f"Get crypto prices failed: {data}")
         
         if success:
-            cryptos = data.get('cryptos', [])
+            cryptos = data.get('cryptocurrencies', [])
             print(f"   Found {len(cryptos)} cryptocurrencies")
             if cryptos:
                 btc = next((c for c in cryptos if c.get('symbol') == 'BTC'), None)
                 if btc:
-                    print(f"   BTC price: ${btc.get('current_price', 'N/A')}")
+                    print(f"   BTC price: ${btc.get('price', 'N/A')}")
         
         return success
 
