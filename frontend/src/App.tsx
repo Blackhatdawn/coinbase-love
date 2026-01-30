@@ -80,10 +80,10 @@ const AppContent = () => {
     const warmUp = async () => {
       try {
         await Promise.all([
-          fetch('/api/crypto').catch(() => {}),
+          fetch('/api/crypto', { credentials: 'include' }).catch(() => {}),
         ]);
       } finally {
-        setTimeout(() => setIsInitializing(false), 2000);
+        setTimeout(() => setIsInitializing(false), 1500);
       }
     };
     warmUp();
