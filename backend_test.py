@@ -104,8 +104,29 @@ class CryptoVaultAPITester:
         
         if success:
             self.user_data['user_id'] = data.get('user', {}).get('id')
+            # Try to get verification token from response or database
+            print(f"   User created, verification required: {data.get('verificationRequired', False)}")
         
         return success
+
+    def test_verify_email(self):
+        """Test email verification - try with a dummy token first"""
+        # Since we can't get the actual verification token from email,
+        # let's try to manually verify by updating the database or using a known pattern
+        
+        # First, let's try a simple verification token pattern
+        dummy_token = "test_verification_token"
+        verify_data = {"token": dummy_token}
+        
+        success, data = self.make_request('POST', '/api/auth/verify-email', verify_data, 400)  # Expect 400 for invalid token
+        
+        # This will fail, but let's log it and continue
+        self.log_test("Email Verification (Expected Fail)", success, 
+                     "Expected failure - no real verification token available")
+        
+        # For testing purposes, let's manually set email_verified=true in database
+        # This is a workaround since we can't access the actual verification email
+        return False  # Return False since we can't actually verify
 
     def test_login(self):
         """Test user login"""
