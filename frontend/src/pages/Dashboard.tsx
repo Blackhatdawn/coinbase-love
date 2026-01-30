@@ -18,7 +18,18 @@ import {
   X,
   Home,
   LineChart,
-  RefreshCw
+  RefreshCw,
+  ArrowUpRight,
+  ArrowDownRight,
+  ChevronRight,
+  Zap,
+  Lock,
+  CreditCard,
+  BarChart3,
+  Sparkles,
+  Crown,
+  Gift,
+  ExternalLink
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/apiClient";
@@ -33,6 +44,11 @@ interface Holding {
   change?: number;
 }
 
+interface WalletBalance {
+  balances: Record<string, number>;
+  updated_at: string;
+}
+
 const Dashboard = () => {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -41,6 +57,7 @@ const Dashboard = () => {
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalValue, setTotalValue] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,11 +69,22 @@ const Dashboard = () => {
       } else {
         setIsRefreshing(true);
       }
-      const response = await api.portfolio.get();
-      const portfolio = response.portfolio;
+      
+      // Fetch portfolio and wallet balance in parallel
+      const [portfolioRes, walletRes] = await Promise.allSettled([
+        api.portfolio.get(),
+        api.wallet.getBalance()
+      ]);
 
-      setTotalValue(portfolio.totalBalance);
-      setHoldings(portfolio.holdings || []);
+      if (portfolioRes.status === 'fulfilled') {
+        const portfolio = portfolioRes.value.portfolio;
+        setTotalValue(portfolio.totalBalance);
+        setHoldings(portfolio.holdings || []);
+      }
+
+      if (walletRes.status === 'fulfilled') {
+        setWalletBalance(walletRes.value.wallet);
+      }
     } catch (error) {
       console.error("Failed to fetch portfolio:", error);
       setTotalValue(0);
@@ -87,44 +115,74 @@ const Dashboard = () => {
 
   // Calculate total change
   const totalChange = holdings.reduce((acc, h) => acc + (h.change || 0) * (h.allocation / 100), 0);
+  const cashBalance = walletBalance?.balances?.USD || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Dashboard Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-gold-950/5">
+      {/* Premium Dashboard Header */}
+      <header className="border-b border-gold-500/10 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 sm:gap-3">
-              <img 
-                src="/logo.svg" 
-                alt="CryptoVault" 
-                className="h-9 w-9 sm:h-10 sm:w-10 object-contain"
-              />
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
+              <div className="relative">
+                <img 
+                  src="/logo.svg" 
+                  alt="CryptoVault" 
+                  className="h-9 w-9 sm:h-10 sm:w-10 object-contain transition-transform group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gold-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <span className="font-display text-lg sm:text-xl font-bold">
                 Crypto<span className="text-gold-400">Vault</span>
               </span>
             </Link>
             
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1">
+              <Link to="/markets">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <LineChart className="h-4 w-4 mr-2" />
+                  Markets
+                </Button>
+              </Link>
+              <Link to="/trade">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Activity className="h-4 w-4 mr-2" />
+                  Trade
+                </Button>
+              </Link>
+              <Link to="/alerts">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Alerts
+                </Button>
+              </Link>
+            </nav>
+            
             {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gold-500/10 border border-gold-500/20">
+                <Crown className="h-4 w-4 text-gold-400" />
+                <span className="text-sm font-medium text-gold-400">Premium</span>
+              </div>
+              <div className="h-8 w-px bg-border/50" />
               <span className="text-sm text-muted-foreground">
-                Welcome, {user?.name}
+                {user?.name}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={handleSignOut}
-                className="min-h-[44px]"
+                className="text-muted-foreground hover:text-red-400"
               >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Mobile Menu Toggle */}
             <button
-              className="sm:hidden p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gold-500/10 transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -135,154 +193,277 @@ const Dashboard = () => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="sm:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl">
-            <div className="container mx-auto px-4 py-4 space-y-2">
-              <div className="text-sm text-muted-foreground mb-4">
-                Welcome, {user?.name}
+          <div className="md:hidden border-t border-gold-500/10 bg-background/95 backdrop-blur-xl">
+            <div className="container mx-auto px-4 py-4 space-y-1">
+              <div className="flex items-center gap-2 px-3 py-2 mb-4">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-black font-bold">
+                  {user?.name?.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-medium text-sm">{user?.name}</div>
+                  <div className="text-xs text-muted-foreground">{user?.email}</div>
+                </div>
               </div>
               <Link 
                 to="/" 
-                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-xl min-h-[48px] transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <Home className="h-5 w-5" />
+                <Home className="h-5 w-5 text-gold-400" />
                 Home
               </Link>
               <Link 
                 to="/markets" 
-                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-xl min-h-[48px] transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <LineChart className="h-5 w-5" />
+                <LineChart className="h-5 w-5 text-gold-400" />
                 Markets
               </Link>
               <Link 
                 to="/trade" 
-                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-lg min-h-[48px]"
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-xl min-h-[48px] transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <Activity className="h-5 w-5" />
+                <Activity className="h-5 w-5 text-gold-400" />
                 Trade
               </Link>
-              <button 
-                onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}
-                className="flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-500 rounded-lg w-full min-h-[48px]"
+              <Link 
+                to="/alerts" 
+                className="flex items-center gap-3 p-3 hover:bg-gold-500/10 rounded-xl min-h-[48px] transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                <LogOut className="h-5 w-5" />
-                Sign Out
-              </button>
+                <Bell className="h-5 w-5 text-gold-400" />
+                Alerts
+              </Link>
+              <div className="pt-2 border-t border-gold-500/10 mt-2">
+                <button 
+                  onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}
+                  className="flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-400 rounded-xl w-full min-h-[48px] transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         )}
       </header>
 
-      <main className="container mx-auto px-4 py-6 sm:py-8">
-        {/* Page Title */}
-        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <main className="container mx-auto px-4 py-6 sm:py-8" data-testid="patient-dashboard">
+        {/* Page Header with Actions */}
+        <div className="mb-6 sm:mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Dashboard</h1>
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 flex items-center gap-3">
+              Dashboard
+              <Sparkles className="h-6 w-6 text-gold-400 animate-pulse" />
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Manage your portfolio and account settings
+              Welcome back! Here's your portfolio overview.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchPortfolio(true)}
-            disabled={isRefreshing}
-            className="min-h-[44px] self-start sm:self-auto"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPortfolio(true)}
+              disabled={isRefreshing}
+              className="min-h-[44px] border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+            <Link to="/wallet/deposit">
+              <Button 
+                size="sm"
+                className="min-h-[44px] bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold shadow-lg shadow-gold-500/25"
+                data-testid="deposit-btn"
+              >
+                <Wallet className="h-4 w-4 mr-2" />
+                Deposit
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Premium Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          {/* Total Portfolio */}
+          <Card className="glass-card border-gold-500/20 bg-gradient-to-br from-gold-500/10 to-transparent overflow-hidden relative group hover:border-gold-400/40 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/10 rounded-full blur-2xl group-hover:bg-gold-500/20 transition-colors" />
+            <CardContent className="p-4 sm:p-6 relative">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <PieChart className="h-4 w-4 text-gold-400" />
+                <span className="text-xs sm:text-sm font-medium">Total Value</span>
+              </div>
+              <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-gold-400">
+                ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className={cn(
+                "flex items-center gap-1 text-xs sm:text-sm mt-1",
+                totalChange >= 0 ? "text-emerald-400" : "text-red-400"
+              )}>
+                {totalChange >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                <span>{totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}%</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cash Balance */}
+          <Card className="glass-card border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent overflow-hidden relative group hover:border-emerald-400/40 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors" />
+            <CardContent className="p-4 sm:p-6 relative">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <CreditCard className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs sm:text-sm font-medium">Cash Balance</span>
+              </div>
+              <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-emerald-400">
+                ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Available to trade
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assets Count */}
+          <Card className="glass-card border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-transparent overflow-hidden relative group hover:border-purple-400/40 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-colors" />
+            <CardContent className="p-4 sm:p-6 relative">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <BarChart3 className="h-4 w-4 text-purple-400" />
+                <span className="text-xs sm:text-sm font-medium">Assets</span>
+              </div>
+              <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">
+                {holdings.length}
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Cryptocurrencies
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Status */}
+          <Card className="glass-card border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-transparent overflow-hidden relative group hover:border-cyan-400/40 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-colors" />
+            <CardContent className="p-4 sm:p-6 relative">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <Shield className="h-4 w-4 text-cyan-400" />
+                <span className="text-xs sm:text-sm font-medium">Security</span>
+              </div>
+              <div className="font-display text-xl sm:text-2xl font-bold text-cyan-400 flex items-center gap-2">
+                Verified
+                <Lock className="h-4 w-4" />
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Account protected
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Portfolio Section */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Portfolio Summary Card */}
-            <Card className="glass-card border-gold-500/10">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-4">
-                <div>
-                  <CardTitle className="text-base sm:text-lg">Total Balance</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Your portfolio value</CardDescription>
+            {/* Portfolio Allocation Card */}
+            <Card className="glass-card border-gold-500/10 overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-4 border-b border-gold-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">
+                    <PieChart className="h-5 w-5 text-black" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">Portfolio Allocation</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Asset distribution</CardDescription>
+                  </div>
                 </div>
-                <PieChart className="h-5 w-5 text-gold-400" />
+                <Link to="/trade">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-gold-400 hover:text-gold-300 hover:bg-gold-500/10"
+                  >
+                    Trade
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
               </CardHeader>
-              <CardContent>
-                <div className="mb-4 sm:mb-6">
-                  <div className="font-display text-3xl sm:text-4xl font-bold mb-2">
-                    ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className={cn(
-                    "flex items-center gap-2 text-sm",
-                    totalChange >= 0 ? "text-emerald-500" : "text-red-500"
-                  )}>
-                    {totalChange >= 0 ? (
-                      <TrendingUp className="h-4 w-4" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4" />
-                    )}
-                    <span className="font-medium">
-                      {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}% today
-                    </span>
-                  </div>
-                </div>
-
+              <CardContent className="p-4 sm:p-6">
                 {/* Allocation Chart */}
-                {holdings.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex gap-1 h-2 sm:h-3 rounded-full overflow-hidden bg-secondary">
+                {holdings.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex gap-1 h-3 sm:h-4 rounded-full overflow-hidden bg-secondary/50">
                       {holdings.map((h, i) => (
                         <div 
                           key={h.symbol}
-                          className="h-full transition-all duration-500"
+                          className="h-full transition-all duration-700 hover:opacity-80"
                           style={{ 
                             width: `${h.allocation}%`,
                             backgroundColor: i === 0 ? '#F59E0B' : 
                                             i === 1 ? '#8B5CF6' : 
-                                            i === 2 ? '#10B981' : 
+                                            i === 2 ? '#10B981' :
+                                            i === 3 ? '#3B82F6' : 
                                             '#6B7280'
                           }}
                         />
                       ))}
                     </div>
-                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {holdings.map((h, i) => (
-                        <div key={h.symbol} className="flex items-center gap-1.5 sm:gap-2 text-xs">
+                        <div key={h.symbol} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30">
                           <div 
-                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ 
                               backgroundColor: i === 0 ? '#F59E0B' : 
                                               i === 1 ? '#8B5CF6' : 
-                                              i === 2 ? '#10B981' : 
+                                              i === 2 ? '#10B981' :
+                                              i === 3 ? '#3B82F6' : 
                                               '#6B7280'
                             }}
                           />
-                          <span className="text-muted-foreground">{h.symbol} {h.allocation}%</span>
+                          <div className="min-w-0">
+                            <div className="font-medium text-xs sm:text-sm truncate">{h.symbol}</div>
+                            <div className="text-xs text-muted-foreground">{h.allocation}%</div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 rounded-full bg-gold-500/10 flex items-center justify-center mx-auto mb-4">
+                      <Wallet className="h-8 w-8 text-gold-400" />
+                    </div>
+                    <p className="text-muted-foreground mb-4">No assets in portfolio yet</p>
+                    <Link to="/trade">
+                      <Button className="bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold">
+                        Start Trading
+                        <ArrowUpRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </Link>
+                  </div>
                 )}
-
-                <Button 
-                  className="w-full mt-4 sm:mt-6 h-11 sm:h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold"
-                >
-                  Deposit Funds
-                </Button>
               </CardContent>
             </Card>
 
             {/* Holdings List */}
             <Card className="glass-card border-gold-500/10 overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 py-3 sm:py-4">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-gold-400" />
-                  <CardTitle className="text-base sm:text-lg">Your Holdings</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between border-b border-gold-500/10 py-3 sm:py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">Holdings</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Your cryptocurrency assets</CardDescription>
+                  </div>
                 </div>
                 <Link to="/transactions">
-                  <Button variant="ghost" size="sm" className="min-h-[44px]">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-muted-foreground hover:text-foreground hover:bg-gold-500/10"
+                  >
                     <History className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">History</span>
                   </Button>
@@ -293,7 +474,7 @@ const Dashboard = () => {
                   <div className="p-4 sm:p-6 space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="flex items-center gap-4 animate-pulse">
-                        <div className="w-10 h-10 rounded-full bg-gold-500/10" />
+                        <div className="w-12 h-12 rounded-xl bg-gold-500/10" />
                         <div className="flex-1 space-y-2">
                           <div className="h-4 w-20 bg-gold-500/10 rounded" />
                           <div className="h-3 w-16 bg-gold-500/10 rounded" />
@@ -306,34 +487,51 @@ const Dashboard = () => {
                     ))}
                   </div>
                 ) : holdings.length > 0 ? (
-                  <div className="divide-y divide-border/50">
-                    {holdings.map((holding) => (
+                  <div className="divide-y divide-gold-500/10">
+                    {holdings.map((holding, index) => (
                       <div 
                         key={holding.symbol} 
-                        className="p-4 hover:bg-gold-500/5 transition-colors"
+                        className="p-4 hover:bg-gold-500/5 transition-colors group cursor-pointer"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-500/20 flex items-center justify-center font-bold text-gold-400 flex-shrink-0">
+                            <div 
+                              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0 group-hover:scale-105 transition-transform"
+                              style={{
+                                background: `linear-gradient(135deg, ${
+                                  index === 0 ? '#F59E0B, #D97706' : 
+                                  index === 1 ? '#8B5CF6, #7C3AED' : 
+                                  index === 2 ? '#10B981, #059669' :
+                                  index === 3 ? '#3B82F6, #2563EB' : 
+                                  '#6B7280, #4B5563'
+                                })`
+                              }}
+                            >
                               {holding.symbol.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-sm sm:text-base truncate">{holding.symbol}</div>
+                              <div className="font-semibold text-sm sm:text-base flex items-center gap-2">
+                                {holding.symbol}
+                                <span className="text-xs text-muted-foreground font-normal hidden sm:inline">
+                                  {holding.name}
+                                </span>
+                              </div>
                               <div className="text-xs sm:text-sm text-muted-foreground">
-                                {holding.amount.toFixed(4)} {holding.symbol}
+                                {holding.amount.toFixed(6)} {holding.symbol}
                               </div>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="font-semibold text-sm sm:text-base">
-                              ${holding.value.toLocaleString()}
+                              ${holding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             {holding.change !== undefined && (
                               <div className={cn(
-                                "text-xs sm:text-sm font-medium",
-                                holding.change >= 0 ? "text-emerald-500" : "text-red-500"
+                                "text-xs sm:text-sm font-medium flex items-center justify-end gap-1",
+                                holding.change >= 0 ? "text-emerald-400" : "text-red-400"
                               )}>
-                                {holding.change >= 0 ? '+' : ''}{holding.change}%
+                                {holding.change >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                {holding.change >= 0 ? '+' : ''}{holding.change.toFixed(2)}%
                               </div>
                             )}
                           </div>
@@ -343,11 +541,15 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div className="p-6 sm:p-8 text-center text-muted-foreground">
-                    <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm sm:text-base">No holdings yet.</p>
+                    <div className="w-16 h-16 rounded-full bg-gold-500/10 flex items-center justify-center mx-auto mb-4">
+                      <Wallet className="h-8 w-8 text-gold-400" />
+                    </div>
+                    <p className="text-sm sm:text-base mb-2">No holdings yet</p>
+                    <p className="text-xs text-muted-foreground mb-4">Start building your portfolio</p>
                     <Link to="/trade">
-                      <Button variant="link" className="mt-2 text-gold-400">
-                        Start trading →
+                      <Button variant="outline" className="border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-gold-400">
+                        Start Trading
+                        <ArrowUpRight className="h-4 w-4 ml-2" />
                       </Button>
                     </Link>
                   </div>
@@ -356,95 +558,155 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Settings Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Account Info Card */}
+            {/* Quick Actions */}
+            <Card className="glass-card border-gold-500/10 overflow-hidden">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-gold-400" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link to="/wallet/deposit" className="block">
+                  <Button 
+                    className="w-full h-12 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-semibold justify-start shadow-lg shadow-gold-500/20"
+                    data-testid="quick-deposit-btn"
+                  >
+                    <Wallet className="h-5 w-5 mr-3" />
+                    Deposit Funds
+                    <ChevronRight className="h-4 w-4 ml-auto" />
+                  </Button>
+                </Link>
+                <Link to="/trade" className="block">
+                  <Button 
+                    variant="outline"
+                    className="w-full h-12 border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/10 justify-start group"
+                  >
+                    <Activity className="h-5 w-5 mr-3 text-purple-400" />
+                    Trade Now
+                    <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Button>
+                </Link>
+                <Link to="/alerts" className="block">
+                  <Button 
+                    variant="outline"
+                    className="w-full h-12 border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 justify-start group"
+                  >
+                    <Bell className="h-5 w-5 mr-3 text-cyan-400" />
+                    Price Alerts
+                    <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Button>
+                </Link>
+                <Link to="/transactions" className="block">
+                  <Button 
+                    variant="outline"
+                    className="w-full h-12 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-500/10 justify-start group"
+                  >
+                    <History className="h-5 w-5 mr-3 text-emerald-400" />
+                    Transaction History
+                    <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Account Card */}
             <Card className="glass-card border-gold-500/10">
-              <CardHeader className="pb-2 sm:pb-4">
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                   <User className="h-5 w-5 text-gold-400" />
                   Account
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4">
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Name</label>
-                  <p className="font-medium text-sm sm:text-base truncate">{user?.name}</p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-black font-bold text-lg">
+                    {user?.name?.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{user?.name}</div>
+                    <div className="text-sm text-muted-foreground truncate">{user?.email}</div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Email</label>
-                  <p className="font-medium text-sm sm:text-base truncate">{user?.email}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Member Since</label>
-                  <p className="font-medium text-sm sm:text-base">
-                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                  </p>
+                <div className="pt-3 border-t border-gold-500/10 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Member Since</span>
+                    <span className="font-medium">
+                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Account Type</span>
+                    <span className="font-medium text-gold-400 flex items-center gap-1">
+                      <Crown className="h-3 w-3" />
+                      Premium
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick Settings */}
+            {/* Settings Card */}
             <Card className="glass-card border-gold-500/10">
-              <CardHeader className="pb-2 sm:pb-4">
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                   <Settings className="h-5 w-5 text-gold-400" />
                   Settings
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 sm:space-y-2">
+              <CardContent className="space-y-1">
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start min-h-[48px]" 
+                  className="w-full justify-start h-11 hover:bg-gold-500/10 group" 
                   size="sm"
                 >
-                  <Shield className="h-4 w-4 mr-3" />
-                  Security
+                  <Shield className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-gold-400 transition-colors" />
+                  Security Settings
+                  <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start min-h-[48px]" 
+                  className="w-full justify-start h-11 hover:bg-gold-500/10 group" 
                   size="sm"
                 >
-                  <Bell className="h-4 w-4 mr-3" />
+                  <Bell className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-gold-400 transition-colors" />
                   Notifications
+                  <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start min-h-[48px]" 
+                  className="w-full justify-start h-11 hover:bg-gold-500/10 group" 
                   size="sm"
                 >
-                  <User className="h-4 w-4 mr-3" />
+                  <User className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-gold-400 transition-colors" />
                   Edit Profile
+                  <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Quick Actions - Mobile Only */}
-            <Card className="glass-card border-gold-500/10 lg:hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-gold-400" />
-                  Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
-                <Link to="/trade">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
-                  >
-                    Trade
-                  </Button>
-                </Link>
-                <Link to="/markets">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-12 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
-                  >
-                    Markets
-                  </Button>
-                </Link>
+            {/* Promo Card */}
+            <Card className="overflow-hidden border-0 bg-gradient-to-br from-gold-500/20 via-gold-600/10 to-purple-500/20 relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gold-500/20 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl" />
+              <CardContent className="p-5 relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gift className="h-5 w-5 text-gold-400" />
+                  <span className="font-semibold text-gold-400">Referral Program</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Invite friends and earn up to $100 in crypto rewards!
+                </p>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10 text-gold-400"
+                >
+                  Learn More
+                  <ExternalLink className="h-3 w-3 ml-2" />
+                </Button>
               </CardContent>
             </Card>
           </div>
