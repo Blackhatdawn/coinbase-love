@@ -331,6 +331,13 @@ class CryptoVaultAPITester:
         self.log_test("Login with Existing User", False, "No existing verified users found")
         return False
 
+    def test_logout(self):
+        """Test user logout"""
+        success, data = self.make_request('POST', '/api/auth/logout')
+        self.log_test("User Logout", success, 
+                     "" if success else f"Logout failed: {data}")
+        return success
+
     def run_all_tests(self):
         """Run all tests in sequence"""
         print("🧪 Starting CryptoVault API Tests")
