@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     coingecko_api_key: Optional[str] = None
     use_mock_prices: bool = False
 
+    # NOWPayments Configuration
+    nowpayments_api_key: Optional[str] = None
+    nowpayments_ipn_secret: Optional[str] = None
+    nowpayments_sandbox: bool = True
+
     # Redis Configuration (Upstash)
     use_redis: bool = True
     upstash_redis_rest_url: Optional[str] = None
