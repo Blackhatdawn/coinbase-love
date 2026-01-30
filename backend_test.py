@@ -347,33 +347,57 @@ class CryptoVaultAPITester:
         self.test_health_check()
         self.test_api_health_check()
         
-        # Authentication flow
-        if self.test_signup():
-            if self.test_login():
-                # Authenticated endpoints
-                self.test_get_current_user()
-                self.test_wallet_balance()
-                
-                # Alerts CRUD
-                if self.test_create_alert():
-                    self.test_get_alerts()
-                    self.test_update_alert()
-                    self.test_delete_alert()
-                
-                # Wallet operations
-                if self.test_create_deposit():
-                    self.test_get_deposit_status()
-                self.test_get_deposits_history()
-                
-                # Transactions
-                self.test_get_transactions()
-                self.test_get_transaction_stats()
-                
-                # Crypto data
-                self.test_crypto_prices()
-                
-                # Logout
-                self.test_logout()
+        # Try existing user first, then new signup
+        authenticated = False
+        
+        # Try with existing verified user
+        if self.test_with_existing_user():
+            authenticated = True
+        else:
+            # Try new user signup and verification
+            if self.test_signup():
+                self.test_verify_email()  # This will fail but we'll log it
+                # Try login anyway in case verification worked
+                login_data = {
+                    "email": self.user_data["email"],
+                    "password": self.user_data["password"]
+                }
+                success, data = self.make_request('POST', '/api/auth/login', login_data)
+                if success:
+                    authenticated = True
+                    self.log_test("User Login (After Signup)", True)
+                else:
+                    self.log_test("User Login (After Signup)", False, "Email verification required")
+        
+        if authenticated:
+            # Authenticated endpoints
+            self.test_get_current_user()
+            self.test_wallet_balance()
+            
+            # Alerts CRUD
+            if self.test_create_alert():
+                self.test_get_alerts()
+                self.test_update_alert()
+                self.test_delete_alert()
+            
+            # Wallet operations
+            if self.test_create_deposit():
+                self.test_get_deposit_status()
+            self.test_get_deposits_history()
+            
+            # Transactions
+            self.test_get_transactions()
+            self.test_get_transaction_stats()
+            
+            # Crypto data
+            self.test_crypto_prices()
+            
+            # Logout
+            self.test_logout()
+        else:
+            print("⚠️ Could not authenticate - skipping authenticated endpoint tests")
+            # Still test public endpoints
+            self.test_crypto_prices()
         
         # Print summary
         print("="*70)
