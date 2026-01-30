@@ -315,8 +315,8 @@ class CryptoVaultAPITester:
         """Test with a pre-existing verified user"""
         # Try common test credentials that might exist
         test_credentials = [
-            {"email": "admin@cryptovault.com", "password": "admin123"},
             {"email": "test@example.com", "password": "password123"},
+            {"email": "admin@cryptovault.com", "password": "admin123"},
             {"email": "user@test.com", "password": "testpass123"}
         ]
         
