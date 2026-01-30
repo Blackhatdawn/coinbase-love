@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CryptoVault Backend API Testing Suite
-Tests all backend endpoints for functionality and integration
+Tests all authentication, wallet, alerts, and transaction endpoints
 """
 
 import requests
@@ -11,287 +11,348 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class CryptoVaultAPITester:
-    def __init__(self, base_url: str = "https://cryptovault-fixes.preview.emergentagent.com"):
+    def __init__(self, base_url="http://localhost:8001"):
         self.base_url = base_url
-        self.api_base = f"{base_url}/api"
-        self.token = None
-        self.user_id = None
+        self.session = requests.Session()
+        self.session.headers.update({'Content-Type': 'application/json'})
+        
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        self.user_data = {}
+        
+        print(f"🚀 CryptoVault API Tester initialized")
+        print(f"📍 Base URL: {base_url}")
+        print("="*70)
 
     def log_test(self, name: str, success: bool, details: str = "", response_data: Any = None):
         """Log test result"""
         self.tests_run += 1
         if success:
             self.tests_passed += 1
-            print(f"✅ {name}: PASSED")
+            print(f"✅ {name}")
         else:
-            print(f"❌ {name}: FAILED - {details}")
+            print(f"❌ {name} - {details}")
         
         self.test_results.append({
-            "test": name,
+            "name": name,
             "success": success,
             "details": details,
-            "response_data": response_data,
-            "timestamp": datetime.utcnow().isoformat()
+            "response_data": response_data
         })
 
     def make_request(self, method: str, endpoint: str, data: Optional[Dict] = None, 
-                    expected_status: int = 200, auth_required: bool = False) -> tuple[bool, Dict]:
+                    expected_status: int = 200) -> tuple[bool, Dict]:
         """Make HTTP request and validate response"""
-        url = f"{self.api_base}/{endpoint.lstrip('/')}"
-        headers = {'Content-Type': 'application/json'}
+        url = f"{self.base_url}{endpoint}"
         
-        if auth_required and self.token:
-            headers['Authorization'] = f'Bearer {self.token}'
-
         try:
             if method.upper() == 'GET':
-                response = requests.get(url, headers=headers, timeout=10)
+                response = self.session.get(url)
             elif method.upper() == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
-            elif method.upper() == 'PUT':
-                response = requests.put(url, json=data, headers=headers, timeout=10)
+                response = self.session.post(url, json=data)
+            elif method.upper() == 'PATCH':
+                response = self.session.patch(url, json=data)
             elif method.upper() == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=10)
+                response = self.session.delete(url)
             else:
                 return False, {"error": f"Unsupported method: {method}"}
 
             success = response.status_code == expected_status
+            
             try:
                 response_data = response.json()
             except:
-                response_data = {"status_code": response.status_code, "text": response.text[:200]}
-
+                response_data = {"raw_response": response.text}
+            
+            if not success:
+                print(f"   Status: {response.status_code} (expected {expected_status})")
+                if response_data:
+                    print(f"   Response: {json.dumps(response_data, indent=2)}")
+            
             return success, response_data
-
-        except requests.exceptions.RequestException as e:
+            
+        except Exception as e:
             return False, {"error": str(e)}
 
     def test_health_check(self):
-        """Test health endpoint (should be at /api/health)"""
-        try:
-            response = requests.get(f"{self.api_base}/health", timeout=10)
-            success = response.status_code == 200
-            if success:
-                data = response.json()
-                if data.get('status') == 'healthy':
-                    self.log_test("Health Check", True, "API is healthy")
-                else:
-                    self.log_test("Health Check", False, f"Health check returned: {data}")
-            else:
-                self.log_test("Health Check", False, f"Health endpoint returned {response.status_code}")
-        except Exception as e:
-            self.log_test("Health Check", False, f"Health check error: {str(e)}")
+        """Test health endpoint"""
+        success, data = self.make_request('GET', '/health')
+        self.log_test("Health Check", success, 
+                     "" if success else f"Health check failed: {data}")
+        return success
 
-    def test_root_endpoint(self):
-        """Test root endpoint (should return JSON from backend)"""
-        try:
-            # The root endpoint might be served by frontend, let's check if backend root is accessible
-            response = requests.get(f"{self.base_url}/", timeout=10)
-            if "CryptoVault" in response.text:
-                self.log_test("Root Endpoint", True, "Frontend is serving root correctly")
-            else:
-                self.log_test("Root Endpoint", False, f"Unexpected root response")
-        except Exception as e:
-            self.log_test("Root Endpoint", False, f"Root endpoint error: {str(e)}")
+    def test_api_health_check(self):
+        """Test API health endpoint"""
+        success, data = self.make_request('GET', '/api/health')
+        self.log_test("API Health Check", success, 
+                     "" if success else f"API health check failed: {data}")
+        return success
 
-    def test_crypto_endpoints(self):
-        """Test cryptocurrency endpoints"""
-        # Test get all cryptocurrencies
-        success, data = self.make_request('GET', '/crypto')
-        if success and 'cryptocurrencies' in data:
-            self.log_test("Get All Cryptocurrencies", True, f"Retrieved {len(data.get('cryptocurrencies', []))} cryptocurrencies")
-        else:
-            self.log_test("Get All Cryptocurrencies", False, f"Failed to get cryptocurrencies: {data}")
-
-        # Test get specific cryptocurrency (Bitcoin)
-        success, data = self.make_request('GET', '/crypto/bitcoin')
-        if success and 'cryptocurrency' in data:
-            self.log_test("Get Bitcoin Details", True, "Bitcoin details retrieved successfully")
-        else:
-            self.log_test("Get Bitcoin Details", False, f"Failed to get Bitcoin details: {data}")
-
-    def test_new_features_endpoints(self):
-        """Test new feature endpoints added in the update"""
-        # Test password reset request endpoint (correct path)
-        reset_data = {"email": "test@example.com"}
-        success, data = self.make_request('POST', '/auth/forgot-password', reset_data, expected_status=200)
-        if success or "password reset" in str(data).lower() or "registered" in str(data).lower():
-            self.log_test("Password Reset Request", True, "Password reset endpoint working")
-        else:
-            self.log_test("Password Reset Request", False, f"Password reset failed: {data}")
-
-        # Test alerts endpoints (should require auth)
-        success, data = self.make_request('GET', '/alerts', expected_status=401)
-        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
-            self.log_test("Alerts Endpoint (Auth Required)", True, "Alerts endpoint correctly requires authentication")
-        else:
-            self.log_test("Alerts Endpoint (Auth Required)", False, f"Unexpected alerts response: {data}")
-
-        # Test admin stats endpoint (should require auth)
-        success, data = self.make_request('GET', '/admin/stats', expected_status=401)
-        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
-            self.log_test("Admin Stats Endpoint (Auth Required)", True, "Admin stats endpoint correctly requires authentication")
-        else:
-            self.log_test("Admin Stats Endpoint (Auth Required)", False, f"Unexpected admin stats response: {data}")
-
-        # Test wallet deposit endpoint (correct path - should require auth)
-        deposit_data = {"amount": 100, "currency": "btc"}
-        success, data = self.make_request('POST', '/wallet/deposit/create', deposit_data, expected_status=401)
-        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
-            self.log_test("Wallet Deposit Endpoint (Auth Required)", True, "Wallet deposit endpoint correctly requires authentication")
-        else:
-            self.log_test("Wallet Deposit Endpoint (Auth Required)", False, f"Unexpected wallet deposit response: {data}")
-
-        # Test wallet balance endpoint (should require auth)
-        success, data = self.make_request('GET', '/wallet/balance', expected_status=401)
-        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
-            self.log_test("Wallet Balance Endpoint (Auth Required)", True, "Wallet balance endpoint correctly requires authentication")
-        else:
-            self.log_test("Wallet Balance Endpoint (Auth Required)", False, f"Unexpected wallet balance response: {data}")
-
-        # Test transactions endpoint (should require auth)
-        success, data = self.make_request('GET', '/transactions', expected_status=401)
-        if success or "unauthorized" in str(data).lower() or "authentication" in str(data).lower():
-            self.log_test("Transactions Endpoint (Auth Required)", True, "Transactions endpoint correctly requires authentication")
-        else:
-            self.log_test("Transactions Endpoint (Auth Required)", False, f"Unexpected transactions response: {data}")
-
-    def test_auth_signup(self):
+    def test_signup(self):
         """Test user signup"""
-        test_email = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}@example.com"  # Use valid domain
-        signup_data = {
-            "email": test_email,
-            "name": "Test User",
-            "password": "TestPassword123!"
+        timestamp = datetime.now().strftime("%H%M%S")
+        self.user_data = {
+            "email": f"test_user_{timestamp}@cryptovault.test",
+            "password": "TestPassword123!",
+            "name": f"Test User {timestamp}"
         }
         
-        success, data = self.make_request('POST', '/auth/signup', signup_data, expected_status=200)
-        if success and 'user' in data:
-            self.user_id = data['user']['id']
-            self.log_test("User Signup", True, f"User created with ID: {self.user_id}")
-            return test_email
-        else:
-            self.log_test("User Signup", False, f"Signup failed: {data}")
-            return None
+        success, data = self.make_request('POST', '/api/auth/signup', self.user_data)
+        self.log_test("User Signup", success, 
+                     "" if success else f"Signup failed: {data}")
+        
+        if success:
+            self.user_data['user_id'] = data.get('user', {}).get('id')
+        
+        return success
 
-    def test_auth_login(self, email: str, password: str = "TestPassword123!"):
+    def test_login(self):
         """Test user login"""
         login_data = {
-            "email": email,
-            "password": password
+            "email": self.user_data["email"],
+            "password": self.user_data["password"]
         }
         
-        success, data = self.make_request('POST', '/auth/login', login_data, expected_status=200)
-        if success and 'user' in data:
-            # Note: In production, tokens are in httpOnly cookies, not response body
-            self.log_test("User Login", True, "Login successful (cookies set)")
-            return True
-        else:
-            # Check if it's an email verification issue
-            if "Email not verified" in str(data):
-                self.log_test("User Login", False, "Email verification required (expected for new accounts)")
-            else:
-                self.log_test("User Login", False, f"Login failed: {data}")
+        success, data = self.make_request('POST', '/api/auth/login', login_data)
+        self.log_test("User Login", success, 
+                     "" if success else f"Login failed: {data}")
+        
+        if success:
+            # Check if cookies are set (they should be in session automatically)
+            print(f"   Cookies received: {len(self.session.cookies)} cookies")
+            for cookie in self.session.cookies:
+                print(f"   - {cookie.name}: {cookie.value[:20]}...")
+        
+        return success
+
+    def test_get_current_user(self):
+        """Test getting current user profile"""
+        success, data = self.make_request('GET', '/api/auth/me')
+        self.log_test("Get Current User", success, 
+                     "" if success else f"Get user failed: {data}")
+        return success
+
+    def test_wallet_balance(self):
+        """Test getting wallet balance"""
+        success, data = self.make_request('GET', '/api/wallet/balance')
+        self.log_test("Get Wallet Balance", success, 
+                     "" if success else f"Get balance failed: {data}")
+        
+        if success:
+            balance = data.get('wallet', {}).get('balances', {}).get('USD', 0)
+            print(f"   Current USD balance: ${balance}")
+        
+        return success
+
+    def test_create_alert(self):
+        """Test creating a price alert"""
+        alert_data = {
+            "symbol": "BTC",
+            "targetPrice": 50000.0,
+            "condition": "above",
+            "notifyPush": True,
+            "notifyEmail": True
+        }
+        
+        success, data = self.make_request('POST', '/api/alerts', alert_data, 200)
+        self.log_test("Create Price Alert", success, 
+                     "" if success else f"Create alert failed: {data}")
+        
+        if success:
+            self.user_data['alert_id'] = data.get('alert', {}).get('id')
+            print(f"   Alert ID: {self.user_data.get('alert_id')}")
+        
+        return success
+
+    def test_get_alerts(self):
+        """Test getting all alerts"""
+        success, data = self.make_request('GET', '/api/alerts')
+        self.log_test("Get All Alerts", success, 
+                     "" if success else f"Get alerts failed: {data}")
+        
+        if success:
+            alerts_count = len(data.get('alerts', []))
+            print(f"   Found {alerts_count} alerts")
+        
+        return success
+
+    def test_update_alert(self):
+        """Test updating an alert"""
+        if not self.user_data.get('alert_id'):
+            self.log_test("Update Alert", False, "No alert ID available")
             return False
+        
+        update_data = {
+            "targetPrice": 55000.0,
+            "isActive": False
+        }
+        
+        success, data = self.make_request('PATCH', f'/api/alerts/{self.user_data["alert_id"]}', update_data)
+        self.log_test("Update Alert", success, 
+                     "" if success else f"Update alert failed: {data}")
+        return success
 
-    def test_protected_endpoints(self):
-        """Test endpoints that require authentication"""
-        # Test portfolio endpoint
-        success, data = self.make_request('GET', '/portfolio', auth_required=True, expected_status=401)
-        if success or "Unauthorized" in str(data) or "authentication" in str(data).lower():
-            self.log_test("Portfolio Endpoint (Auth Required)", True, "Correctly requires authentication")
-        else:
-            self.log_test("Portfolio Endpoint (Auth Required)", False, f"Unexpected response: {data}")
+    def test_delete_alert(self):
+        """Test deleting an alert"""
+        if not self.user_data.get('alert_id'):
+            self.log_test("Delete Alert", False, "No alert ID available")
+            return False
+        
+        success, data = self.make_request('DELETE', f'/api/alerts/{self.user_data["alert_id"]}')
+        self.log_test("Delete Alert", success, 
+                     "" if success else f"Delete alert failed: {data}")
+        return success
 
-        # Test orders endpoint
-        success, data = self.make_request('GET', '/orders', auth_required=True, expected_status=401)
-        if success or "Unauthorized" in str(data) or "authentication" in str(data).lower():
-            self.log_test("Orders Endpoint (Auth Required)", True, "Correctly requires authentication")
-        else:
-            self.log_test("Orders Endpoint (Auth Required)", False, f"Unexpected response: {data}")
+    def test_create_deposit(self):
+        """Test creating a deposit"""
+        deposit_data = {
+            "amount": 100.0,
+            "currency": "btc"
+        }
+        
+        success, data = self.make_request('POST', '/api/wallet/deposit/create', deposit_data)
+        self.log_test("Create Deposit", success, 
+                     "" if success else f"Create deposit failed: {data}")
+        
+        if success:
+            self.user_data['order_id'] = data.get('orderId')
+            print(f"   Order ID: {self.user_data.get('order_id')}")
+            print(f"   Mock mode: {data.get('mock', False)}")
+        
+        return success
 
-    def test_cors_and_security(self):
-        """Test CORS and security headers"""
-        try:
-            response = requests.options(f"{self.api_base}/crypto", timeout=10)
-            cors_headers = {
-                'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
-                'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
-                'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
-            }
-            
-            if any(cors_headers.values()):
-                self.log_test("CORS Configuration", True, f"CORS headers present: {cors_headers}")
-            else:
-                self.log_test("CORS Configuration", False, "No CORS headers found")
-        except Exception as e:
-            self.log_test("CORS Configuration", False, f"CORS test error: {str(e)}")
+    def test_get_deposit_status(self):
+        """Test getting deposit status"""
+        if not self.user_data.get('order_id'):
+            self.log_test("Get Deposit Status", False, "No order ID available")
+            return False
+        
+        success, data = self.make_request('GET', f'/api/wallet/deposit/{self.user_data["order_id"]}')
+        self.log_test("Get Deposit Status", success, 
+                     "" if success else f"Get deposit status failed: {data}")
+        
+        if success:
+            status = data.get('deposit', {}).get('status')
+            print(f"   Deposit status: {status}")
+        
+        return success
+
+    def test_get_deposits_history(self):
+        """Test getting deposits history"""
+        success, data = self.make_request('GET', '/api/wallet/deposits')
+        self.log_test("Get Deposits History", success, 
+                     "" if success else f"Get deposits failed: {data}")
+        
+        if success:
+            deposits_count = len(data.get('deposits', []))
+            print(f"   Found {deposits_count} deposits")
+        
+        return success
+
+    def test_get_transactions(self):
+        """Test getting transactions"""
+        success, data = self.make_request('GET', '/api/transactions')
+        self.log_test("Get Transactions", success, 
+                     "" if success else f"Get transactions failed: {data}")
+        
+        if success:
+            transactions_count = len(data.get('transactions', []))
+            print(f"   Found {transactions_count} transactions")
+        
+        return success
+
+    def test_get_transaction_stats(self):
+        """Test getting transaction statistics"""
+        success, data = self.make_request('GET', '/api/transactions/summary/stats')
+        self.log_test("Get Transaction Stats", success, 
+                     "" if success else f"Get transaction stats failed: {data}")
+        
+        if success:
+            total_deposits = data.get('totalDeposits', 0)
+            print(f"   Total deposits: ${total_deposits}")
+        
+        return success
+
+    def test_crypto_prices(self):
+        """Test getting crypto prices"""
+        success, data = self.make_request('GET', '/api/crypto')
+        self.log_test("Get Crypto Prices", success, 
+                     "" if success else f"Get crypto prices failed: {data}")
+        
+        if success:
+            cryptos = data.get('cryptos', [])
+            print(f"   Found {len(cryptos)} cryptocurrencies")
+            if cryptos:
+                btc = next((c for c in cryptos if c.get('symbol') == 'BTC'), None)
+                if btc:
+                    print(f"   BTC price: ${btc.get('current_price', 'N/A')}")
+        
+        return success
+
+    def test_logout(self):
+        """Test user logout"""
+        success, data = self.make_request('POST', '/api/auth/logout')
+        self.log_test("User Logout", success, 
+                     "" if success else f"Logout failed: {data}")
+        return success
 
     def run_all_tests(self):
-        """Run comprehensive test suite"""
-        print("="*70)
-        print("🚀 CryptoVault Backend API Test Suite")
+        """Run all tests in sequence"""
+        print("🧪 Starting CryptoVault API Tests")
         print("="*70)
         
-        # Basic connectivity tests
-        print("\n📡 Testing Basic Connectivity...")
-        self.test_root_endpoint()
+        # Basic health checks
         self.test_health_check()
+        self.test_api_health_check()
         
-        # Public API tests
-        print("\n💰 Testing Cryptocurrency APIs...")
-        self.test_crypto_endpoints()
-        
-        # New features tests
-        print("\n🆕 Testing New Feature Endpoints...")
-        self.test_new_features_endpoints()
-        
-        # Authentication tests
-        print("\n🔐 Testing Authentication...")
-        test_email = self.test_auth_signup()
-        if test_email:
-            self.test_auth_login(test_email)
-        
-        # Protected endpoint tests
-        print("\n🛡️ Testing Protected Endpoints...")
-        self.test_protected_endpoints()
-        
-        # Security tests
-        print("\n🔒 Testing Security Configuration...")
-        self.test_cors_and_security()
+        # Authentication flow
+        if self.test_signup():
+            if self.test_login():
+                # Authenticated endpoints
+                self.test_get_current_user()
+                self.test_wallet_balance()
+                
+                # Alerts CRUD
+                if self.test_create_alert():
+                    self.test_get_alerts()
+                    self.test_update_alert()
+                    self.test_delete_alert()
+                
+                # Wallet operations
+                if self.test_create_deposit():
+                    self.test_get_deposit_status()
+                self.test_get_deposits_history()
+                
+                # Transactions
+                self.test_get_transactions()
+                self.test_get_transaction_stats()
+                
+                # Crypto data
+                self.test_crypto_prices()
+                
+                # Logout
+                self.test_logout()
         
         # Print summary
-        print("\n" + "="*70)
-        print("📊 TEST SUMMARY")
         print("="*70)
-        print(f"Total Tests: {self.tests_run}")
-        print(f"Passed: {self.tests_passed}")
-        print(f"Failed: {self.tests_run - self.tests_passed}")
-        print(f"Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
+        print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
         
-        # Return results for further processing
-        return {
-            "total_tests": self.tests_run,
-            "passed_tests": self.tests_passed,
-            "failed_tests": self.tests_run - self.tests_passed,
-            "success_rate": self.tests_passed/self.tests_run*100 if self.tests_run > 0 else 0,
-            "test_results": self.test_results
-        }
+        if self.tests_passed == self.tests_run:
+            print("🎉 All tests passed!")
+            return 0
+        else:
+            print("❌ Some tests failed!")
+            print("\nFailed tests:")
+            for result in self.test_results:
+                if not result['success']:
+                    print(f"  - {result['name']}: {result['details']}")
+            return 1
 
 def main():
-    """Main test execution"""
+    """Main test runner"""
     tester = CryptoVaultAPITester()
-    results = tester.run_all_tests()
-    
-    # Save detailed results to file
-    with open('/app/test_reports/backend_test_results.json', 'w') as f:
-        json.dump(results, f, indent=2)
-    
-    # Exit with appropriate code
-    return 0 if results["success_rate"] >= 70 else 1
+    return tester.run_all_tests()
 
 if __name__ == "__main__":
     sys.exit(main())
