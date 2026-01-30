@@ -186,19 +186,29 @@ class SecurityHeadersMiddleware:
         
         async def send_with_security_headers(message):
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
+                # Get existing headers as a list (preserve duplicates like set-cookie)
+                existing_headers = list(message.get("headers", []))
                 
-                security_headers = {
-                    b"strict-transport-security": b"max-age=31536000; includeSubDomains",
-                    b"x-frame-options": b"DENY",
-                    b"x-content-type-options": b"nosniff",
-                    b"x-xss-protection": b"1; mode=block",
-                    b"referrer-policy": b"strict-origin-when-cross-origin",
-                    b"permissions-policy": b"geolocation=(), microphone=(), camera=()",
+                # Filter out any existing security headers to avoid duplicates
+                security_header_keys = {
+                    b"strict-transport-security", b"x-frame-options", 
+                    b"x-content-type-options", b"x-xss-protection",
+                    b"referrer-policy", b"permissions-policy"
                 }
+                existing_headers = [(k, v) for k, v in existing_headers if k.lower() not in security_header_keys]
                 
-                headers.update(security_headers)
-                message["headers"] = [(k, v) for k, v in headers.items()]
+                security_headers = [
+                    (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+                    (b"x-frame-options", b"DENY"),
+                    (b"x-content-type-options", b"nosniff"),
+                    (b"x-xss-protection", b"1; mode=block"),
+                    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+                    (b"permissions-policy", b"geolocation=(), microphone=(), camera=()"),
+                ]
+                
+                # Append new headers (don't convert to dict which removes duplicates)
+                existing_headers.extend(security_headers)
+                message["headers"] = existing_headers
             
             await send(message)
         
