@@ -126,6 +126,10 @@ class Settings(BaseSettings):
         """Check if Redis is properly configured and should be used."""
         return self.use_redis and bool(self.upstash_redis_rest_url) and bool(self.upstash_redis_rest_token)
 
+    def is_nowpayments_available(self) -> bool:
+        """Check if NOWPayments is properly configured."""
+        return bool(self.nowpayments_api_key) and self.nowpayments_api_key != "your_nowpayments_api_key"
+
     def is_sentry_available(self) -> bool:
         """Check if Sentry is properly configured."""
         return bool(self.sentry_dsn)
