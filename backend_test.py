@@ -93,7 +93,7 @@ class CryptoVaultAPITester:
         """Test user signup"""
         timestamp = datetime.now().strftime("%H%M%S")
         self.user_data = {
-            "email": f"test_user_{timestamp}@cryptovault.test",
+            "email": f"test_user_{timestamp}@example.com",
             "password": "TestPassword123!",
             "name": f"Test User {timestamp}"
         }
