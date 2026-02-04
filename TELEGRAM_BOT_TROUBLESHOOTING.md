@@ -190,7 +190,7 @@ tail -f /var/log/supervisor/backend.*.log | grep -i telegram
 If you've done all the above and still not receiving:
 
 1. **Wrong Account?**
-   - Make sure you're using the Telegram account with ID: 5639295577
+   - Make sure you're using the Telegram account with ID: 5639295577 (Device 1) or 7279310150 (Device 2)
    - Verify with @userinfobot
 
 2. **Bot Blocked?**
