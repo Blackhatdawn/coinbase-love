@@ -4,9 +4,9 @@
 
 ### ✅ Good News
 Your bot is configured correctly:
-- ✅ Bot Token: Valid and working
-- ✅ Chat ID: Correct (5639295577)
-- ✅ Messages sent: Successfully sent (confirmed by Telegram API)
+- ✅ Bot Token: `8436666880:AAH4W6mmysV4FjbGcYw3to3_Tfcd3qJEpAk`
+- ✅ Admin Chat IDs: `5639295577` (Device 1 - Cryptic) + `7279310150` (Device 2 - HYBE)
+- ✅ Status: ✅ **TESTED & WORKING** (messages sent to both devices successfully)
 
 ### 🔍 Most Common Issue: Bot Not Started
 
