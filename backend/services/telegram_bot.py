@@ -20,16 +20,22 @@ class TelegramBotService:
     def __init__(self):
         # Get from environment variables
         self.bot_token = settings.__dict__.get('telegram_bot_token', '')
-        self.admin_chat_id = settings.__dict__.get('admin_telegram_chat_id', '')
+        admin_chat_id_str = settings.__dict__.get('admin_telegram_chat_id', '')
+        
+        # Support multiple chat IDs (comma-separated)
+        if admin_chat_id_str:
+            self.admin_chat_ids = [cid.strip() for cid in admin_chat_id_str.split(',') if cid.strip()]
+        else:
+            self.admin_chat_ids = []
         
         # Check if configured
-        self.enabled = bool(self.bot_token and self.admin_chat_id)
+        self.enabled = bool(self.bot_token and self.admin_chat_ids)
         
         if not self.enabled:
             logger.warning("⚠️ Telegram bot not configured - admin notifications disabled")
             logger.info("   Set TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_CHAT_ID to enable")
         else:
-            logger.info("✅ Telegram bot service initialized")
+            logger.info(f"✅ Telegram bot service initialized ({len(self.admin_chat_ids)} admin(s))")
         
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
     
