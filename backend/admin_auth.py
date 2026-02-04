@@ -48,11 +48,18 @@ class AdminLoginRequest(BaseModel):
     totp_code: Optional[str] = None
 
 
+class AdminOTPVerifyRequest(BaseModel):
+    """Admin OTP verification request"""
+    email: EmailStr
+    otp_code: str
+
+
 class AdminLoginResponse(BaseModel):
     """Admin login response"""
     admin: Dict[str, Any]
     token: str
     expires_at: datetime
+    requires_otp: Optional[bool] = False  # Indicates if OTP is required
 
 
 # Default admin permissions
