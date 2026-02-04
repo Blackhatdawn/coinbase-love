@@ -733,7 +733,8 @@ app.include_router(websocket.router)
 
 # Monitoring (no versioning or auth required)
 app.include_router(monitoring.router, prefix="/api")
-app.include_router(deep_investigation.router, prefix="/api")
+# Removed: deep_investigation router (archived to _legacy_archive)
+# app.include_router(deep_investigation.router, prefix="/api")
 
 # Performance optimization endpoints
 try:
