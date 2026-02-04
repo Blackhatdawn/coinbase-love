@@ -218,6 +218,18 @@ class Settings(BaseSettings):
     )
 
     # ============================================
+    # TELEGRAM BOT (Free KYC Notifications)
+    # ============================================
+    telegram_bot_token: Optional[str] = Field(
+        default=None,
+        description="Telegram bot token for admin notifications (get from @BotFather)"
+    )
+    admin_telegram_chat_id: Optional[str] = Field(
+        default=None,
+        description="Telegram chat ID for admin notifications"
+    )
+
+    # ============================================
     # ERROR TRACKING (Sentry)
     # ============================================
     sentry_dsn: Optional[str] = Field(
