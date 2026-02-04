@@ -515,6 +515,8 @@ export const api = {
       apiClient.get(`/api/crypto/${coinId}`),
     getHistory: (coinId: string, days: number = 7) =>
       apiClient.get(`/api/crypto/${coinId}/history?days=${days}`),
+    getTradingPairs: () =>
+      apiClient.get<{ pairs: string[] }>('/api/crypto/trading-pairs'),
   },
 
   // Wallet and deposits
