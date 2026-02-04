@@ -777,6 +777,51 @@ def price_alert_triggered(
     return get_base_template(content, f"Price Alert: {asset} {condition_text} {target_price}")
 
 
+def admin_otp_email(admin_name: str, otp_code: str, ip_address: str) -> str:
+    """Admin OTP authentication email"""
+    content = f'''
+        <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 600; color: #ffffff;">
+            🔐 Admin Login Verification
+        </h2>
+        <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #9ca3af;">
+            Hi {admin_name}, a login attempt was made to the CryptoVault Admin Panel. Use the code below to complete authentication.
+        </p>
+        
+        <!-- OTP Code Box -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 24px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 12px;">
+                    <p style="margin: 0 0 8px; font-size: 12px; color: #EF4444; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">
+                        ADMIN OTP CODE
+                    </p>
+                    <p style="margin: 0; font-size: 48px; font-weight: 700; color: #EF4444; letter-spacing: 12px; font-family: monospace;">
+                        {otp_code}
+                    </p>
+                    <p style="margin: 8px 0 0; font-size: 12px; color: #9ca3af;">
+                        IP Address: <code style="color: #EF4444;">{ip_address}</code>
+                    </p>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="margin: 24px 0 0; font-size: 14px; color: #EF4444; text-align: center; font-weight: 600;">
+            ⏰ This code expires in <strong>5 minutes</strong>
+        </p>
+        
+        <!-- Security Warning -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
+            <tr>
+                <td style="padding: 16px; background-color: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+                        <strong style="color: #EF4444;">⚠️ Security Alert:</strong> If you didn't attempt to log into the admin panel, please contact the security team immediately. This may indicate unauthorized access attempts.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    '''
+    return get_base_template(content, f"Admin OTP: {otp_code} - Secure Login Verification")
+
+
 def login_new_device(
     name: str,
     device: str,
