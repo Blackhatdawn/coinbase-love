@@ -7,6 +7,35 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } f
 import { create } from 'zustand';
 import { resolveApiBaseUrl } from '@/lib/runtimeConfig';
 
+// Import strictly typed interfaces from backend Pydantic models
+import type {
+  SignupRequest,
+  LoginRequest,
+  LoginResponse,
+  User,
+  WalletBalance,
+  DepositRequest,
+  DepositResponse,
+  Deposit,
+  WithdrawRequest,
+  WithdrawResponse,
+  Withdrawal,
+  TransferRequest,
+  TransferResponse,
+  Transfer,
+  OrderCreate,
+  Order,
+  OrderResponse,
+  AdvancedOrderCreate,
+  Portfolio,
+  AddHoldingRequest,
+  Transaction,
+  PaginatedDeposits,
+  PaginatedWithdrawals,
+  PaginatedTransfers,
+  PaginatedOrders,
+} from '@/types/api';
+
 // Get base URL from environment or use proxy in development
 const resolveBaseUrl = () => resolveApiBaseUrl();
 const BASE_URL = resolveBaseUrl();
