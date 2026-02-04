@@ -39,7 +39,7 @@ If you're not sure your chat ID is correct:
 1. Search for `@userinfobot` in Telegram
 2. Start conversation
 3. It will reply with your user ID
-4. Verify it matches: 5639295577
+4. Verify it matches: 5639295577 (Device 1) or 7279310150 (Device 2)
 
 **Method 2: Use Your Bot**
 1. Start conversation with `@Cryptovault_systembot`
