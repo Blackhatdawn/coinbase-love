@@ -233,22 +233,22 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
     
     def _log_configuration(self) -> None:
         """Log CORS configuration for debugging."""
-        logger.info(\"=\"*70)
-        logger.info(\"🌐 ENHANCED CORS MIDDLEWARE CONFIGURATION\")
-        logger.info(\"=\"*70)
-        logger.info(f\"Environment: {self.environment}\")
-        logger.info(f\"Allow Credentials: {self.allow_credentials}\")
-        logger.info(f\"Allowed Origins: {len(self.allowed_origins)} configured\")
+        logger.info("="*70)
+        logger.info("🌐 ENHANCED CORS MIDDLEWARE CONFIGURATION")
+        logger.info("="*70)
+        logger.info(f"Environment: {self.environment}")
+        logger.info(f"Allow Credentials: {self.allow_credentials}")
+        logger.info(f"Allowed Origins: {len(self.allowed_origins)} configured")
         
         if self.allowed_origins:
             for i, origin in enumerate(self.allowed_origins[:5], 1):  # Show first 5
-                logger.info(f\"  {i}. {origin}\")
+                logger.info(f"  {i}. {origin}")
             if len(self.allowed_origins) > 5:
-                logger.info(f\"  ... and {len(self.allowed_origins) - 5} more\")
+                logger.info(f"  ... and {len(self.allowed_origins) - 5} more")
         
-        logger.info(f\"Allowed Methods: {', '.join(self.allow_methods)}\")
-        logger.info(f\"Max Age: {self.max_age}s\")
-        logger.info(\"=\"*70)
+        logger.info(f"Allowed Methods: {', '.join(self.allow_methods)}")
+        logger.info(f"Max Age: {self.max_age}s")
+        logger.info("="*70)
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -269,7 +269,7 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
         5. Log for debugging
         """
         # Get origin from request
-        origin = request.headers.get(\"origin\")
+        origin = request.headers.get("origin")
         
         # If no origin header, it's not a CORS request (same-origin)
         if not origin:
@@ -284,7 +284,7 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
         )
         
         # Handle preflight request (OPTIONS)
-        if request.method == \"OPTIONS\":
+        if request.method == "OPTIONS":
             return self._handle_preflight(request, origin, is_allowed)
         
         # Process actual request
@@ -297,7 +297,7 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
             # Origin not allowed - log security event
             if self.enable_logging:
                 logger.warning(
-                    f\"⛔ CORS BLOCKED: {request.method} {request.url.path} \"\n                    f\"from origin: {origin}. \"\n                    f\"Environment: {self.environment}\"\n                )
+                    f"⛔ CORS BLOCKED: {request.method} {request.url.path} "\n                    f"from origin: {origin}. "\n                    f"Environment: {self.environment}"\n                )
         
         return response
     
@@ -325,22 +325,22 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
             # Return 403 for rejected preflight
             if self.enable_logging:
                 logger.warning(
-                    f\"⛔ PREFLIGHT REJECTED: {request.url.path} \"\n                    f\"from origin: {origin}\"\n                )
-            return Response(\n                content=\"CORS origin not allowed\",\n                status_code=403,\n                media_type=\"text/plain\"\n            )
+                    f"⛔ PREFLIGHT REJECTED: {request.url.path} "\n                    f"from origin: {origin}"\n                )
+            return Response(\n                content="CORS origin not allowed",\n                status_code=403,\n                media_type="text/plain"\n            )
         
         # Create preflight response
-        response = Response(\n            content=\"\",\n            status_code=200,\n            media_type=\"text/plain\"\n        )
+        response = Response(\n            content="",\n            status_code=200,\n            media_type="text/plain"\n        )
         
         # Add CORS headers
         self._add_cors_headers(response, origin, is_preflight=True)
         
         # Add preflight-specific headers
-        response.headers[\"Access-Control-Allow-Methods\"] = \", \".join(self.allow_methods)
-        response.headers[\"Access-Control-Allow-Headers\"] = \", \".join(self.allow_headers)
-        response.headers[\"Access-Control-Max-Age\"] = str(self.max_age)
+        response.headers["Access-Control-Allow-Methods"] = ", ".join(self.allow_methods)
+        response.headers["Access-Control-Allow-Headers"] = ", ".join(self.allow_headers)
+        response.headers["Access-Control-Max-Age"] = str(self.max_age)
         
         if self.enable_logging:
-            logger.debug(f\"✅ PREFLIGHT ALLOWED: {request.url.path} from {origin}\")
+            logger.debug(f"✅ PREFLIGHT ALLOWED: {request.url.path} from {origin}")
         
         return response
     
@@ -363,15 +363,15 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
         - Access-Control-Allow-Credentials: If credentials enabled
         - Access-Control-Expose-Headers: Exposed headers
         """
-        # Set allowed origin (specific, not wildcard)\n        response.headers[\"Access-Control-Allow-Origin\"] = origin
+        # Set allowed origin (specific, not wildcard)\n        response.headers["Access-Control-Allow-Origin"] = origin
         
         # Set credentials header\n        if self.allow_credentials:
-            response.headers[\"Access-Control-Allow-Credentials\"] = \"true\"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
         
         # Set exposed headers\n        if self.expose_headers:
-            response.headers[\"Access-Control-Expose-Headers\"] = \", \".join(self.expose_headers)
+            response.headers["Access-Control-Expose-Headers"] = ", ".join(self.expose_headers)
         
-        # Vary header for caching\n        response.headers[\"Vary\"] = \"Origin\"
+        # Vary header for caching\n        response.headers["Vary"] = "Origin"
 
 
 # ============================================
@@ -391,8 +391,8 @@ class CORSMiddlewareFactory:
         >>> factory = CORSMiddlewareFactory()
         >>> middleware = factory.create(
         ...     app=app,
-        ...     environment=\"production\",
-        ...     allowed_origins=[\"https://app.example.com\"]
+        ...     environment="production",
+        ...     allowed_origins=["https://app.example.com"]
         ... )
     """
     
@@ -420,19 +420,19 @@ class CORSMiddlewareFactory:
         Example:
             >>> middleware = CORSMiddlewareFactory.create(
             ...     app=app,
-            ...     environment=\"production\",
-            ...     allowed_origins=[\"https://app.example.com\"]
+            ...     environment="production",
+            ...     allowed_origins=["https://app.example.com"]
             ... )
         """
         # Validate environment
-        if environment not in [\"development\", \"staging\", \"production\"]:
+        if environment not in ["development", "staging", "production"]:
             logger.warning(
-                f\"⚠️ Unknown environment '{environment}', defaulting to development\"\n            )
-            environment = \"development\"
+                f"⚠️ Unknown environment '{environment}', defaulting to development"\n            )
+            environment = "development"
         
         # Get origins (use provided or auto-detect)\n        if allowed_origins is None:
             logger.warning(
-                \"⚠️ No CORS origins provided. Using environment defaults. \"\n                \"For production, explicitly set CORS_ORIGINS.\"\n            )
+                "⚠️ No CORS origins provided. Using environment defaults. "\n                "For production, explicitly set CORS_ORIGINS."\n            )
             # This should be resolved by config_enhanced.py CORSResolver
             allowed_origins = []
         
@@ -442,10 +442,10 @@ class CORSMiddlewareFactory:
                 allowed_origins=allowed_origins,
                 allow_credentials=allow_credentials,
                 environment=environment,
-                enable_logging=environment != \"production\",  # Reduce logs in prod
+                enable_logging=environment != "production",  # Reduce logs in prod
             )
         
-        # Fallback: Use standard FastAPI CORSMiddleware\n        logger.info(\"Using standard FastAPI CORSMiddleware\")
+        # Fallback: Use standard FastAPI CORSMiddleware\n        logger.info("Using standard FastAPI CORSMiddleware")
         return None  # Caller should add standard middleware
 
 
@@ -475,8 +475,8 @@ def add_enhanced_cors_middleware(
         >>> app = FastAPI()
         >>> add_enhanced_cors_middleware(
         ...     app=app,
-        ...     environment=\"production\",
-        ...     allowed_origins=[\"https://app.example.com\"]
+        ...     environment="production",
+        ...     allowed_origins=["https://app.example.com"]
         ... )
     """
     app.add_middleware(
@@ -484,7 +484,7 @@ def add_enhanced_cors_middleware(
         allowed_origins=allowed_origins,
         allow_credentials=allow_credentials,
         environment=environment,
-        enable_logging=environment != \"production\"
+        enable_logging=environment != "production"
     )
     
-    logger.info(f\"✅ Enhanced CORS middleware added for {environment} environment\")
+    logger.info(f"✅ Enhanced CORS middleware added for {environment} environment")
