@@ -297,7 +297,7 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
             # Origin not allowed - log security event
             if self.enable_logging:
                 logger.warning(
-                    f"⛔ CORS BLOCKED: {request.method} {request.url.path} "\n                    f"from origin: {origin}. "\n                    f"Environment: {self.environment}"\n                )
+                    f"⛔ CORS BLOCKED: {request.method} {request.url.path} "                     f"from origin: {origin}. "                     f"Environment: {self.environment}"                 )
         
         return response
     
@@ -325,11 +325,11 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
             # Return 403 for rejected preflight
             if self.enable_logging:
                 logger.warning(
-                    f"⛔ PREFLIGHT REJECTED: {request.url.path} "\n                    f"from origin: {origin}"\n                )
-            return Response(\n                content="CORS origin not allowed",\n                status_code=403,\n                media_type="text/plain"\n            )
+                    f"⛔ PREFLIGHT REJECTED: {request.url.path} "                     f"from origin: {origin}"                 )
+            return Response(                 content="CORS origin not allowed",                 status_code=403,                 media_type="text/plain"             )
         
         # Create preflight response
-        response = Response(\n            content="",\n            status_code=200,\n            media_type="text/plain"\n        )
+        response = Response(             content="",             status_code=200,             media_type="text/plain"         )
         
         # Add CORS headers
         self._add_cors_headers(response, origin, is_preflight=True)
@@ -363,15 +363,15 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
         - Access-Control-Allow-Credentials: If credentials enabled
         - Access-Control-Expose-Headers: Exposed headers
         """
-        # Set allowed origin (specific, not wildcard)\n        response.headers["Access-Control-Allow-Origin"] = origin
+        # Set allowed origin (specific, not wildcard)         response.headers["Access-Control-Allow-Origin"] = origin
         
-        # Set credentials header\n        if self.allow_credentials:
+        # Set credentials header         if self.allow_credentials:
             response.headers["Access-Control-Allow-Credentials"] = "true"
         
-        # Set exposed headers\n        if self.expose_headers:
+        # Set exposed headers         if self.expose_headers:
             response.headers["Access-Control-Expose-Headers"] = ", ".join(self.expose_headers)
         
-        # Vary header for caching\n        response.headers["Vary"] = "Origin"
+        # Vary header for caching         response.headers["Vary"] = "Origin"
 
 
 # ============================================
@@ -427,16 +427,16 @@ class CORSMiddlewareFactory:
         # Validate environment
         if environment not in ["development", "staging", "production"]:
             logger.warning(
-                f"⚠️ Unknown environment '{environment}', defaulting to development"\n            )
+                f"⚠️ Unknown environment '{environment}', defaulting to development"             )
             environment = "development"
         
-        # Get origins (use provided or auto-detect)\n        if allowed_origins is None:
+        # Get origins (use provided or auto-detect)         if allowed_origins is None:
             logger.warning(
-                "⚠️ No CORS origins provided. Using environment defaults. "\n                "For production, explicitly set CORS_ORIGINS."\n            )
+                "⚠️ No CORS origins provided. Using environment defaults. "                 "For production, explicitly set CORS_ORIGINS."             )
             # This should be resolved by config_enhanced.py CORSResolver
             allowed_origins = []
         
-        # Create enhanced middleware\n        if enable_enhanced:
+        # Create enhanced middleware         if enable_enhanced:
             return EnhancedCORSMiddleware(
                 app=app,
                 allowed_origins=allowed_origins,
@@ -445,7 +445,7 @@ class CORSMiddlewareFactory:
                 enable_logging=environment != "production",  # Reduce logs in prod
             )
         
-        # Fallback: Use standard FastAPI CORSMiddleware\n        logger.info("Using standard FastAPI CORSMiddleware")
+        # Fallback: Use standard FastAPI CORSMiddleware         logger.info("Using standard FastAPI CORSMiddleware")
         return None  # Caller should add standard middleware
 
 
