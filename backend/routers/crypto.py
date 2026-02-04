@@ -23,6 +23,21 @@ async def get_all_cryptocurrencies():
         raise HTTPException(status_code=500, detail="Failed to fetch cryptocurrency prices")
 
 
+@router.get("/trading-pairs")
+async def get_trading_pairs():
+    """
+    Get available trading pairs for the exchange.
+    Returns common crypto pairs against USD.
+    """
+    # Return standard trading pairs based on available cryptocurrencies
+    pairs = [
+        "BTC/USD", "ETH/USD", "BNB/USD", "XRP/USD", "ADA/USD",
+        "SOL/USD", "DOT/USD", "DOGE/USD", "MATIC/USD", "LTC/USD",
+        "AVAX/USD", "LINK/USD", "UNI/USD", "ATOM/USD", "XLM/USD"
+    ]
+    return {"pairs": pairs}
+
+
 @router.get("/{coin_id}")
 async def get_cryptocurrency(coin_id: str):
     """
@@ -58,18 +73,4 @@ async def get_price_history(coin_id: str, days: int = 7):
         logger.error(f"❌ Error fetching history for {coin_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch price history")
 
-
-@router.get("/trading-pairs")
-async def get_trading_pairs():
-    """
-    Get available trading pairs for the exchange.
-    Returns common crypto pairs against USD.
-    """
-    # Return standard trading pairs based on available cryptocurrencies
-    pairs = [
-        "BTC/USD", "ETH/USD", "BNB/USD", "XRP/USD", "ADA/USD",
-        "SOL/USD", "DOT/USD", "DOGE/USD", "MATIC/USD", "LTC/USD",
-        "AVAX/USD", "LINK/USD", "UNI/USD", "ATOM/USD", "XLM/USD"
-    ]
-    return {"pairs": pairs}
 
