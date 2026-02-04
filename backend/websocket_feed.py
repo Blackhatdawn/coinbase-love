@@ -173,23 +173,28 @@ class PriceFeedManager:
             return {}
         except httpx.ConnectError as e:
             error_str = str(e)
-            # DNS or connection errors - try fallback
+            # DNS or connection errors - use mock prices as fallback
             if "Name or service not known" in error_str or "getaddrinfo failed" in error_str:
                 logger.warning(
                     "🌐 DNS resolution failed for CoinCap API. "
-                    "ACTION: Check network connectivity and DNS settings. "
-                    "If on Render, ensure outbound network access is enabled. "
-                    "Falling back to cached/mock data."
+                    "Using mock prices for real-time updates. "
+                    "Check DNS configuration to restore live prices."
                 )
+                # Fallback to mock prices
+                from services.mock_prices import mock_price_service
+                return mock_price_service.get_prices()
             elif "Connection refused" in error_str:
                 logger.warning(
                     "🔌 Connection refused by CoinCap API. "
-                    "ACTION: CoinCap may be blocking this IP or experiencing issues"
+                    "Using mock prices. Check firewall or CoinCap status."
                 )
+                from services.mock_prices import mock_price_service
+                return mock_price_service.get_prices()
             else:
-                logger.warning(f"🔌 Connection error: {e}")
+                logger.warning(f"🔌 Connection error: {e}. Using mock prices.")
+                from services.mock_prices import mock_price_service
+                return mock_price_service.get_prices()
             self.consecutive_errors += 1
-            return {}
         except Exception as e:
             logger.error(
                 f"❌ Price fetch error: {e}. "
