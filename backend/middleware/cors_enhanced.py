@@ -363,15 +363,19 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
         - Access-Control-Allow-Credentials: If credentials enabled
         - Access-Control-Expose-Headers: Exposed headers
         """
-        # Set allowed origin (specific, not wildcard)         response.headers["Access-Control-Allow-Origin"] = origin
+        # Set allowed origin (specific, not wildcard)
+        response.headers["Access-Control-Allow-Origin"] = origin
         
-        # Set credentials header         if self.allow_credentials:
+        # Set credentials header
+        if self.allow_credentials:
             response.headers["Access-Control-Allow-Credentials"] = "true"
         
-        # Set exposed headers         if self.expose_headers:
+        # Set exposed headers
+        if self.expose_headers:
             response.headers["Access-Control-Expose-Headers"] = ", ".join(self.expose_headers)
         
-        # Vary header for caching         response.headers["Vary"] = "Origin"
+        # Vary header for caching
+        response.headers["Vary"] = "Origin"
 
 
 # ============================================
