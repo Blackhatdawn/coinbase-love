@@ -23,6 +23,36 @@ class User(BaseModel):
     last_login: Optional[datetime] = None
     failed_login_attempts: int = 0
     locked_until: Optional[datetime] = None
+    
+    # KYC Fields (Phase 1 - Manual KYC System)
+    kyc_status: str = "pending"  # pending, approved, rejected
+    kyc_tier: int = 0  # 0 = unverified, 1 = basic, 2 = advanced
+    kyc_submitted_at: Optional[datetime] = None
+    kyc_approved_at: Optional[datetime] = None
+    kyc_rejected_at: Optional[datetime] = None
+    kyc_rejection_reason: Optional[str] = None
+    
+    # Personal Information (collected during signup)
+    full_name: Optional[str] = None
+    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
+    phone_number: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    occupation: Optional[str] = None
+    
+    # KYC Documents (GridFS file IDs)
+    kyc_docs: List[dict] = Field(default_factory=list)  # [{"type": "id_front", "file_id": "..."}]
+    
+    # Fraud Detection Data
+    signup_ip: Optional[str] = None
+    signup_is_proxied: bool = False
+    signup_device_fingerprint: Optional[str] = None
+    signup_user_agent: Optional[str] = None
+    signup_screen_info: Optional[dict] = None
+    fraud_risk_score: int = 0  # 0-100
+    fraud_risk_level: str = "low"  # low, medium, high
 
 
 class UserCreate(BaseModel):
