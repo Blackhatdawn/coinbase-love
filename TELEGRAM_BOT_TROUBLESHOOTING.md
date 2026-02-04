@@ -181,7 +181,7 @@ tail -f /var/log/supervisor/backend.*.log | grep -i telegram
 - [ ] Clicked START button
 - [ ] Received test messages (2 messages sent)
 - [ ] Can send messages to bot (bot responds or acknowledges)
-- [ ] Verified Chat ID: 5639295577
+- [ ] Verified Chat ID: 5639295577 (Device 1) or 7279310150 (Device 2)
 
 ---
 
