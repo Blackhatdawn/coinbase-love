@@ -31,6 +31,23 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================
+# UTILITY FUNCTIONS
+# ============================================
+
+def get_version_from_file() -> str:
+    """
+    Reads the version from the VERSION file.
+    
+    Returns:
+        str: Application version or "0.0.0" if file not found
+    """
+    try:
+        return (Path(__file__).parent.parent / "VERSION").read_text().strip()
+    except FileNotFoundError:
+        return "0.0.0"
+
+
+# ============================================
 # DEPLOYMENT PLATFORM DETECTION
 # ============================================
 
