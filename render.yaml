@@ -1,0 +1,141 @@
+# Render.com Deployment Configuration
+# This file configures the CryptoVault backend for Render Web Service deployment
+
+services:
+  # Backend API Service
+  - type: web
+    name: cryptovault-backend
+    runtime: python
+    plan: starter  # Can upgrade to standard/pro for more resources
+    region: oregon  # Choose closest to your users: oregon, frankfurt, singapore
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 2
+    envVars:
+      # Application
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_VERSION
+        value: v1
+      
+      # Database (MongoDB Atlas)
+      - key: MONGO_URL
+        sync: false  # Set as secret in Render dashboard
+      - key: DB_NAME
+        value: cryptovault
+      - key: MONGO_MAX_POOL_SIZE
+        value: 10
+      - key: MONGO_TIMEOUT_MS
+        value: 5000
+      
+      # Authentication
+      - key: JWT_SECRET
+        sync: false  # Set as secret
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: CSRF_SECRET
+        sync: false  # Set as secret
+      
+      # CORS & URLs
+      - key: CORS_ORIGINS
+        value: '["https://www.cryptovault.financial","https://cryptovault.financial","http://localhost:3000"]'
+      - key: USE_CROSS_SITE_COOKIES
+        value: true
+      - key: APP_URL
+        value: https://www.cryptovault.financial
+      - key: PUBLIC_API_URL
+        fromService:
+          name: cryptovault-backend
+          type: web
+          property: host
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 60
+      - key: COINCAP_RATE_LIMIT
+        value: 50
+      
+      # Email (SendGrid)
+      - key: EMAIL_SERVICE
+        value: sendgrid
+      - key: EMAIL_FROM
+        value: team@cryptovault.financial
+      - key: EMAIL_FROM_NAME
+        value: CryptoVault Financial
+      - key: SENDGRID_API_KEY
+        sync: false  # Set as secret
+      
+      # Telegram Bot
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false  # Set as secret
+      - key: ADMIN_TELEGRAM_CHAT_ID
+        sync: false  # Set as secret
+      
+      # External APIs
+      - key: COINCAP_API_KEY
+        sync: false  # Set as secret
+      
+      # Payments (NOWPayments)
+      - key: NOWPAYMENTS_API_KEY
+        sync: false  # Set as secret
+      - key: NOWPAYMENTS_IPN_SECRET
+        sync: false  # Set as secret
+      - key: NOWPAYMENTS_SANDBOX
+        value: false
+      
+      # Cache (Upstash Redis)
+      - key: USE_REDIS
+        value: true
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false  # Set as secret
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false  # Set as secret
+      
+      # Monitoring (Sentry)
+      - key: SENTRY_DSN
+        sync: false  # Set as secret
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: 0.1
+      - key: SENTRY_PROFILES_SAMPLE_RATE
+        value: 0.1
+      
+      # Feature Flags
+      - key: USE_MOCK_PRICES
+        value: false
+    
+    # Health check endpoint
+    healthCheckPath: /api/health
+    
+    # Auto-deploy on push to main branch
+    autoDeploy: true
+    
+    # Disk storage (optional, for logs/temp files)
+    disk:
+      name: cryptovault-disk
+      mountPath: /app/data
+      sizeGB: 1
+
+# Frontend Static Site (Optional - if deploying frontend to Render)
+# Uncomment if you want to deploy frontend alongside backend
+#  - type: web
+#    name: cryptovault-frontend
+#    runtime: static
+#    buildCommand: cd frontend && yarn install && yarn build
+#    staticPublishPath: frontend/dist
+#    envVars:
+#      - key: VITE_API_BASE_URL
+#        fromService:
+#          name: cryptovault-backend
+#          type: web
+#          property: host
+#    routes:
+#      - type: rewrite
+#        source: /*
+#        destination: /index.html
