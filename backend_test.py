@@ -42,8 +42,22 @@ class CryptoVaultAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        self.csrf_token = None  # Store CSRF token
         
         print(f"🔗 Testing backend at: {self.base_url}")
+
+    def get_csrf_token(self):
+        """Get CSRF token for authenticated requests"""
+        if not self.csrf_token:
+            try:
+                response = self.session.get(f"{self.api_base}/csrf", timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    self.csrf_token = data.get('csrf_token')
+                    print(f"🔐 CSRF token obtained: {self.csrf_token[:16]}...")
+            except Exception as e:
+                print(f"⚠️ Failed to get CSRF token: {e}")
+        return self.csrf_token
 
     def log_test(self, name: str, success: bool, details: str = "", response_data: Any = None):
         """Log test result"""
