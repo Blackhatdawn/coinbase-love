@@ -7,15 +7,28 @@ from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, status, Request
 from fastapi.responses import StreamingResponse
 
-from auth import get_current_user
+from dependencies import get_current_user_id, get_db
 from database import get_database
-from dependencies import get_db
 from services.gridfs_storage import GridFSStorageService
 from services.telegram_bot import telegram_bot
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/files", tags=["Files"])
+
+
+# Allowed file types and sizes
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.pdf', '.webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+async def get_current_user(user_id: str = Depends(get_current_user_id)) -> dict:
+    """Get current user from database"""
+    db = get_db()
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 # Allowed file types and sizes
