@@ -42,11 +42,12 @@ class AdvancedTradingTester:
         """Get CSRF token for authenticated requests"""
         if not self.csrf_token:
             try:
+                # Get CSRF token and let session handle cookies automatically
                 response = self.session.get(f"{self.api_base}/csrf", timeout=10)
                 if response.status_code == 200:
                     data = response.json()
                     self.csrf_token = data.get('csrf_token')
-                    print(f"🔐 CSRF token obtained")
+                    print(f"🔐 CSRF token obtained and cookies set")
                     return True
             except Exception as e:
                 print(f"⚠️ Failed to get CSRF token: {e}")
