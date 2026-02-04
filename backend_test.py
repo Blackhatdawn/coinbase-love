@@ -1757,6 +1757,10 @@ class CryptoVaultAPITester:
         # Version sync tests (NEW)
         self.test_version_sync_endpoints()
         
+        # 🆕 ADVANCED TRADING TESTS (NEW)
+        self.test_advanced_trading_features()
+        self.test_advanced_trading_error_handling()
+        
         # Admin-specific tests
         self.test_admin_protected_endpoints()
         self.test_admin_authentication_flows()
