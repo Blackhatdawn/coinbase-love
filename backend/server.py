@@ -23,7 +23,7 @@ from config import settings, validate_startup_environment, get_settings
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, deep_investigation
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, deep_investigation, files
 
 # Services
 from websocket_feed import price_feed
