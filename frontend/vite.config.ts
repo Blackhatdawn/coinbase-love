@@ -1,7 +1,6 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // ============================================
 // VITE CONFIGURATION - CryptoVault Frontend
@@ -157,9 +156,14 @@ export default defineConfig(({ mode }) => ({
   // ============================================
   server: {
     port: 3000,
-    host: '0.0.0.0',
-    allowedHosts: true,
-    
+    // Bind dev server only to localhost to avoid remote access (mitigates esbuild dev-server CORS issue)
+    host: '127.0.0.1',
+    strictPort: true,
+    // Only allow same-host requests; disable broad allowed hosts
+    allowedHosts: false,
+    // Disable automatic CORS headers in dev server to prevent cross-origin reads
+    cors: false,
+
     // Enable HTTP/2 in development
     // http2: true, // Uncomment if using HTTPS locally
     
@@ -208,6 +212,7 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+
   
   // ============================================
   // PLUGINS
@@ -258,7 +263,10 @@ export default defineConfig(({ mode }) => ({
   // ============================================
   preview: {
     port: 4173,
-    host: '0.0.0.0',
+    // Preview should be bound to localhost for local testing only
+    host: '127.0.0.1',
+    strictPort: true,
+    cors: false,
   },
   
   // ============================================
