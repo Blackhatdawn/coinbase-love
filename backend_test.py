@@ -1504,6 +1504,246 @@ class CryptoVaultAPITester:
         else:
             self.log_test("Deployment Info Endpoint - GET /api/version/deployment", False, f"Failed: {data}")
 
+    def test_advanced_trading_features(self):
+        """Test Advanced Trading features - Trading pairs, advanced orders, order management"""
+        print("\n🎯 Testing Advanced Trading Features...")
+        
+        # Test 1: Trading Pairs Endpoint - GET /api/crypto/trading-pairs
+        success, data = self.make_request('GET', '/crypto/trading-pairs')
+        if success and 'pairs' in data:
+            pairs = data.get('pairs', [])
+            if len(pairs) > 0 and 'BTC/USD' in pairs and 'ETH/USD' in pairs:
+                self.log_test("Trading Pairs Endpoint - GET /api/crypto/trading-pairs", True, 
+                            f"Retrieved {len(pairs)} trading pairs including BTC/USD, ETH/USD")
+            else:
+                self.log_test("Trading Pairs Endpoint - GET /api/crypto/trading-pairs", False, 
+                            f"Missing expected pairs. Got: {pairs[:5]}")
+        else:
+            self.log_test("Trading Pairs Endpoint - GET /api/crypto/trading-pairs", False, f"Failed: {data}")
+        
+        # Test 2: Create authenticated user for order testing
+        test_email = f"advtrading_{datetime.now().strftime('%Y%m%d_%H%M%S')}@example.com"
+        signup_data = {
+            "email": test_email,
+            "name": "Advanced Trading Test User",
+            "password": "AdvTrading123!"
+        }
+        
+        success, signup_response = self.make_request('POST', '/auth/signup', signup_data)
+        if success and 'user' in signup_response:
+            user_id = signup_response['user']['id']
+            
+            # Login to get authenticated session
+            login_data = {
+                "email": test_email,
+                "password": "AdvTrading123!"
+            }
+            
+            success, login_response = self.make_request('POST', '/auth/login', login_data)
+            if success and 'user' in login_response:
+                self.log_test("Advanced Trading User Setup", True, "Test user created and logged in")
+                
+                # Test 3: Get User Orders (should be empty initially) - GET /api/orders
+                success, data = self.make_request('GET', '/orders')
+                if success and 'orders' in data:
+                    orders = data.get('orders', [])
+                    self.log_test("Get User Orders - GET /api/orders", True, 
+                                f"Retrieved {len(orders)} orders (expected 0 for new user)")
+                else:
+                    self.log_test("Get User Orders - GET /api/orders", False, f"Failed: {data}")
+                
+                # Test 4: Create Advanced Orders - POST /api/orders/advanced
+                self.test_advanced_order_creation()
+                
+                # Test 5: Order Cancellation - DELETE /api/orders/{order_id}
+                self.test_order_cancellation()
+                
+            else:
+                # Handle email verification requirement
+                if "verify" in str(login_response).lower():
+                    self.log_test("Advanced Trading User Setup", True, 
+                                "User created but email verification required (expected)")
+                    # Skip order tests since we can't authenticate
+                    self.log_test("Advanced Orders Testing", False, 
+                                "Skipped - email verification required for new accounts")
+                else:
+                    self.log_test("Advanced Trading User Setup", False, f"Login failed: {login_response}")
+        else:
+            self.log_test("Advanced Trading User Setup", False, f"Signup failed: {signup_response}")
+
+    def test_advanced_order_creation(self):
+        """Test creation of different advanced order types"""
+        print("\n📋 Testing Advanced Order Creation...")
+        
+        # Test Stop-Loss Order
+        stop_loss_data = {
+            "trading_pair": "BTC/USD",
+            "order_type": "stop_loss",
+            "side": "sell",
+            "amount": 0.001,
+            "stop_price": 45000.0,
+            "time_in_force": "GTC"
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', stop_loss_data)
+        if success and 'order' in data:
+            order_id = data['order']['id']
+            self.log_test("Advanced Order - Stop-Loss Creation", True, 
+                        f"Stop-loss order created: {order_id[:8]}...")
+            
+            # Store order ID for cancellation test
+            if not hasattr(self, 'test_order_ids'):
+                self.test_order_ids = []
+            self.test_order_ids.append(order_id)
+        else:
+            self.log_test("Advanced Order - Stop-Loss Creation", False, f"Failed: {data}")
+        
+        # Test Take-Profit Order
+        take_profit_data = {
+            "trading_pair": "ETH/USD",
+            "order_type": "take_profit",
+            "side": "sell",
+            "amount": 0.01,
+            "stop_price": 3500.0,
+            "time_in_force": "GTC"
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', take_profit_data)
+        if success and 'order' in data:
+            order_id = data['order']['id']
+            self.log_test("Advanced Order - Take-Profit Creation", True, 
+                        f"Take-profit order created: {order_id[:8]}...")
+            
+            if not hasattr(self, 'test_order_ids'):
+                self.test_order_ids = []
+            self.test_order_ids.append(order_id)
+        else:
+            self.log_test("Advanced Order - Take-Profit Creation", False, f"Failed: {data}")
+        
+        # Test Stop-Limit Order
+        stop_limit_data = {
+            "trading_pair": "BTC/USD",
+            "order_type": "stop_limit",
+            "side": "buy",
+            "amount": 0.001,
+            "price": 48000.0,  # Limit price
+            "stop_price": 47000.0,  # Stop price
+            "time_in_force": "GTC"
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', stop_limit_data)
+        if success and 'order' in data:
+            order_id = data['order']['id']
+            self.log_test("Advanced Order - Stop-Limit Creation", True, 
+                        f"Stop-limit order created: {order_id[:8]}...")
+            
+            if not hasattr(self, 'test_order_ids'):
+                self.test_order_ids = []
+            self.test_order_ids.append(order_id)
+        else:
+            self.log_test("Advanced Order - Stop-Limit Creation", False, f"Failed: {data}")
+        
+        # Test Market Order (should route to regular endpoint)
+        market_data = {
+            "trading_pair": "BTC/USD",
+            "order_type": "market",
+            "side": "buy",
+            "amount": 0.001,
+            "price": 50000.0,  # Current market price
+            "time_in_force": "IOC"
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', market_data)
+        if success and ('order' in data or 'message' in data):
+            self.log_test("Advanced Order - Market Order Routing", True, 
+                        "Market order processed (routed to regular endpoint)")
+        else:
+            self.log_test("Advanced Order - Market Order Routing", False, f"Failed: {data}")
+
+    def test_order_cancellation(self):
+        """Test order cancellation functionality"""
+        print("\n❌ Testing Order Cancellation...")
+        
+        # Check if we have test orders to cancel
+        if hasattr(self, 'test_order_ids') and self.test_order_ids:
+            for order_id in self.test_order_ids:
+                success, data = self.make_request('DELETE', f'/orders/{order_id}')
+                if success and 'message' in data:
+                    self.log_test(f"Order Cancellation - {order_id[:8]}...", True, 
+                                f"Order cancelled: {data.get('message', 'Success')}")
+                else:
+                    self.log_test(f"Order Cancellation - {order_id[:8]}...", False, f"Failed: {data}")
+        else:
+            # Create a test order specifically for cancellation
+            test_order_data = {
+                "trading_pair": "BTC/USD",
+                "order_type": "stop_loss",
+                "side": "sell",
+                "amount": 0.001,
+                "stop_price": 40000.0,
+                "time_in_force": "GTC"
+            }
+            
+            success, data = self.make_request('POST', '/orders/advanced', test_order_data)
+            if success and 'order' in data:
+                order_id = data['order']['id']
+                
+                # Now cancel it
+                success, cancel_data = self.make_request('DELETE', f'/orders/{order_id}')
+                if success and 'message' in cancel_data:
+                    self.log_test("Order Cancellation Test", True, 
+                                f"Test order created and cancelled successfully")
+                else:
+                    self.log_test("Order Cancellation Test", False, f"Failed to cancel: {cancel_data}")
+            else:
+                self.log_test("Order Cancellation Test", False, "Could not create test order for cancellation")
+
+    def test_advanced_trading_error_handling(self):
+        """Test error handling for advanced trading endpoints"""
+        print("\n⚠️ Testing Advanced Trading Error Handling...")
+        
+        # Test invalid order type
+        invalid_order_data = {
+            "trading_pair": "BTC/USD",
+            "order_type": "invalid_type",
+            "side": "buy",
+            "amount": 0.001,
+            "stop_price": 50000.0
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', invalid_order_data, expected_status=400)
+        if success or "invalid" in str(data).lower():
+            self.log_test("Advanced Trading - Invalid Order Type Validation", True, 
+                        "Invalid order type correctly rejected")
+        else:
+            self.log_test("Advanced Trading - Invalid Order Type Validation", False, 
+                        f"Should reject invalid order type: {data}")
+        
+        # Test missing required fields
+        incomplete_order_data = {
+            "trading_pair": "BTC/USD",
+            "order_type": "stop_loss",
+            "side": "sell"
+            # Missing amount and stop_price
+        }
+        
+        success, data = self.make_request('POST', '/orders/advanced', incomplete_order_data, expected_status=422)
+        if success or "required" in str(data).lower() or "validation" in str(data).lower():
+            self.log_test("Advanced Trading - Missing Fields Validation", True, 
+                        "Missing required fields correctly rejected")
+        else:
+            self.log_test("Advanced Trading - Missing Fields Validation", False, 
+                        f"Should reject incomplete data: {data}")
+        
+        # Test cancelling non-existent order
+        fake_order_id = "00000000-0000-0000-0000-000000000000"
+        success, data = self.make_request('DELETE', f'/orders/{fake_order_id}', expected_status=404)
+        if success or "not found" in str(data).lower():
+            self.log_test("Advanced Trading - Cancel Non-existent Order", True, 
+                        "Non-existent order cancellation correctly handled")
+        else:
+            self.log_test("Advanced Trading - Cancel Non-existent Order", False, 
+                        f"Should return 404 for non-existent order: {data}")
     def run_all_tests(self):
         """Run comprehensive test suite for CryptoVault Admin Dashboard Testing"""
         print("="*70)
