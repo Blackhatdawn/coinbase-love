@@ -226,7 +226,7 @@ class Settings(BaseSettings):
     )
     admin_telegram_chat_id: Optional[str] = Field(
         default=None,
-        description="Telegram chat ID for admin notifications"
+        description="Telegram chat ID(s) for admin notifications (comma-separated for multiple devices)"
     )
 
     # ============================================
