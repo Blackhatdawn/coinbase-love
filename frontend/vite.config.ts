@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
@@ -222,7 +222,6 @@ export default defineConfig(({ mode }) => ({
       // Use SWC for faster builds
       jsxImportSource: undefined,
     }),
-    mode === "development" && componentTagger(),
     // Split vendor chunks automatically
     splitVendorChunkPlugin(),
   ].filter(Boolean),
