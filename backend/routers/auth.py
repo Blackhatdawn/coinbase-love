@@ -113,7 +113,7 @@ async def signup(
     request: Request,
     db = Depends(get_db)
 ):
-    """Register a new user with email verification."""
+    """Create a new user account with KYC data collection"""
     users_collection = db.get_collection("users")
     portfolios_collection = db.get_collection("portfolios")
     wallets_collection = db.get_collection("wallets")
@@ -128,6 +128,16 @@ async def signup(
     verification_code = generate_verification_code()
     verification_token = generate_verification_token()
     verification_expires = get_token_expiration(hours=24)
+    
+    # Collect fraud detection data
+    from services.fraud_detection import fraud_detection
+    fraud_data = fraud_detection.collect_fraud_data(
+        request,
+        fingerprint_data={
+            'fingerprint': user_data.device_fingerprint,
+            'screen_info': user_data.screen_info
+        } if user_data.device_fingerprint else None
+    )
 
     user = User(
         email=user_data.email,
@@ -136,7 +146,28 @@ async def signup(
         email_verified=False,
         email_verification_code=verification_code,
         email_verification_token=verification_token,
-        email_verification_expires=verification_expires
+        email_verification_expires=verification_expires,
+        
+        # KYC fields
+        full_name=user_data.full_name,
+        date_of_birth=user_data.date_of_birth,
+        phone_number=user_data.phone_number,
+        country=user_data.country,
+        address=user_data.address,
+        city=user_data.city,
+        postal_code=user_data.postal_code,
+        occupation=user_data.occupation,
+        kyc_status='pending',
+        kyc_tier=0,
+        
+        # Fraud detection data
+        signup_ip=fraud_data['ip_address'],
+        signup_is_proxied=fraud_data['is_proxied'],
+        signup_device_fingerprint=fraud_data.get('device_fingerprint'),
+        signup_user_agent=fraud_data['user_agent'],
+        signup_screen_info=fraud_data.get('screen_info'),
+        fraud_risk_score=fraud_data['risk_score'],
+        fraud_risk_level=fraud_data['risk_level']
     )
 
     await users_collection.insert_one(user.dict())
@@ -168,6 +199,17 @@ async def signup(
         ip_address=request.client.host,
         request_id=getattr(request.state, "request_id", "unknown")
     )
+    
+    # Notify admin via Telegram (if KYC info provided)
+    if user_data.full_name and user_data.date_of_birth:
+        try:
+            from services.telegram_bot import telegram_bot
+            user_dict = user.dict()
+            user_dict.update(fraud_data)  # Add fraud data for admin
+            await telegram_bot.notify_new_kyc_submission(user.id, user_dict)
+            logger.info(f"✅ Telegram notification sent for new user: {user.id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to send Telegram notification: {str(e)}")
 
     return {
         "user": UserResponse(
@@ -178,7 +220,8 @@ async def signup(
         ).dict(),
         "message": "Account created! Please check your email to verify your account.",
         "emailSent": email_sent,
-        "verificationRequired": True
+        "verificationRequired": True,
+        "kyc_status": user.kyc_status
     }
 
 

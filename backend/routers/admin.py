@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, Field
 from database import get_database
 from dependencies import get_db
 from admin_auth import (
-    AdminLoginRequest, AdminLoginResponse, AdminUser,
+    AdminLoginRequest, AdminLoginResponse, AdminUser, AdminOTPVerifyRequest,
     get_current_admin, create_admin_token, verify_password,
     hash_password, log_admin_action, ADMIN_PERMISSIONS
 )
@@ -75,15 +75,14 @@ class BroadcastMessage(BaseModel):
 # ADMIN AUTHENTICATION
 # ============================================
 
-@router.post("/login", response_model=AdminLoginResponse)
-async def admin_login(
+@router.post("/login")
+async def admin_login_request_otp(
     request: Request,
-    response: Response,
     credentials: AdminLoginRequest
 ):
     """
-    Admin login with enhanced security.
-    Returns JWT token and sets secure cookie.
+    Step 1: Admin login - Verify password and send OTP.
+    Returns indication that OTP was sent (no token yet).
     """
     db = get_db()
     
@@ -98,7 +97,7 @@ async def admin_login(
             resource_type="admin",
             resource_id="unknown",
             details={"email": credentials.email, "reason": "unknown_email"},
-            ip_address=request.client.host
+            ip_address=request.client.host if request.client else "unknown"
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -114,7 +113,7 @@ async def admin_login(
             resource_type="admin",
             resource_id=admin["id"],
             details={"reason": "invalid_password"},
-            ip_address=request.client.host
+            ip_address=request.client.host if request.client else "unknown"
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -128,13 +127,161 @@ async def admin_login(
             detail="Admin account is deactivated"
         )
     
-    # Check 2FA if enabled
-    if admin.get("two_factor_enabled"):
-        if not credentials.totp_code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="2FA code required"
-            )
+    # Generate OTP
+    from admin_auth import generate_admin_otp
+    otp_code, otp_expires = generate_admin_otp()
+    
+    # Store OTP in database (with attempts counter)
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {
+            "$set": {
+                "otp_code": otp_code,
+                "otp_expires": otp_expires,
+                "otp_attempts": 0,  # Reset attempts
+                "otp_ip": request.client.host if request.client else "unknown"
+            }
+        }
+    )
+    
+    # Send OTP via email
+    try:
+        from email_service import email_service
+        from email_templates import admin_otp_email
+        
+        ip_address = request.client.host if request.client else "unknown"
+        html_content = admin_otp_email(admin["name"], otp_code, ip_address)
+        text_content = f"Your CryptoVault Admin OTP code is: {otp_code}. This code expires in 5 minutes."
+        
+        await email_service.send_email(
+            to_email=admin["email"],
+            subject="🔐 CryptoVault Admin Login - OTP Verification",
+            html_content=html_content,
+            text_content=text_content
+        )
+        
+        logger.info(f"✅ OTP sent to admin: {admin['email']}")
+        
+        # Also notify via Telegram (if configured)
+        try:
+            from services.telegram_bot import telegram_bot
+            await telegram_bot.notify_admin_otp(admin["email"], otp_code, ip_address)
+        except:
+            pass  # Telegram is optional
+        
+    except Exception as e:
+        logger.error(f"Failed to send OTP email: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP. Please try again."
+        )
+    
+    # Log OTP request
+    await log_admin_action(
+        admin_id=admin["id"],
+        action="otp_requested",
+        resource_type="admin",
+        resource_id=admin["id"],
+        details={"ip": request.client.host if request.client else "unknown"},
+        ip_address=request.client.host if request.client else "unknown"
+    )
+    
+    return {
+        "requires_otp": True,
+        "message": "OTP sent to your email",
+        "email": admin["email"]
+    }
+
+
+@router.post("/verify-otp", response_model=AdminLoginResponse)
+async def admin_verify_otp(
+    request: Request,
+    response: Response,
+    verification: AdminOTPVerifyRequest
+):
+    """
+    Step 2: Verify OTP and complete admin login.
+    Returns JWT token and sets secure cookie.
+    """
+    db = get_db()
+    
+    # Find admin by email
+    admin = await db.admins.find_one({"email": verification.email.lower()})
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+    
+    # Check if OTP exists and hasn't expired
+    otp_code = admin.get("otp_code")
+    otp_expires = admin.get("otp_expires")
+    otp_attempts = admin.get("otp_attempts", 0)
+    
+    if not otp_code or not otp_expires:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No OTP requested. Please login first."
+        )
+    
+    # Check if OTP has expired
+    if datetime.now(timezone.utc) > otp_expires:
+        # Clear expired OTP
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$unset": {"otp_code": "", "otp_expires": "", "otp_attempts": "", "otp_ip": ""}}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP has expired. Please request a new one."
+        )
+    
+    # Check attempts limit (max 3 attempts)
+    if otp_attempts >= 3:
+        # Clear OTP and lock temporarily
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$unset": {"otp_code": "", "otp_expires": "", "otp_attempts": "", "otp_ip": ""}}
+        )
+        await log_admin_action(
+            admin_id=admin["id"],
+            action="otp_max_attempts",
+            resource_type="admin",
+            resource_id=admin["id"],
+            details={"ip": request.client.host if request.client else "unknown"},
+            ip_address=request.client.host if request.client else "unknown"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed attempts. Please request a new OTP."
+        )
+    
+    # Verify OTP code
+    if otp_code != verification.otp_code:
+        # Increment attempts
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$inc": {"otp_attempts": 1}}
+        )
+        await log_admin_action(
+            admin_id=admin["id"],
+            action="otp_failed",
+            resource_type="admin",
+            resource_id=admin["id"],
+            details={"attempt": otp_attempts + 1, "ip": request.client.host if request.client else "unknown"},
+            ip_address=request.client.host if request.client else "unknown"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid OTP code. {2 - otp_attempts} attempts remaining."
+        )
+    
+    # OTP is valid! Clear it and create session
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {"$unset": {"otp_code": "", "otp_expires": "", "otp_attempts": "", "otp_ip": ""}}
+    )
     
     # Create token
     token, expires_at = create_admin_token(
@@ -152,7 +299,7 @@ async def admin_login(
                 "login_history": {
                     "$each": [{
                         "timestamp": datetime.now(timezone.utc),
-                        "ip_address": request.client.host,
+                        "ip_address": request.client.host if request.client else "unknown",
                         "user_agent": request.headers.get("user-agent", "unknown")
                     }],
                     "$slice": -20
@@ -168,21 +315,21 @@ async def admin_login(
         resource_type="admin",
         resource_id=admin["id"],
         details={"user_agent": request.headers.get("user-agent", "unknown")},
-        ip_address=request.client.host
+        ip_address=request.client.host if request.client else "unknown"
     )
     
-    # Set secure cookie
+    # Set secure cookie (15-minute idle timeout for enhanced security)
     response.set_cookie(
         key="admin_token",
         value=token,
         httponly=True,
-        secure=settings.use_cross_site_cookies,
+        secure=settings.is_production,
         samesite="lax" if not settings.use_cross_site_cookies else "none",
-        max_age=8 * 60 * 60,
+        max_age=15 * 60,  # 15 minutes (enhanced security)
         path="/api/admin"
     )
     
-    logger.info(f"Admin login successful: {admin['email']}")
+    logger.info(f"✅ Admin login successful with OTP: {admin['email']}")
     
     return {
         "admin": {
@@ -193,7 +340,8 @@ async def admin_login(
             "permissions": admin.get("permissions", ADMIN_PERMISSIONS.get(admin["role"], []))
         },
         "token": token,
-        "expires_at": expires_at
+        "expires_at": expires_at,
+        "requires_otp": False
     }
 
 

@@ -1,12 +1,14 @@
 """
 Admin Authentication and Authorization System
-Enterprise-grade admin control panel security
+Enterprise-grade admin control panel security with OTP
 """
 
 import logging
 import secrets
+import random
+import string
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from functools import wraps
 
 from fastapi import HTTPException, Request, Depends, status
@@ -46,11 +48,18 @@ class AdminLoginRequest(BaseModel):
     totp_code: Optional[str] = None
 
 
+class AdminOTPVerifyRequest(BaseModel):
+    """Admin OTP verification request"""
+    email: EmailStr
+    otp_code: str
+
+
 class AdminLoginResponse(BaseModel):
     """Admin login response"""
     admin: Dict[str, Any]
     token: str
     expires_at: datetime
+    requires_otp: Optional[bool] = False  # Indicates if OTP is required
 
 
 # Default admin permissions
@@ -89,6 +98,16 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash"""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def generate_admin_otp() -> Tuple[str, datetime]:
+    """
+    Generate a 6-digit OTP code for admin authentication.
+    Returns: (otp_code, expiration_time)
+    """
+    otp_code = ''.join(random.choices(string.digits, k=6))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)  # 5-minute expiry
+    return otp_code, expires_at
 
 
 def create_admin_token(admin_id: str, email: str, role: str) -> tuple[str, datetime]:

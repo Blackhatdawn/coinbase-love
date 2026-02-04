@@ -23,7 +23,7 @@ from config import settings, validate_startup_environment, get_settings
 from database import DatabaseConnection
 
 # Routers
-from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, deep_investigation
+from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, deep_investigation, files
 
 # Services
 from websocket_feed import price_feed
@@ -699,6 +699,7 @@ app.include_router(transactions.router, prefix="/api", tags=["legacy"])
 app.include_router(transfers.router, prefix="/api", tags=["legacy"])
 app.include_router(users.router, prefix="/api", tags=["legacy"])
 app.include_router(config.router, prefix="/api")
+app.include_router(files.router, prefix="/api", tags=["files"])  # KYC file uploads
 
 # Admin dashboard (custom prefix already in router)
 from routers.admin import router as admin_dashboard_router
