@@ -82,6 +82,12 @@ class CryptoVaultAPITester:
         url = f"{self.api_base}/{endpoint.lstrip('/')}"
         headers = {'Content-Type': 'application/json'}
 
+        # Add CSRF token for non-GET requests
+        if method.upper() in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            csrf_token = self.get_csrf_token()
+            if csrf_token:
+                headers['X-CSRF-Token'] = csrf_token
+
         try:
             if method.upper() == 'GET':
                 response = self.session.get(url, headers=headers, timeout=10)
