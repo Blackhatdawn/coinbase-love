@@ -697,11 +697,13 @@ db_connection: Optional[DatabaseConnection] = None
 # ============================================
 # API ROUTES - Version 1
 # ============================================
-# Mount v1 API routes (versioned)
+# Mount v1 API routes (versioned) - REMOVED (archived to _legacy_archive)
+# Kept as try/except for graceful degradation
 try:
-    from routers.v1 import api_v1_router
-    app.include_router(api_v1_router)
-    logger.info("✅ API v1 routes mounted at /api/v1/")
+    pass  # v1 routes archived
+    # from routers.v1 import api_v1_router
+    # app.include_router(api_v1_router)
+    logger.info("ℹ️ API v1 routes archived (use /api/ endpoints instead)")
 except ImportError as e:
     logger.warning(f"⚠️ Could not load v1 routes: {e}")
 
@@ -752,11 +754,13 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Version router not available: {e}")
 
-# Fly.io deployment status (for multi-region and auto-scaling debugging)
+# Fly.io deployment status - REMOVED (archived to _legacy_archive)
+# Kept as try/except for graceful degradation
 try:
-    from routers.fly_status import router as fly_router
-    app.include_router(fly_router, prefix="/api")
-    logger.info("✅ Fly.io status endpoints mounted at /api/fly/")
+    pass  # fly_status router archived
+    # from routers.fly_status import router as fly_router
+    # app.include_router(fly_router, prefix="/api")
+    logger.info("ℹ️ Fly.io status endpoints archived")
 except ImportError as e:
     logger.warning(f"⚠️ Fly.io status router not available: {e}")
 
