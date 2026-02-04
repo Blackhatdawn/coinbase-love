@@ -20,7 +20,8 @@ import {
   ArrowRightLeft,
   Shield,
   HelpCircle,
-  PieChart
+  PieChart,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -48,6 +49,7 @@ const mainNavItems: NavItem[] = [
   { path: '/markets', icon: TrendingUp, label: 'Markets', isNew: true },
   { path: '/portfolio', icon: PieChart, label: 'Portfolio' },
   { path: '/trade', icon: ArrowRightLeft, label: 'Trade' },
+  { path: '/advanced-trading', icon: Target, label: 'Advanced Trading', isNew: true },
   { path: '/earn', icon: Percent, label: 'Earn', badge: 'APY 12%' },
   { path: '/wallet/deposit', icon: Wallet, label: 'Wallet' },
 ];

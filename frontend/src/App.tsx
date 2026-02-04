@@ -60,6 +60,7 @@ const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const Referrals = lazy(() => import("@/pages/Referrals"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const DashboardSecurity = lazy(() => import("@/pages/DashboardSecurity"));
+const AdvancedTradingPage = lazy(() => import("@/pages/AdvancedTradingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -232,6 +233,7 @@ const AppContent = () => {
             <Route path="/wallet/transfer" element={<P2PTransfer />} />
             <Route path="/alerts" element={<PriceAlerts />} />
             <Route path="/trade" element={<ErrorBoundary><EnhancedTrade /></ErrorBoundary>} />
+            <Route path="/advanced-trading" element={<AdvancedTradingPage />} />
             <Route path="/earn" element={<Earn />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/settings" element={<Settings />} />
