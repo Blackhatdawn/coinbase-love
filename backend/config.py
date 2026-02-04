@@ -362,8 +362,8 @@ class Settings(BaseSettings):
         return origins
 
     def is_sentry_available(self) -> bool:
-        """Check if Sentry is configured."""
-        return bool(self.sentry_dsn)
+        """Check if Sentry is configured with a valid DSN."""
+        return bool(self.sentry_dsn and str(self.sentry_dsn).strip())
 
     @property
     def rate_limit_requests_per_minute(self) -> int:

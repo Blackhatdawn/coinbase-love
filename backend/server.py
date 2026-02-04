@@ -47,27 +47,32 @@ import dependencies
 # ============================================
 
 if settings.is_sentry_available():
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
-    from sentry_sdk.integrations.starlette import StarletteIntegration
-    from sentry_sdk.integrations.logging import LoggingIntegration
-    
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.environment,
-        traces_sample_rate=settings.sentry_traces_sample_rate,
-        profiles_sample_rate=settings.sentry_profiles_sample_rate,
-        integrations=[
-            FastApiIntegration(transaction_style="endpoint"),
-            StarletteIntegration(transaction_style="endpoint"),
-            LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
-        ],
-        send_default_pii=False,  # Don't send PII data
-        attach_stacktrace=True,
-        max_breadcrumbs=50,
-        before_send=lambda event, hint: event if settings.environment != 'development' else None,
-    )
-    print("✅ Sentry error tracking initialized")
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            traces_sample_rate=settings.sentry_traces_sample_rate,
+            profiles_sample_rate=settings.sentry_profiles_sample_rate,
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                StarletteIntegration(transaction_style="endpoint"),
+                LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
+            ],
+            send_default_pii=False,  # Don't send PII data
+            attach_stacktrace=True,
+            max_breadcrumbs=50,
+            before_send=lambda event, hint: event if settings.environment != 'development' else None,
+        )
+        print("✅ Sentry error tracking initialized")
+    except Exception as e:
+        print(f"⚠️ Sentry initialization failed: {e}. Continuing without error tracking.")
+else:
+    print("ℹ️ Sentry not configured (SENTRY_DSN not set)")
 
 # ============================================
 # LOGGING CONFIGURATION
