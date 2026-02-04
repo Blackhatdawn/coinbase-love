@@ -100,6 +100,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def generate_admin_otp() -> Tuple[str, datetime]:
+    """
+    Generate a 6-digit OTP code for admin authentication.
+    Returns: (otp_code, expiration_time)
+    """
+    otp_code = ''.join(random.choices(string.digits, k=6))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)  # 5-minute expiry
+    return otp_code, expires_at
+
+
 def create_admin_token(admin_id: str, email: str, role: str) -> tuple[str, datetime]:
     """Create an admin JWT token"""
     expires = datetime.now(timezone.utc) + timedelta(hours=ADMIN_TOKEN_EXPIRE_HOURS)
