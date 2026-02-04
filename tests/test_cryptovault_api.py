@@ -14,7 +14,7 @@ from datetime import datetime
 # Get backend URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://fullstack-inspector.preview.emergentagent.com"
+    BASE_URL = "https://tradingvault.preview.emergentagent.com"
 
 print(f"Testing against: {BASE_URL}")
 
