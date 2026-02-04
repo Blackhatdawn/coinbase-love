@@ -102,6 +102,15 @@ class PriceFeedManager:
     
     async def _fetch_prices(self) -> Dict[str, Any]:
         """Fetch prices from CoinCap API with rate limiting and fallback"""
+        
+        # Check if we should use mock prices
+        use_mock = getattr(settings, 'use_mock_prices', False)
+        
+        if use_mock:
+            # Use mock price service
+            from services.mock_prices import mock_price_service
+            return mock_price_service.get_prices()
+        
         # Enforce minimum interval between API calls
         if self.last_api_call:
             time_since_last = (datetime.now() - self.last_api_call).total_seconds()
