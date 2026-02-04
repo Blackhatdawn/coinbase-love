@@ -39,23 +39,33 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Enable XSS protection
             "X-XSS-Protection": "1; mode=block",
             
-            # HSTS - Force HTTPS for 1 year
+            # HSTS - Force HTTPS for 1 year (31,536,000 seconds)
             "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
             
             # Referrer policy
             "Referrer-Policy": "strict-origin-when-cross-origin",
             
+            # Cross-Origin Isolation (Enhanced Security for Crypto/Fintech)
+            # COEP - Requires explicit opt-in for cross-origin resources
+            "Cross-Origin-Embedder-Policy": "require-corp",
+            
+            # COOP - Isolates browsing context from other origins
+            "Cross-Origin-Opener-Policy": "same-origin",
+            
+            # CORP - Controls cross-origin resource sharing
+            "Cross-Origin-Resource-Policy": "same-origin",
+            
             # Content Security Policy
             # Note: This is for API responses. Frontend CSP is set in vercel.json
-            # Keep in sync with frontend/vercel.json
+            # Updated for Fly.io deployment (coinbase-love.fly.dev)
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com data:; "
                 "img-src 'self' data: https: blob:; "
-                "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com ws://cryptovault-api.onrender.com "
-                "https://*.onrender.com wss://*.onrender.com "
+                "connect-src 'self' https://coinbase-love.fly.dev wss://coinbase-love.fly.dev ws://coinbase-love.fly.dev "
+                "https://*.fly.dev wss://*.fly.dev "
                 "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io "
                 "https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
                 "https://vercel.live wss://vercel.live https://*.vercel.live; "
@@ -65,7 +75,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "upgrade-insecure-requests"
             ),
             
-            # Permissions policy - only valid directives
+            # Permissions policy - only valid directives (crypto/fintech security)
             # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
             "Permissions-Policy": (
                 "accelerometer=(), "
