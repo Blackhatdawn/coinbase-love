@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, Field
 from database import get_database
 from dependencies import get_db
 from admin_auth import (
-    AdminLoginRequest, AdminLoginResponse, AdminUser,
+    AdminLoginRequest, AdminLoginResponse, AdminUser, AdminOTPVerifyRequest,
     get_current_admin, create_admin_token, verify_password,
     hash_password, log_admin_action, ADMIN_PERMISSIONS
 )
