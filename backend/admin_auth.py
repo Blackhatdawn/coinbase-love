@@ -1,12 +1,14 @@
 """
 Admin Authentication and Authorization System
-Enterprise-grade admin control panel security
+Enterprise-grade admin control panel security with OTP
 """
 
 import logging
 import secrets
+import random
+import string
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from functools import wraps
 
 from fastapi import HTTPException, Request, Depends, status
