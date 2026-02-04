@@ -478,33 +478,33 @@ export const api = {
   // Trading
   trading: {
     getOrders: () =>
-      apiClient.get('/api/orders'),
-    createOrder: (data: {
-      trading_pair: string;
-      order_type: string;
-      side: string;
-      amount: number;
-      price: number;
-    }) =>
-      apiClient.post('/api/orders', data),
+      apiClient.get<PaginatedOrders>('/api/orders'),
+    createOrder: (data: OrderCreate) =>
+      apiClient.post<OrderResponse>('/api/orders', data),
     getOrder: (orderId: string) =>
-      apiClient.get(`/api/orders/${orderId}`),
+      apiClient.get<{ order: Order }>(`/api/orders/${orderId}`),
+    
+    // 🆕 GHOST FEATURE IMPLEMENTED: Advanced orders (stop-loss, take-profit)
+    createAdvancedOrder: (data: AdvancedOrderCreate) =>
+      apiClient.post<OrderResponse>('/api/orders/advanced', data),
+    
+    // 🆕 GHOST FEATURE IMPLEMENTED: Cancel order
+    cancelOrder: (orderId: string) =>
+      apiClient.delete<{ message: string; order_id: string }>(`/api/orders/${orderId}`),
   },
 
   // Legacy orders API (alias for trading)
   orders: {
     get: () =>
-      apiClient.get('/api/orders'),
-    create: (data: {
-      trading_pair: string;
-      order_type: string;
-      side: string;
-      amount: number;
-      price: number;
-    }) =>
-      apiClient.post('/api/orders', data),
+      apiClient.get<PaginatedOrders>('/api/orders'),
+    create: (data: OrderCreate) =>
+      apiClient.post<OrderResponse>('/api/orders', data),
     getById: (orderId: string) =>
-      apiClient.get(`/api/orders/${orderId}`),
+      apiClient.get<{ order: Order }>(`/api/orders/${orderId}`),
+    createAdvanced: (data: AdvancedOrderCreate) =>
+      apiClient.post<OrderResponse>('/api/orders/advanced', data),
+    cancel: (orderId: string) =>
+      apiClient.delete<{ message: string; order_id: string }>(`/api/orders/${orderId}`),
   },
 
   // Cryptocurrency market data
