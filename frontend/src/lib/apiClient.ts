@@ -659,6 +659,8 @@ export const api = {
       apiClient.get('/api/prices'),
     get: (symbol: string) =>
       apiClient.get(`/api/prices/${symbol}`),
+    getCurrentPrice: (symbol: string) =>
+      apiClient.get<{ symbol: string; price: string; source: string }>(`/api/prices/${symbol}`),
     getHealth: () =>
       apiClient.get('/api/prices/status/health'),
     getBulk: (symbols: string) =>
