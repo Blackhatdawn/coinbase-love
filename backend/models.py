@@ -59,6 +59,20 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    
+    # Optional KYC fields during signup
+    full_name: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    phone_number: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    occupation: Optional[str] = None
+    
+    # Frontend device fingerprint data
+    device_fingerprint: Optional[str] = None
+    screen_info: Optional[dict] = None
 
 
 class UserLogin(BaseModel):
