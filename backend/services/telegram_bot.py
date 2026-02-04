@@ -40,32 +40,37 @@ class TelegramBotService:
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
     
     async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send message to admin chat"""
+        """Send message to all admin chats"""
         if not self.enabled:
             logger.info(f"[MOCK] Telegram: {text[:100]}...")
             return True
         
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(
-                    f"{self.base_url}/sendMessage",
-                    json={
-                        "chat_id": self.admin_chat_id,
-                        "text": text,
-                        "parse_mode": parse_mode
-                    }
-                )
-                
-                if response.status_code == 200:
-                    logger.info("✅ Telegram message sent successfully")
-                    return True
-                else:
-                    logger.error(f"❌ Telegram API error: {response.status_code} - {response.text}")
-                    return False
+        success_count = 0
+        
+        # Send to all admin chat IDs
+        for chat_id in self.admin_chat_ids:
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    response = await client.post(
+                        f"{self.base_url}/sendMessage",
+                        json={
+                            "chat_id": chat_id,
+                            "text": text,
+                            "parse_mode": parse_mode
+                        }
+                    )
                     
-        except Exception as e:
-            logger.error(f"❌ Telegram send failed: {str(e)}")
-            return False
+                    if response.status_code == 200:
+                        logger.info(f"✅ Telegram message sent to admin {chat_id}")
+                        success_count += 1
+                    else:
+                        logger.error(f"❌ Telegram API error for {chat_id}: {response.status_code} - {response.text}")
+                        
+            except Exception as e:
+                logger.error(f"❌ Telegram send failed for {chat_id}: {str(e)}")
+        
+        # Return True if at least one message was sent successfully
+        return success_count > 0
     
     async def notify_new_kyc_submission(
         self,
