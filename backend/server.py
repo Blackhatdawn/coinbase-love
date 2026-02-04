@@ -221,12 +221,35 @@ class SecurityHeadersMiddleware:
                 )
                 
                 security_headers = [
+                    # HSTS - Force HTTPS for 1 year (31,536,000 seconds)
                     (b"strict-transport-security", b"max-age=31536000; includeSubDomains; preload"),
+                    
+                    # Prevent clickjacking
                     (b"x-frame-options", b"DENY"),
+                    
+                    # Prevent MIME type sniffing
                     (b"x-content-type-options", b"nosniff"),
+                    
+                    # Enable XSS protection
                     (b"x-xss-protection", b"1; mode=block"),
+                    
+                    # Referrer policy for privacy
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
+                    
+                    # Restrict browser features (crypto/fintech security)
                     (b"permissions-policy", b"geolocation=(), microphone=(), camera=(), payment=(), usb=()"),
+                    
+                    # Cross-Origin Isolation (Enhanced Security)
+                    # COEP - Requires explicit opt-in for cross-origin resources
+                    (b"cross-origin-embedder-policy", b"require-corp"),
+                    
+                    # COOP - Isolates browsing context from other origins
+                    (b"cross-origin-opener-policy", b"same-origin"),
+                    
+                    # CORP - Controls cross-origin resource sharing
+                    (b"cross-origin-resource-policy", b"same-origin"),
+                    
+                    # Content Security Policy
                     (b"content-security-policy", (
                         b"default-src 'self'; "
                         b"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "
