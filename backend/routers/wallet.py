@@ -186,6 +186,20 @@ async def create_deposit(
             details={"amount": data.amount, "currency": data.currency}
         )
         
+        # Send Telegram notification to admin
+        try:
+            from services.telegram_bot import telegram_bot
+            await telegram_bot.notify_deposit_created(
+                user_id=user_id,
+                user_email=customer_email or "Unknown",
+                amount=data.amount,
+                currency=data.currency,
+                order_id=order_id,
+                payment_id=payment_result.get("payment_id")
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send Telegram notification: {e}")
+        
         logger.info(f"✅ Deposit created: {order_id} for ${data.amount}")
         
         return {
