@@ -40,9 +40,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.0.0
+
       - name: Audit Node dependencies
         working-directory: ./frontend
-        run: yarn audit --level moderate
+        run: pnpm audit --audit-level moderate
         continue-on-error: true
 
   # ============================================

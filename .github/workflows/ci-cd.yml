@@ -91,26 +91,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
-          cache-dependency-path: './frontend/yarn.lock'
+          cache: 'pnpm'
+          cache-dependency-path: './frontend/pnpm-lock.yaml'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.0.0
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint with ESLint
-        run: yarn lint
+        run: pnpm lint
         continue-on-error: true
 
       - name: Type check
-        run: yarn tsc --noEmit
+        run: pnpm tsc --noEmit
         continue-on-error: true
 
       - name: Run tests
-        run: yarn test --coverage --watchAll=false
+        run: pnpm test --coverage --watchAll=false
         continue-on-error: true
 
       - name: Build
-        run: yarn build
+        run: pnpm build
         env:
           # Leave empty to use Vercel rewrites (recommended)
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '' }}
