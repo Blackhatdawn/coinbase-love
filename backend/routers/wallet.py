@@ -356,15 +356,26 @@ async def nowpayments_webhook(
         order_id = payload.get("order_id")
         actually_paid = payload.get("actually_paid", 0)
         
-        logger.info(f"📬 IPN received: {order_id} - {payment_status}")
+        # Validate required fields
+        if not payment_id or not payment_status or not order_id:
+            logger.error(f"Missing required fields in webhook payload: {payload}")
+            raise HTTPException(status_code=400, detail="Missing required fields")
+        
+        logger.info(f"📬 Processing webhook: Order {order_id} - Status: {payment_status} - Payment ID: {payment_id}")
         
         # Find deposit record
         deposits_collection = db.get_collection("deposits")
         deposit = await deposits_collection.find_one({"order_id": order_id})
         
         if not deposit:
-            logger.warning(f"Deposit not found for order: {order_id}")
-            return {"status": "ignored", "reason": "Order not found"}
+            logger.warning(f"⚠️ Deposit not found for order: {order_id}")
+            # Return 200 to acknowledge receipt (prevents retries for invalid orders)
+            return {"status": "ignored", "reason": "Order not found", "order_id": order_id}
+        
+        # Check if already processed (idempotency)
+        if deposit.get("status") == payment_status and deposit.get("webhook_processed"):
+            logger.info(f"ℹ️ Webhook already processed for order: {order_id}")
+            return {"status": "already_processed", "order_id": order_id}
         
         # Update deposit status
         await deposits_collection.update_one(
@@ -373,6 +384,8 @@ async def nowpayments_webhook(
                 "$set": {
                     "status": payment_status,
                     "actually_paid": actually_paid,
+                    "webhook_processed": True,
+                    "webhook_received_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }
             }
