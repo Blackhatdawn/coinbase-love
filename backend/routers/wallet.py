@@ -467,9 +467,60 @@ async def nowpayments_webhook(
         
     except HTTPException:
         raise
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON parsing error in webhook: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
     except Exception as e:
-        logger.error(f"❌ Webhook processing error: {str(e)}")
+        logger.error(f"❌ Webhook processing error: {str(e)}", exc_info=True)
+        # Return 500 to trigger retry from webhook provider
         raise HTTPException(status_code=500, detail="Webhook processing failed")
+
+
+# ============================================
+# WEBHOOK TESTING ENDPOINT
+# ============================================
+
+@router.post("/webhook/test")
+async def test_webhook_endpoint(request: Request):
+    """
+    Test endpoint to verify webhook is accessible and working.
+    This endpoint accepts any JSON payload and returns diagnostic information.
+    
+    Usage:
+    curl -X POST https://cryptovault-api.onrender.com/api/wallet/webhook/test \
+         -H "Content-Type: application/json" \
+         -d '{"test": "data"}'
+    """
+    try:
+        body = await request.body()
+        content_type = request.headers.get("content-type", "")
+        
+        # Try to parse JSON
+        try:
+            import json
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            payload = {"error": "Invalid JSON"}
+        
+        return {
+            "status": "success",
+            "message": "Webhook endpoint is accessible and working",
+            "received": {
+                "content_type": content_type,
+                "body_length": len(body),
+                "payload": payload,
+                "headers": dict(request.headers),
+                "client_host": request.client.host if request.client else "unknown"
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Test webhook error: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 # ============================================
