@@ -156,13 +156,28 @@ export default defineConfig(({ mode }) => ({
   // ============================================
   server: {
     port: 3000,
-    // Bind dev server only to localhost to avoid remote access (mitigates esbuild dev-server CORS issue)
+    // SECURITY FIX: Bind to localhost only in development
     host: '127.0.0.1',
     strictPort: true,
-    // Only allow same-host requests; disable broad allowed hosts
-    allowedHosts: false,
-    // Disable automatic CORS headers in dev server to prevent cross-origin reads
-    cors: false,
+    // SECURITY FIX: Explicit allowed hosts (prevents DNS rebinding)
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '.vercel.app',
+      '.gitpod.io',
+      '.codesandbox.io',
+    ],
+    // SECURITY FIX: Enable CORS with explicit origins
+    cors: {
+      origin: [
+        'http://localhost:8001',
+        'http://127.0.0.1:8001',
+        BACKEND_URL,
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+    },
 
     // Enable HTTP/2 in development
     // http2: true, // Uncomment if using HTTPS locally
