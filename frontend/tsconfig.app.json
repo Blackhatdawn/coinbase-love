@@ -4,9 +4,9 @@
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "skipLibCheck": true,
+    "skipLibCheck": false,
 
-    
+    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
@@ -14,13 +14,21 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    
-    "strict": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    /* SECURITY FIX: Strict type-checking enabled */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
 
     "baseUrl": ".",
     "paths": {
