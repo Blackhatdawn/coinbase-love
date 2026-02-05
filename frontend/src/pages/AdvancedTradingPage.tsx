@@ -154,7 +154,6 @@ const AdvancedTradingPage = () => {
               </Card>
             </div>
           </div>
-        </div>
       </main>
     </div>
   );

@@ -1,17 +1,22 @@
 # Frontend Dockerfile
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+# Install pnpm
+RUN npm install -g pnpm@9
+
 # Copy package files
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies with NODE_ENV=development to include devDependencies
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build application
-RUN yarn build
+RUN NODE_ENV=development pnpm build
 
 # Production image
 FROM nginx:alpine
