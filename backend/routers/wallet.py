@@ -129,8 +129,9 @@ async def create_deposit(
     
     # Create payment via NOWPayments
     try:
-        # IPN callback URL for webhook notifications
-        ipn_callback_url = f"{settings.app_url}/api/wallet/webhook/nowpayments"
+        # IPN callback URL for webhook notifications (use backend API URL, not frontend)
+        backend_url = settings.public_api_url or settings.app_url
+        ipn_callback_url = f"{backend_url}/api/wallet/webhook/nowpayments"
         success_url = f"{settings.app_url}/dashboard?deposit=success"
         cancel_url = f"{settings.app_url}/dashboard?deposit=cancelled"
         
