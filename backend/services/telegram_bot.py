@@ -533,8 +533,169 @@ Created: {user.get('created_at', 'N/A')}
             except Exception as e:
                 return f"❌ Error: {str(e)}"
         
+        elif command == "/deposit_status":
+            if not args:
+                return "Usage: /deposit_status <order_id>"
+            
+            order_id = args[0]
+            
+            try:
+                deposit = await db.get_collection("deposits").find_one({"order_id": order_id})
+                
+                if deposit:
+                    user = await db.get_collection("users").find_one({"id": deposit['user_id']})
+                    user_email = user.get('email', 'N/A') if user else 'N/A'
+                    
+                    return f"""
+<b>Deposit Status:</b>
+━━━━━━━━━━━━━━
+<b>Order ID:</b> <code>{deposit['order_id']}</code>
+<b>User:</b> {user_email}
+<b>Amount:</b> ${deposit['amount']:.2f} USD
+<b>Currency:</b> {deposit['pay_currency']}
+<b>Status:</b> {deposit['status'].upper()}
+<b>Created:</b> {deposit['created_at'].strftime('%Y-%m-%d %H:%M:%S UTC')}
+<b>Payment ID:</b> <code>{deposit.get('payment_id', 'N/A')}</code>
+                    """
+                else:
+                    return f"❌ Deposit {order_id} not found"
+                    
+            except Exception as e:
+                return f"❌ Error: {str(e)}"
+        
+        elif command == "/approve_withdrawal":
+            if not args:
+                return "Usage: /approve_withdrawal <withdrawal_id>"
+            
+            withdrawal_id = args[0]
+            
+            try:
+                # Update withdrawal status to processing
+                result = await db.get_collection("withdrawals").update_one(
+                    {"id": withdrawal_id, "status": "pending"},
+                    {
+                        "$set": {
+                            "status": "processing",
+                            "processed_at": datetime.now(timezone.utc)
+                        }
+                    }
+                )
+                
+                if result.modified_count > 0:
+                    return f"✅ Withdrawal {withdrawal_id} approved and set to processing"
+                else:
+                    return f"❌ Withdrawal {withdrawal_id} not found or already processed"
+                    
+            except Exception as e:
+                return f"❌ Error: {str(e)}"
+        
+        elif command == "/reject_withdrawal":
+            if len(args) < 1:
+                return "Usage: /reject_withdrawal <withdrawal_id> [reason]"
+            
+            withdrawal_id = args[0]
+            reason = ' '.join(args[1:]) if len(args) > 1 else "Rejected by admin"
+            
+            try:
+                # Get withdrawal to refund amount
+                withdrawal = await db.get_collection("withdrawals").find_one({"id": withdrawal_id})
+                
+                if not withdrawal:
+                    return f"❌ Withdrawal {withdrawal_id} not found"
+                
+                if withdrawal['status'] != 'pending':
+                    return f"❌ Withdrawal {withdrawal_id} is not pending (status: {withdrawal['status']})"
+                
+                # Update withdrawal status
+                await db.get_collection("withdrawals").update_one(
+                    {"id": withdrawal_id},
+                    {
+                        "$set": {
+                            "status": "cancelled",
+                            "notes": reason,
+                            "processed_at": datetime.now(timezone.utc)
+                        }
+                    }
+                )
+                
+                # Refund amount to wallet
+                total_amount = withdrawal['total_amount']
+                currency = withdrawal['currency']
+                user_id = withdrawal['user_id']
+                
+                wallet = await db.get_collection("wallets").find_one({"user_id": user_id})
+                if wallet:
+                    current_balance = wallet.get('balances', {}).get(currency, 0)
+                    await db.get_collection("wallets").update_one(
+                        {"user_id": user_id},
+                        {
+                            "$set": {
+                                f"balances.{currency}": current_balance + total_amount,
+                                "updated_at": datetime.now(timezone.utc)
+                            }
+                        }
+                    )
+                
+                return f"✅ Withdrawal {withdrawal_id} rejected and amount refunded: {reason}"
+                    
+            except Exception as e:
+                logger.error(f"Failed to reject withdrawal: {e}")
+                return f"❌ Error: {str(e)}"
+        
+        elif command == "/stats":
+            """Get platform statistics"""
+            try:
+                # Get total users
+                total_users = await db.get_collection("users").count_documents({})
+                
+                # Get pending deposits
+                pending_deposits = await db.get_collection("deposits").count_documents({"status": "pending"})
+                
+                # Get pending withdrawals
+                pending_withdrawals = await db.get_collection("withdrawals").count_documents({"status": "pending"})
+                
+                # Get total deposits today
+                from datetime import timedelta
+                today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+                today_deposits = await db.get_collection("deposits").count_documents({
+                    "created_at": {"$gte": today_start},
+                    "status": "finished"
+                })
+                
+                return f"""
+<b>Platform Statistics:</b>
+━━━━━━━━━━━━━━
+<b>Total Users:</b> {total_users}
+<b>Pending Deposits:</b> {pending_deposits}
+<b>Pending Withdrawals:</b> {pending_withdrawals}
+<b>Completed Deposits Today:</b> {today_deposits}
+
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+                """
+                    
+            except Exception as e:
+                return f"❌ Error: {str(e)}"
+        
         else:
-            return f"❌ Unknown command: {command}\n\nAvailable commands:\n/approve <user_id>\n/reject <user_id> [reason]\n/info <user_id>"
+            return f"""❌ Unknown command: {command}
+
+<b>Available commands:</b>
+━━━━━━━━━━━━━━
+<b>KYC Management:</b>
+/approve &lt;user_id&gt; - Approve KYC
+/reject &lt;user_id&gt; [reason] - Reject KYC
+/info &lt;user_id&gt; - Get user info
+
+<b>Deposit Management:</b>
+/deposit_status &lt;order_id&gt; - Check deposit
+
+<b>Withdrawal Management:</b>
+/approve_withdrawal &lt;withdrawal_id&gt;
+/reject_withdrawal &lt;withdrawal_id&gt; [reason]
+
+<b>Platform:</b>
+/stats - Get platform statistics
+            """
 
 
 # Global service instance
