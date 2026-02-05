@@ -377,6 +377,17 @@ async def nowpayments_webhook(
         
         logger.info(f"📬 Processing webhook: Order {order_id} - Status: {payment_status} - Payment ID: {payment_id}")
         
+        # Send webhook received notification to admin
+        try:
+            from services.telegram_bot import telegram_bot
+            await telegram_bot.notify_webhook_received(
+                order_id=order_id,
+                payment_status=payment_status,
+                payment_id=payment_id
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send webhook Telegram notification: {e}")
+        
         # Find deposit record
         deposits_collection = db.get_collection("deposits")
         deposit = await deposits_collection.find_one({"order_id": order_id})
