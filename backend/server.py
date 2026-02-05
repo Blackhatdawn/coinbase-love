@@ -602,6 +602,7 @@ ALLOWED_HEADERS = [
     "Pragma",                 # HTTP/1.0 cache control
     "If-Match",               # Conditional requests (ETags)
     "If-None-Match",          # Conditional requests (ETags)
+    "X-Nowpayments-Sig",      # NOWPayments webhook signature
 ]
 
 # Define exposed headers (headers the browser can access)
