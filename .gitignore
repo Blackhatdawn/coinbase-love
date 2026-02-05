@@ -88,3 +88,7 @@ android-sdk/
 # Node.js lock files (pnpm is the only package manager)
 yarn.lock
 package-lock.json
+-e 
+# Environment files
+*.env
+*.env.*
