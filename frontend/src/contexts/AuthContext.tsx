@@ -101,47 +101,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * Verify session in background without blocking UI
-   */
-  const verifySessionInBackground = async (cachedUserData: User) => {
-    try {
-      console.log('[Auth] 🔄 Verifying cached session in background...');
-      
-      const response = await fetchWithTimeout(
-        api.auth.getProfile(),
-        SESSION_CHECK_TIMEOUT
-      );
-      
-      // Update with fresh data if different
-      const freshUserData: User = {
-        id: response.user.id,
-        email: response.user.email,
-        name: response.user.name,
-        createdAt: response.user.createdAt,
-      };
-
-      if (JSON.stringify(freshUserData) !== JSON.stringify(cachedUserData)) {
-        console.log('[Auth] ✅ Updated user data from server');
-        setUser(freshUserData);
-        localStorage.setItem('cv_user', JSON.stringify(freshUserData));
-      } else {
-        console.log('[Auth] ✅ Cached data is up to date');
-      }
-    } catch (error: any) {
-      // Session expired
-      if (error?.statusCode === 401) {
-        console.log('[Auth] ⚠️ Session expired, clearing cache');
-        setUser(null);
-        localStorage.removeItem('cv_user');
-        clearSentryUser();
-      } else {
-        // Network error - keep using cache
-        console.log('[Auth] ⚠️ Background verification failed, keeping cached data');
-      }
-    }
-  };
-
-  /**
    * Manual session refresh (for use after login/signup)
    */
   const refreshSession = async () => {
