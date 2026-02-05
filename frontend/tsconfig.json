@@ -6,11 +6,14 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    /* SECURITY FIX: Strict type-checking enabled */
+    "strict": true,
     "noImplicitAny": true,
-    "noUnusedParameters": false,
-    "skipLibCheck": true,
-    "allowJs": true,
-    "noUnusedLocals": false,
-    "strictNullChecks": true
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "skipLibCheck": false,
+    "allowJs": false,
+    "forceConsistentCasingInFileNames": true
   }
 }
