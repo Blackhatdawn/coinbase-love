@@ -150,6 +150,226 @@ class TelegramBotService:
         
         return await self.send_message(message)
     
+    async def notify_deposit_created(
+        self,
+        user_id: str,
+        user_email: str,
+        amount: float,
+        currency: str,
+        order_id: str,
+        payment_id: str
+    ) -> bool:
+        """Notify admin of new deposit request"""
+        
+        message = f"""
+💰 <b>NEW DEPOSIT CREATED</b>
+
+👤 <b>User Info:</b>
+━━━━━━━━━━━━━━
+<b>User ID:</b> <code>{user_id}</code>
+<b>Email:</b> {user_email}
+
+💵 <b>Deposit Details:</b>
+━━━━━━━━━━━━━━
+<b>Amount:</b> ${amount:.2f} USD
+<b>Pay With:</b> {currency.upper()}
+<b>Order ID:</b> <code>{order_id}</code>
+<b>Payment ID:</b> <code>{payment_id}</code>
+
+📊 <b>Status:</b> ⏳ Waiting for payment
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+Monitor: <code>/deposit_status {order_id}</code>
+        """
+        
+        return await self.send_message(message)
+    
+    async def notify_deposit_completed(
+        self,
+        user_id: str,
+        user_email: str,
+        amount: float,
+        currency: str,
+        order_id: str,
+        payment_id: str,
+        new_balance: float
+    ) -> bool:
+        """Notify admin of completed deposit"""
+        
+        message = f"""
+✅ <b>DEPOSIT COMPLETED</b>
+
+👤 <b>User Info:</b>
+━━━━━━━━━━━━━━
+<b>User ID:</b> <code>{user_id}</code>
+<b>Email:</b> {user_email}
+
+💵 <b>Deposit Details:</b>
+━━━━━━━━━━━━━━
+<b>Amount Deposited:</b> ${amount:.2f} USD
+<b>Paid With:</b> {currency.upper()}
+<b>Order ID:</b> <code>{order_id}</code>
+<b>Payment ID:</b> <code>{payment_id}</code>
+
+💰 <b>Wallet Update:</b>
+<b>New Balance:</b> ${new_balance:.2f} USD
+
+📊 <b>Status:</b> ✅ Completed & Credited
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+<b>Action:</b> Funds credited to user wallet
+        """
+        
+        return await self.send_message(message)
+    
+    async def notify_deposit_failed(
+        self,
+        user_id: str,
+        user_email: str,
+        amount: float,
+        currency: str,
+        order_id: str,
+        payment_id: str,
+        reason: str
+    ) -> bool:
+        """Notify admin of failed deposit"""
+        
+        message = f"""
+❌ <b>DEPOSIT FAILED</b>
+
+👤 <b>User Info:</b>
+━━━━━━━━━━━━━━
+<b>User ID:</b> <code>{user_id}</code>
+<b>Email:</b> {user_email}
+
+💵 <b>Deposit Details:</b>
+━━━━━━━━━━━━━━
+<b>Amount:</b> ${amount:.2f} USD
+<b>Currency:</b> {currency.upper()}
+<b>Order ID:</b> <code>{order_id}</code>
+<b>Payment ID:</b> <code>{payment_id}</code>
+
+⚠️ <b>Failure Reason:</b>
+{reason}
+
+📊 <b>Status:</b> ❌ Failed
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+<b>Action Required:</b> Check logs and contact user
+        """
+        
+        return await self.send_message(message)
+    
+    async def notify_withdrawal_requested(
+        self,
+        user_id: str,
+        user_email: str,
+        amount: float,
+        currency: str,
+        address: str,
+        withdrawal_id: str
+    ) -> bool:
+        """Notify admin of withdrawal request"""
+        
+        message = f"""
+💸 <b>WITHDRAWAL REQUESTED</b>
+
+👤 <b>User Info:</b>
+━━━━━━━━━━━━━━
+<b>User ID:</b> <code>{user_id}</code>
+<b>Email:</b> {user_email}
+
+💵 <b>Withdrawal Details:</b>
+━━━━━━━━━━━━━━
+<b>Amount:</b> {amount:.8f} {currency}
+<b>Destination:</b> <code>{address[:20]}...{address[-10:]}</code>
+<b>Withdrawal ID:</b> <code>{withdrawal_id}</code>
+
+📊 <b>Status:</b> ⏳ Pending Approval
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+<b>⚡ Quick Actions:</b>
+<code>/approve_withdrawal {withdrawal_id}</code>
+<code>/reject_withdrawal {withdrawal_id} [reason]</code>
+
+⚠️ <b>Security:</b> Verify user and address before approval
+        """
+        
+        return await self.send_message(message)
+    
+    async def notify_webhook_received(
+        self,
+        order_id: str,
+        payment_status: str,
+        payment_id: str
+    ) -> bool:
+        """Notify admin of webhook received"""
+        
+        status_emoji = {
+            'waiting': '⏳',
+            'confirming': '🔄',
+            'confirmed': '✅',
+            'finished': '✅',
+            'failed': '❌',
+            'expired': '⏰',
+            'partially_paid': '⚠️'
+        }
+        
+        emoji = status_emoji.get(payment_status, '📬')
+        
+        message = f"""
+{emoji} <b>WEBHOOK RECEIVED</b>
+
+<b>Order ID:</b> <code>{order_id}</code>
+<b>Payment ID:</b> <code>{payment_id}</code>
+<b>Status:</b> {payment_status.upper()}
+
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+Check logs for details: <code>{order_id}</code>
+        """
+        
+        return await self.send_message(message)
+    
+    async def notify_system_alert(
+        self,
+        alert_type: str,
+        message_text: str,
+        severity: str = "warning"
+    ) -> bool:
+        """Notify admin of system alerts"""
+        
+        severity_emoji = {
+            'info': 'ℹ️',
+            'warning': '⚠️',
+            'error': '❌',
+            'critical': '🚨'
+        }
+        
+        emoji = severity_emoji.get(severity.lower(), 'ℹ️')
+        
+        message = f"""
+{emoji} <b>SYSTEM ALERT</b>
+
+<b>Type:</b> {alert_type}
+<b>Severity:</b> {severity.upper()}
+
+<b>Message:</b>
+{message_text}
+
+<b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+━━━━━━━━━━━━━━
+Check logs and take action if needed.
+        """
+        
+        return await self.send_message(message)
+    
     async def get_updates(self, offset: Optional[int] = None) -> Dict[str, Any]:
         """Get bot updates (for command polling)"""
         if not self.enabled:
