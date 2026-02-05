@@ -148,8 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      // Store user data
-      localStorage.setItem('cv_user', JSON.stringify(userData));
+      // SECURITY FIX: No localStorage - session managed by httpOnly cookies
       setUser(userData);
       setIsLoading(false);
       
@@ -180,8 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
-      // Store user data
-      localStorage.setItem('cv_user', JSON.stringify(userData));
+      // SECURITY FIX: No localStorage - session managed by httpOnly cookies
       setUser(userData);
       setIsLoading(false);
       
@@ -208,9 +206,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('[Auth] ⚠️ Logout API error (continuing anyway):', error);
     }
     
-    // Clear state regardless of API success
+    // SECURITY FIX: No localStorage to clear - just clear state
+    // Backend invalidates httpOnly cookie
     setUser(null);
-    localStorage.removeItem('cv_user');
     clearSentryUser();
     console.log('[Auth] ✅ Signed out');
   };
