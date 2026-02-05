@@ -478,8 +478,51 @@ async def nowpayments_webhook(
             )
             
             logger.info(f"✅ Deposit completed: {order_id} - ${amount} credited to user {user_id}")
+            
+            # Send completion notification to admin
+            try:
+                from services.telegram_bot import telegram_bot
+                users_collection = db.get_collection("users")
+                user = await users_collection.find_one({"id": user_id})
+                user_email = user.get("email", "Unknown") if user else "Unknown"
+                
+                # Get updated wallet balance
+                wallet = await wallets_collection.find_one({"user_id": user_id})
+                new_balance = wallet.get("balances", {}).get("USD", 0) if wallet else amount
+                
+                await telegram_bot.notify_deposit_completed(
+                    user_id=user_id,
+                    user_email=user_email,
+                    amount=amount,
+                    currency=deposit['pay_currency'],
+                    order_id=order_id,
+                    payment_id=payment_id,
+                    new_balance=new_balance
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send completion Telegram notification: {e}")
+                
         elif payment_status in PaymentStatus.FAILED_STATUSES:
             logger.warning(f"⚠️ Payment failed/expired: {order_id} - Status: {payment_status}")
+            
+            # Send failure notification to admin
+            try:
+                from services.telegram_bot import telegram_bot
+                users_collection = db.get_collection("users")
+                user = await users_collection.find_one({"id": deposit["user_id"]})
+                user_email = user.get("email", "Unknown") if user else "Unknown"
+                
+                await telegram_bot.notify_deposit_failed(
+                    user_id=deposit["user_id"],
+                    user_email=user_email,
+                    amount=deposit["amount"],
+                    currency=deposit['pay_currency'],
+                    order_id=order_id,
+                    payment_id=payment_id,
+                    reason=f"Payment status: {payment_status}"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send failure Telegram notification: {e}")
         else:
             logger.info(f"ℹ️ Payment pending: {order_id} - Status: {payment_status}")
         
