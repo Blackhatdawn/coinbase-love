@@ -34,7 +34,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const sessionCheckTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * Check session with aggressive timeout and retry logic
+   * Check session - SECURE VERSION (No localStorage)
+   * Security: Relies solely on httpOnly cookies managed by backend
    */
   const checkSession = async (attempt: number = 0): Promise<void> => {
     // Prevent concurrent session checks
@@ -48,27 +49,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('[Auth] Checking session (attempt', attempt + 1, 'of', MAX_RETRY_ATTEMPTS + 1, ')');
       
-      // Step 1: Check localStorage for cached user (instant UX)
-      const cachedUser = localStorage.getItem('cv_user');
-      if (cachedUser) {
-        try {
-          const userData = JSON.parse(cachedUser);
-          console.log('[Auth] ✅ Restored user from cache:', userData.email);
-          setUser(userData);
-          setIsLoading(false); // CRITICAL: Set loading false immediately
-          
-          // Step 2: Verify session in background (non-blocking)
-          verifySessionInBackground(userData);
-          
-          return; // Exit early - user is set from cache
-        } catch (parseError) {
-          console.warn('[Auth] ⚠️ Failed to parse cached user:', parseError);
-          localStorage.removeItem('cv_user');
-          // Continue to API check
-        }
-      }
-
-      // Step 3: No cache - fetch from API with timeout
+      // SECURITY FIX: Removed localStorage caching - fetch from API only
+      // Session is verified via httpOnly cookies (secure, XSS-proof)
       const response = await fetchWithTimeout(
         api.auth.getProfile(),
         SESSION_CHECK_TIMEOUT
@@ -84,7 +66,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
 
       setUser(userData);
-      localStorage.setItem('cv_user', JSON.stringify(userData));
       
       // Set user context in Sentry
       setSentryUser({
@@ -111,7 +92,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(null);
-      localStorage.removeItem('cv_user');
       clearSentryUser();
     } finally {
       setIsLoading(false);
