@@ -397,19 +397,23 @@ async def nowpayments_webhook(
             user_id = deposit["user_id"]
             amount = deposit["amount"]
             
+            logger.info(f"💰 Processing successful payment: ${amount} for user {user_id}")
+            
             # Update or create wallet
             wallet = await wallets_collection.find_one({"user_id": user_id})
             if wallet:
                 current_balance = wallet.get("balances", {}).get("USD", 0)
+                new_balance = current_balance + amount
                 await wallets_collection.update_one(
                     {"user_id": user_id},
                     {
                         "$set": {
-                            "balances.USD": current_balance + amount,
+                            "balances.USD": new_balance,
                             "updated_at": datetime.utcnow()
                         }
                     }
                 )
+                logger.info(f"✅ Wallet updated: ${current_balance} → ${new_balance}")
             else:
                 await wallets_collection.insert_one({
                     "id": str(uuid.uuid4()),
@@ -418,6 +422,7 @@ async def nowpayments_webhook(
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 })
+                logger.info(f"✅ New wallet created with balance: ${amount}")
             
             # Create transaction record
             transactions_collection = db.get_collection("transactions")
@@ -439,12 +444,26 @@ async def nowpayments_webhook(
             await log_audit(
                 db, user_id, "DEPOSIT_COMPLETED",
                 resource=order_id,
-                details={"amount": amount, "payment_status": payment_status}
+                details={
+                    "amount": amount,
+                    "payment_status": payment_status,
+                    "payment_id": payment_id,
+                    "actually_paid": actually_paid
+                }
             )
             
-            logger.info(f"✅ Deposit completed: {order_id} - ${amount}")
+            logger.info(f"✅ Deposit completed: {order_id} - ${amount} credited to user {user_id}")
+        elif payment_status in PaymentStatus.FAILED_STATUSES:
+            logger.warning(f"⚠️ Payment failed/expired: {order_id} - Status: {payment_status}")
+        else:
+            logger.info(f"ℹ️ Payment pending: {order_id} - Status: {payment_status}")
         
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "order_id": order_id,
+            "payment_status": payment_status,
+            "processed_at": datetime.utcnow().isoformat()
+        }
         
     except HTTPException:
         raise
