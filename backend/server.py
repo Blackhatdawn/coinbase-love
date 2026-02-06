@@ -407,10 +407,10 @@ async def lifespan(app: FastAPI):
 
         db_connection = DatabaseConnection(
             mongo_url=settings.database_url,
-            db_name="cryptovault",
-            max_pool_size=20,
-            min_pool_size=10,
-            server_selection_timeout_ms=5000
+            db_name=settings.db_name,
+            max_pool_size=settings.mongo_max_pool_size,
+            min_pool_size=min(5, settings.mongo_max_pool_size),
+            server_selection_timeout_ms=settings.mongo_timeout_ms
         )
         await db_connection.connect()
 
