@@ -288,6 +288,8 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         "/api/v1/auth/forgot-password",
         "/api/v1/auth/reset-password",
         "/api/v1/auth/verify-email",
+        "/api/admin/login",
+        "/api/admin/verify-otp",
         "/csrf",
         "/api/csrf",
         "/health",
@@ -296,7 +298,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         "/api/ping",
         "/socket.io/",
         "/api/config",
-        "/api/wallet/webhook",  # Webhook endpoints (external services)
+        "/api/wallet/webhook",
     ]
     
     # Methods that require CSRF validation
