@@ -1,141 +1,71 @@
 {
-  "total_tests": 19,
-  "passed_tests": 15,
-  "failed_tests": 4,
-  "success_rate": 78.94736842105263,
-  "test_results": [
+  "timestamp": "2026-02-06T12:46:12.657558",
+  "tests_run": 9,
+  "tests_passed": 9,
+  "success_rate": 100.0,
+  "results": [
     {
       "test": "Health Check",
       "success": true,
-      "details": "API is healthy",
+      "details": "Status: healthy, Database: connected",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.636163"
+      "timestamp": "2026-02-06T12:46:11.233641"
     },
     {
-      "test": "Root Endpoint",
+      "test": "Crypto List Endpoint",
       "success": true,
-      "details": "Frontend is serving root correctly",
+      "details": "Endpoint /crypto returned 20 cryptocurrencies",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.639484"
+      "timestamp": "2026-02-06T12:46:12.339467"
     },
     {
-      "test": "Version Info Endpoint - GET /api/version",
+      "test": "CORS Headers",
       "success": true,
-      "details": "Version: 1.0.0, API: v1, Features: 8",
+      "details": "CORS configured: Origin=https://400dc717-e040-4c41-aaa7-d04c7e41aa10.preview.emergentagent.com, Credentials=true",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.642547"
+      "timestamp": "2026-02-06T12:46:12.350121"
     },
     {
-      "test": "Version Compatibility Check - GET /api/version/check",
+      "test": "Socket.IO Basic Endpoint",
       "success": true,
-      "details": "Compatible: True, Server: 1.0.0, Client: 1.0.0",
+      "details": "Socket.IO accessible (HTTP 400)",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.685731"
+      "timestamp": "2026-02-06T12:46:12.358858"
     },
     {
-      "test": "Feature Flags Endpoint - GET /api/version/features",
+      "test": "Socket.IO Handshake",
       "success": true,
-      "details": "Features available: 8, Enabled: 8",
+      "details": "Socket.IO handshake successful",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.728702"
+      "timestamp": "2026-02-06T12:46:12.366973"
     },
     {
-      "test": "Deployment Info Endpoint - GET /api/version/deployment",
+      "test": "Admin API /admin/dashboard/stats",
       "success": true,
-      "details": "Platform: fly.io, App: coinbase-love, Region: unknown",
+      "details": "Endpoint exists and requires authentication (HTTP 401)",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.771783"
+      "timestamp": "2026-02-06T12:46:12.376032"
     },
     {
-      "test": "Admin Protected Endpoint 401 - GET /admin/me",
+      "test": "Admin API /admin/users",
       "success": true,
-      "details": "Correctly returns 401",
+      "details": "Endpoint exists and requires authentication (HTTP 401)",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.815783"
+      "timestamp": "2026-02-06T12:46:12.383781"
     },
     {
-      "test": "Admin Protected Endpoint 401 - GET /admin/dashboard/stats",
+      "test": "Admin API /admin/system/health",
       "success": true,
-      "details": "Correctly returns 401",
+      "details": "Endpoint exists and requires authentication (HTTP 401)",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.859801"
+      "timestamp": "2026-02-06T12:46:12.391478"
     },
     {
-      "test": "Admin Protected Endpoint 401 - GET /admin/users",
+      "test": "Auth Login Endpoint",
       "success": true,
-      "details": "Correctly returns 401",
+      "details": "Login endpoint correctly rejects invalid credentials",
       "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.903719"
-    },
-    {
-      "test": "Admin Protected Endpoint 401 - GET /admin/system/health",
-      "success": true,
-      "details": "Correctly returns 401",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.946689"
-    },
-    {
-      "test": "Admin Protected Endpoint 401 - POST /admin/logout",
-      "success": false,
-      "details": "Should return 401: {'error': {'code': 'CSRF_TOKEN_MISSING', 'message': 'CSRF token is required for this request', 'hint': 'Include X-CSRF-Token header with the token from /csrf endpoint'}}",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:24.988696"
-    },
-    {
-      "test": "Admin Login - POST /api/admin/login",
-      "success": false,
-      "details": "Admin login failed: {'error': {'code': 'CSRF_TOKEN_MISSING', 'message': 'CSRF token is required for this request', 'hint': 'Include X-CSRF-Token header with the token from /csrf endpoint'}}",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:25.030724"
-    },
-    {
-      "test": "Admin User Management",
-      "success": false,
-      "details": "Could not login as admin for user management test",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:25.072684"
-    },
-    {
-      "test": "Admin Broadcast Functionality",
-      "success": false,
-      "details": "Could not login as admin for broadcast test",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:25.115756"
-    },
-    {
-      "test": "Auth Signup Flow - POST /api/auth/signup",
-      "success": true,
-      "details": "User created with ID: e1e6f481-7aa9-4faf-bde3-7c9b0ce1effd",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:29.368728"
-    },
-    {
-      "test": "Auth Login Flow - POST /api/auth/login",
-      "success": true,
-      "details": "Login requires email verification (expected behavior)",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:29.665761"
-    },
-    {
-      "test": "Auth Me (No Auth) - GET /api/auth/me",
-      "success": true,
-      "details": "Correctly requires authentication",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:29.708757"
-    },
-    {
-      "test": "Wallet Balance (No Auth) - GET /api/wallet/balance",
-      "success": true,
-      "details": "Correctly requires authentication",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:29.752772"
-    },
-    {
-      "test": "Transactions (No Auth) - GET /api/transactions",
-      "success": true,
-      "details": "Correctly requires authentication",
-      "response_data": null,
-      "timestamp": "2026-01-26T02:09:29.796755"
+      "timestamp": "2026-02-06T12:46:12.657434"
     }
   ]
 }
