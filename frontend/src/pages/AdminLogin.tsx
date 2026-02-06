@@ -2,7 +2,7 @@
  * Admin Login Page - Two-Step OTP Authentication
  * Secure authentication for admin panel access with email OTP
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Shield, Lock, Eye, EyeOff, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/apiClient';
 
 interface AdminLoginResponse {
   admin: {
