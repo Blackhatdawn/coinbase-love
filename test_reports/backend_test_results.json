@@ -4,7 +4,7 @@
     "passed_tests": 6,
     "failed_tests": 6,
     "success_rate": 50.0,
-    "timestamp": "2026-02-06T13:31:03.051705"
+    "timestamp": "2026-02-06T18:54:13.105136"
   },
   "results": [
     {
@@ -13,7 +13,7 @@
       "status_code": 200,
       "error": null,
       "details": null,
-      "timestamp": "2026-02-06T13:30:55.534725"
+      "timestamp": "2026-02-06T18:54:05.933092"
     },
     {
       "test": "CSRF Token Generation",
@@ -23,7 +23,7 @@
       "details": {
         "csrf_token_length": 64
       },
-      "timestamp": "2026-02-06T13:30:55.837057"
+      "timestamp": "2026-02-06T18:54:06.062548"
     },
     {
       "test": "Config Endpoint",
@@ -43,15 +43,15 @@
           "branding"
         ]
       },
-      "timestamp": "2026-02-06T13:30:55.968946"
+      "timestamp": "2026-02-06T18:54:06.191768"
     },
     {
       "test": "Socket.IO Handshake",
       "passed": false,
       "status_code": 404,
-      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"81aa4853-0135-4a04-abf1-bb2f3c4b05b6\",\"timestamp\":\"2026-02-06T13:30:56.035105\"}}",
+      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"034c9e99-f92d-4450-b1bc-c57417a00786\",\"timestamp\":\"2026-02-06T18:54:06.270243\"}}",
       "details": null,
-      "timestamp": "2026-02-06T13:30:56.088714"
+      "timestamp": "2026-02-06T18:54:06.312054"
     },
     {
       "test": "Crypto Listing",
@@ -59,7 +59,7 @@
       "status_code": 200,
       "error": "Empty or invalid crypto list",
       "details": null,
-      "timestamp": "2026-02-06T13:30:56.716830"
+      "timestamp": "2026-02-06T18:54:07.003079"
     },
     {
       "test": "Auth Signup",
@@ -67,7 +67,7 @@
       "status_code": 200,
       "error": null,
       "details": {
-        "email": "test1770384656@example.com",
+        "email": "test1770404047@example.com",
         "response_keys": [
           "user",
           "message",
@@ -76,7 +76,7 @@
           "kyc_status"
         ]
       },
-      "timestamp": "2026-02-06T13:31:01.049065"
+      "timestamp": "2026-02-06T18:54:11.114509"
     },
     {
       "test": "Auth Login (access_token in body)",
@@ -88,7 +88,7 @@
           "user"
         ]
       },
-      "timestamp": "2026-02-06T13:31:01.884160"
+      "timestamp": "2026-02-06T18:54:11.873872"
     },
     {
       "test": "Wallet Balance (with auth)",
@@ -96,7 +96,7 @@
       "status_code": 0,
       "error": "No user token available",
       "details": null,
-      "timestamp": "2026-02-06T13:31:01.884197"
+      "timestamp": "2026-02-06T18:54:11.873914"
     },
     {
       "test": "Admin Login CSRF Fix",
@@ -104,7 +104,7 @@
       "status_code": 401,
       "error": "Returns auth error instead of CSRF error",
       "details": null,
-      "timestamp": "2026-02-06T13:31:02.596713"
+      "timestamp": "2026-02-06T18:54:12.608406"
     },
     {
       "test": "Admin Dashboard Stats Endpoint Exists",
@@ -112,7 +112,7 @@
       "status_code": 401,
       "error": "Returns 401 (unauthorized) - endpoint exists",
       "details": null,
-      "timestamp": "2026-02-06T13:31:02.708422"
+      "timestamp": "2026-02-06T18:54:12.737228"
     },
     {
       "test": "P2P Transfer Endpoint Exists",
@@ -120,7 +120,7 @@
       "status_code": 404,
       "error": "Returns 404 - endpoint not found",
       "details": null,
-      "timestamp": "2026-02-06T13:31:02.939842"
+      "timestamp": "2026-02-06T18:54:12.988511"
     },
     {
       "test": "Double-Prefix Bug Fixed",
@@ -128,7 +128,7 @@
       "status_code": 401,
       "error": "Still routes to admin endpoint (bug not fixed)",
       "details": null,
-      "timestamp": "2026-02-06T13:31:03.050576"
+      "timestamp": "2026-02-06T18:54:13.104954"
     }
   ]
 }
