@@ -283,6 +283,7 @@ class SocketIOManager:
         """Get Socket.IO server statistics."""
         return {
             "total_connections": len(self.connections),
+            "active_connections": len(self.connections),
             "authenticated_users": len(self.user_sessions),
             "connections": [
                 {
