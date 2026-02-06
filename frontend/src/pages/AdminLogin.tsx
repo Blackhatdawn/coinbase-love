@@ -53,22 +53,7 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await fetch(`${baseUrl}/api/admin/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Authentication failed');
-      }
-
-      const data: OTPRequestResponse = await response.json();
+      const data = await api.admin.login({ email, password });
       
       // Check if OTP is required
       if (data.requires_otp) {
@@ -76,6 +61,10 @@ const AdminLogin = () => {
         toast.success('OTP sent to your email! Check your inbox.');
       } else {
         // Direct login (fallback for admins without OTP)
+        if (data.token) {
+          sessionStorage.setItem('adminToken', data.token);
+          sessionStorage.setItem('adminData', JSON.stringify(data.admin));
+        }
         toast.success('Login successful!');
         navigate('/admin/dashboard');
       }
