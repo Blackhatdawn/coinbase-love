@@ -965,3 +965,6 @@ from socketio import ASGIApp
 socket_app = ASGIApp(socketio_manager.sio, app)
 logger.info("✅ Socket.IO mounted at /socket.io/")
 
+# CRITICAL: Override `app` so uvicorn server:app loads the Socket.IO-wrapped version
+app = socket_app
+
