@@ -83,22 +83,7 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await fetch(`${baseUrl}/api/admin/verify-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, otp_code: otpCode }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'OTP verification failed');
-      }
-
-      const data: AdminLoginResponse = await response.json();
+      const data = await api.admin.verifyOtp({ email, otp_code: otpCode });
       
       // Store admin data in sessionStorage (not localStorage for security)
       sessionStorage.setItem('adminToken', data.token);
