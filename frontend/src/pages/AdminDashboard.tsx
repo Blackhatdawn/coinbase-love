@@ -135,7 +135,8 @@ const AdminDashboard = () => {
   // API call helper
   const adminFetch = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     const token = sessionStorage.getItem('adminToken');
-    const response = await fetch(`/api/admin${endpoint}`, {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const response = await fetch(`${baseUrl}/api/admin${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
