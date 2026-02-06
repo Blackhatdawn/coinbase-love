@@ -354,11 +354,16 @@ class Settings(BaseSettings):
         return self.cors_origins
 
     def get_socketio_cors_origins(self) -> List[str]:
-        """Get Socket.IO CORS origins with app URL fallback."""
+        """Get Socket.IO CORS origins with app URL and deployment URLs."""
         origins = self.get_cors_origins_list()
+        # Always include app URL
         app_origin = self.app_url.rstrip("/")
         if app_origin and app_origin not in origins:
             origins.append(app_origin)
+        # Always include the public API URL (Render domain) for same-origin WS
+        api_origin = self.public_api_url.rstrip("/") if self.public_api_url else ""
+        if api_origin and api_origin not in origins:
+            origins.append(api_origin)
         return origins
 
     def is_sentry_available(self) -> bool:
