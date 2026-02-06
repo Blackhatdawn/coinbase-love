@@ -132,15 +132,29 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
+  // Helper to get CSRF token from cookie
+  const getCSRFToken = useCallback((): string | null => {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const trimmed = cookie.trim();
+      if (trimmed.startsWith('csrf_token=')) {
+        return trimmed.substring('csrf_token='.length);
+      }
+    }
+    return null;
+  }, []);
+
   // API call helper
   const adminFetch = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     const token = sessionStorage.getItem('adminToken');
+    const csrfToken = getCSRFToken();
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await fetch(`${baseUrl}/api/admin${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
         ...options.headers,
       },
       credentials: 'include',
@@ -154,7 +168,7 @@ const AdminDashboard = () => {
     }
     
     return response;
-  }, [navigate]);
+  }, [navigate, getCSRFToken]);
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
