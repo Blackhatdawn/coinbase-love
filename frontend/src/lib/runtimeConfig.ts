@@ -80,7 +80,13 @@ const getFallbackConfig = (): RuntimeConfig => ({
 });
 
 const mergeConfig = (base: RuntimeConfig, incoming: Partial<RuntimeConfig>): RuntimeConfig => {
-  const preferRelativeApi = incoming.preferRelativeApi ?? base.preferRelativeApi ?? false;
+  // In development/preview, always prefer relative API to use proxy
+  const isDev = import.meta.env.DEV || 
+    (typeof window !== 'undefined' && 
+      !window.location.hostname.endsWith('cryptovault.financial') &&
+      !window.location.hostname.endsWith('.vercel.app'));
+  
+  const preferRelativeApi = isDev || incoming.preferRelativeApi || base.preferRelativeApi || false;
   const merged: RuntimeConfig = {
     ...base,
     ...incoming,
