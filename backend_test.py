@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CryptoVault Backend API Testing Suite
-Testing the backend APIs using the public URL from frontend env configuration
+Tests all critical endpoints for Phase 2 fixes verification
 """
 
 import requests
@@ -12,285 +12,446 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class CryptoVaultAPITester:
-    def __init__(self, base_url: str = None):
-        # Use the public URL from frontend .env file
-        if base_url is None:
-            try:
-                with open('/app/frontend/.env', 'r') as f:
-                    env_content = f.read()
-                    for line in env_content.split('\n'):
-                        if line.startswith('VITE_API_BASE_URL='):
-                            backend_url = line.split('=', 1)[1].strip()
-                            if backend_url:
-                                base_url = backend_url
-                                break
-                if not base_url:
-                    base_url = "http://localhost:8001"
-            except:
-                base_url = "http://localhost:8001"
-        
+    def __init__(self, base_url: str = "https://cryptovault-api.onrender.com"):
         self.base_url = base_url
-        self.api_base = f"{base_url}/api"
         self.session = requests.Session()
+        self.session.timeout = 30
+        
+        # Test results tracking
         self.tests_run = 0
         self.tests_passed = 0
-        self.test_results = []
+        self.results = []
         
-        print(f"🔗 Testing backend at: {self.base_url}")
+        # Authentication storage
+        self.user_token = None
+        self.admin_token = None
+        self.csrf_token = None
 
-    def log_test(self, name: str, success: bool, details: str = "", response_data: Any = None):
+    def log_result(self, test_name: str, passed: bool, response_code: int = None, 
+                   error: str = None, details: Dict = None):
         """Log test result"""
         self.tests_run += 1
-        if success:
+        if passed:
             self.tests_passed += 1
-            print(f"✅ {name}: PASSED")
-            if details:
-                print(f"   {details}")
-        else:
-            print(f"❌ {name}: FAILED")
-            if details:
-                print(f"   {details}")
-        
-        self.test_results.append({
-            "test": name,
-            "success": success,
+            
+        result = {
+            "test": test_name,
+            "passed": passed,
+            "status_code": response_code,
+            "error": error,
             "details": details,
-            "response_data": response_data,
             "timestamp": datetime.utcnow().isoformat()
-        })
+        }
+        self.results.append(result)
+        
+        status = "✅ PASS" if passed else "❌ FAIL"
+        print(f"{status} - {test_name} [{response_code}]")
+        if error:
+            print(f"    Error: {error}")
 
-    def test_health_check(self):
-        """Test health endpoint - GET /api/health should return status:healthy"""
+    def make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        """Make HTTP request with proper error handling"""
+        url = f"{self.base_url}{endpoint}"
+        
+        # Add common headers
+        headers = kwargs.get('headers', {})
+        if self.csrf_token and method.upper() in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            headers['X-CSRF-Token'] = self.csrf_token
+        kwargs['headers'] = headers
+        
         try:
-            response = self.session.get(f"{self.api_base}/health", timeout=15)
+            response = self.session.request(method, url, **kwargs)
+            return response
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Request failed: {str(e)}")
+
+    def test_backend_health(self):
+        """Test: GET /api/health returns healthy"""
+        try:
+            response = self.make_request('GET', '/api/health')
             
             if response.status_code == 200:
-                try:
-                    data = response.json()
-                    if data.get('status') == 'healthy':
-                        self.log_test("Health Check", True, 
-                                    f"Status: {data.get('status')}, Database: {data.get('database', 'unknown')}")
-                    else:
-                        self.log_test("Health Check", False, f"Expected 'healthy', got: {data.get('status')}")
-                except json.JSONDecodeError:
-                    self.log_test("Health Check", False, "Invalid JSON response")
-            else:
-                self.log_test("Health Check", False, f"HTTP {response.status_code}: {response.text[:100]}")
-                
-        except requests.exceptions.RequestException as e:
-            self.log_test("Health Check", False, f"Request failed: {str(e)}")
-
-    def test_crypto_list_endpoint(self):
-        """Test API endpoint /api/crypto/list returns crypto data"""
-        endpoints_to_try = [
-            "/crypto/list", 
-            "/crypto",  # fallback
-        ]
-        
-        for endpoint in endpoints_to_try:
-            try:
-                response = self.session.get(f"{self.api_base}{endpoint}", timeout=15)
-                
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        if isinstance(data, dict) and ('cryptocurrencies' in data or 'data' in data):
-                            crypto_list = data.get('cryptocurrencies') or data.get('data', [])
-                            self.log_test("Crypto List Endpoint", True, 
-                                        f"Endpoint {endpoint} returned {len(crypto_list)} cryptocurrencies")
-                            return True
-                        else:
-                            # Try to see if it's a different structure
-                            if isinstance(data, list) and len(data) > 0:
-                                self.log_test("Crypto List Endpoint", True, 
-                                            f"Endpoint {endpoint} returned list with {len(data)} items")
-                                return True
-                            else:
-                                self.log_test("Crypto List Endpoint", False, 
-                                            f"Endpoint {endpoint} - unexpected response structure: {type(data)}")
-                    except json.JSONDecodeError:
-                        self.log_test("Crypto List Endpoint", False, f"Endpoint {endpoint} - invalid JSON")
+                data = response.json()
+                if data.get('status') == 'healthy':
+                    self.log_result("Backend Health Check", True, response.status_code)
+                    return True
                 else:
-                    print(f"   Endpoint {endpoint}: HTTP {response.status_code}")
-                    
-            except requests.exceptions.RequestException as e:
-                print(f"   Endpoint {endpoint}: Request failed - {str(e)}")
-                
-        self.log_test("Crypto List Endpoint", False, "No working crypto list endpoint found")
-        return False
-
-    def test_cors_headers(self):
-        """Test CORS headers are properly set"""
-        try:
-            # Test preflight request
-            headers = {
-                'Origin': 'https://400dc717-e040-4c41-aaa7-d04c7e41aa10.preview.emergentagent.com',
-                'Access-Control-Request-Method': 'POST',
-                'Access-Control-Request-Headers': 'Content-Type'
-            }
-            
-            response = self.session.options(f"{self.api_base}/health", headers=headers, timeout=10)
-            
-            cors_headers = {
-                'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
-                'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
-                'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
-                'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials')
-            }
-            
-            # Check if CORS is configured
-            if any(cors_headers.values()):
-                self.log_test("CORS Headers", True, 
-                            f"CORS configured: Origin={cors_headers['Access-Control-Allow-Origin']}, "
-                            f"Credentials={cors_headers['Access-Control-Allow-Credentials']}")
+                    self.log_result("Backend Health Check", False, response.status_code, 
+                                  f"Unhealthy status: {data.get('status')}")
             else:
-                self.log_test("CORS Headers", False, "No CORS headers found in OPTIONS response")
-                
-        except requests.exceptions.RequestException as e:
-            self.log_test("CORS Headers", False, f"CORS test failed: {str(e)}")
-
-    def test_socketio_endpoint(self):
-        """Test Socket.IO endpoint /socket.io/ is accessible"""
-        try:
-            # Test basic Socket.IO endpoint
-            response = self.session.get(f"{self.base_url}/socket.io/", timeout=10)
-            
-            if response.status_code in [200, 400]:
-                # 200 or 400 are both acceptable for Socket.IO without proper handshake
-                self.log_test("Socket.IO Basic Endpoint", True, 
-                            f"Socket.IO accessible (HTTP {response.status_code})")
-            else:
-                self.log_test("Socket.IO Basic Endpoint", False, 
-                            f"Unexpected status: HTTP {response.status_code}")
-            
-            # Test Socket.IO with proper parameters
-            try:
-                socketio_url = f"{self.base_url}/socket.io/?EIO=4&transport=polling"
-                response = self.session.get(socketio_url, timeout=10)
-                if response.status_code == 200:
-                    self.log_test("Socket.IO Handshake", True, "Socket.IO handshake successful")
-                else:
-                    self.log_test("Socket.IO Handshake", False, f"Handshake failed: HTTP {response.status_code}")
-            except:
-                self.log_test("Socket.IO Handshake", False, "Handshake test failed")
-                
-        except requests.exceptions.RequestException as e:
-            self.log_test("Socket.IO Endpoint", False, f"Socket.IO test failed: {str(e)}")
-
-    def test_admin_api_endpoints(self):
-        """Test Admin API endpoints exist"""
-        admin_endpoints = [
-            ("/admin/dashboard/stats", "GET"),
-            ("/admin/users", "GET"),
-            ("/admin/system/health", "GET")
-        ]
-        
-        for endpoint, method in admin_endpoints:
-            try:
-                url = f"{self.api_base}{endpoint}"
-                if method == "GET":
-                    response = self.session.get(url, timeout=10)
-                else:
-                    response = self.session.post(url, timeout=10)
-                
-                # These should require auth, so 401 is expected and good
-                if response.status_code == 401:
-                    self.log_test(f"Admin API {endpoint}", True, 
-                                f"Endpoint exists and requires authentication (HTTP 401)")
-                elif response.status_code == 200:
-                    self.log_test(f"Admin API {endpoint}", True, 
-                                f"Endpoint accessible (HTTP 200)")
-                else:
-                    self.log_test(f"Admin API {endpoint}", False, 
-                                f"Unexpected status: HTTP {response.status_code}")
-                    
-            except requests.exceptions.RequestException as e:
-                self.log_test(f"Admin API {endpoint}", False, f"Request failed: {str(e)}")
-
-    def test_auth_endpoints(self):
-        """Test Auth endpoints work: POST /api/auth/login returns access_token in body"""
-        try:
-            # Test login endpoint exists
-            login_data = {
-                "email": "test@example.com",
-                "password": "testpass"
-            }
-            
-            response = self.session.post(f"{self.api_base}/auth/login", 
-                                       json=login_data, timeout=10)
-            
-            if response.status_code in [200, 401, 422]:
-                try:
-                    data = response.json()
-                    if response.status_code == 200 and 'access_token' in data:
-                        self.log_test("Auth Login Endpoint", True, 
-                                    "Login endpoint returns access_token")
-                    elif response.status_code == 401:
-                        self.log_test("Auth Login Endpoint", True, 
-                                    "Login endpoint correctly rejects invalid credentials")
-                    elif response.status_code == 422:
-                        self.log_test("Auth Login Endpoint", True, 
-                                    "Login endpoint validates input format")
-                    else:
-                        self.log_test("Auth Login Endpoint", False, 
-                                    f"Unexpected response structure: {data}")
-                except json.JSONDecodeError:
-                    self.log_test("Auth Login Endpoint", False, "Invalid JSON response")
-            else:
-                self.log_test("Auth Login Endpoint", False, 
-                            f"Unexpected status: HTTP {response.status_code}")
-                
-        except requests.exceptions.RequestException as e:
-            self.log_test("Auth Login Endpoint", False, f"Request failed: {str(e)}")
-
-    def run_backend_tests(self):
-        """Run all backend tests"""
-        print("🚀 Starting CryptoVault Backend API Tests")
-        print("=" * 50)
-        
-        # Run all tests
-        self.test_health_check()
-        self.test_crypto_list_endpoint()
-        self.test_cors_headers()
-        self.test_socketio_endpoint()
-        self.test_admin_api_endpoints()
-        self.test_auth_endpoints()
-        
-        # Print summary
-        print("\n" + "=" * 50)
-        print("📊 Test Summary")
-        print("=" * 50)
-        print(f"Total tests: {self.tests_run}")
-        print(f"Passed: {self.tests_passed}")
-        print(f"Failed: {self.tests_run - self.tests_passed}")
-        print(f"Success rate: {(self.tests_passed/self.tests_run)*100:.1f}%" if self.tests_run > 0 else "0%")
-        
-        # Save results
-        try:
-            with open('/app/test_reports/backend_test_results.json', 'w') as f:
-                json.dump({
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "tests_run": self.tests_run,
-                    "tests_passed": self.tests_passed,
-                    "success_rate": (self.tests_passed/self.tests_run)*100 if self.tests_run > 0 else 0,
-                    "results": self.test_results
-                }, f, indent=2)
-            print("\n📝 Results saved to /app/test_reports/backend_test_results.json")
+                self.log_result("Backend Health Check", False, response.status_code, 
+                              response.text)
+            return False
         except Exception as e:
-            print(f"\n⚠️ Could not save results: {e}")
+            self.log_result("Backend Health Check", False, 0, str(e))
+            return False
+
+    def test_csrf_endpoint(self):
+        """Test: GET /api/csrf returns csrf_token"""
+        try:
+            response = self.make_request('GET', '/api/csrf')
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'csrf_token' in data:
+                    self.csrf_token = data['csrf_token']
+                    self.log_result("CSRF Token Generation", True, response.status_code,
+                                  details={"csrf_token_length": len(self.csrf_token)})
+                    return True
+                else:
+                    self.log_result("CSRF Token Generation", False, response.status_code,
+                                  "No csrf_token in response")
+            else:
+                self.log_result("CSRF Token Generation", False, response.status_code,
+                              response.text)
+            return False
+        except Exception as e:
+            self.log_result("CSRF Token Generation", False, 0, str(e))
+            return False
+
+    def test_config_endpoint(self):
+        """Test: GET /api/config returns runtime configuration"""
+        try:
+            response = self.make_request('GET', '/api/config')
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Expect configuration object
+                if isinstance(data, dict) and len(data) > 0:
+                    self.log_result("Config Endpoint", True, response.status_code,
+                                  details={"config_keys": list(data.keys())})
+                    return True
+                else:
+                    self.log_result("Config Endpoint", False, response.status_code,
+                                  "Empty or invalid configuration")
+            else:
+                self.log_result("Config Endpoint", False, response.status_code,
+                              response.text)
+            return False
+        except Exception as e:
+            self.log_result("Config Endpoint", False, 0, str(e))
+            return False
+
+    def test_socketio_handshake(self):
+        """Test: GET /socket.io/?EIO=4&transport=polling returns session"""
+        try:
+            response = self.make_request('GET', '/socket.io/?EIO=4&transport=polling')
+            
+            if response.status_code == 200:
+                # Socket.IO response typically starts with a number (protocol version)
+                if response.text and (response.text.startswith('0') or 'sid' in response.text):
+                    self.log_result("Socket.IO Handshake", True, response.status_code,
+                                  details={"response_preview": response.text[:50]})
+                    return True
+                else:
+                    self.log_result("Socket.IO Handshake", False, response.status_code,
+                                  f"Unexpected response: {response.text[:100]}")
+            else:
+                self.log_result("Socket.IO Handshake", False, response.status_code,
+                              response.text)
+            return False
+        except Exception as e:
+            self.log_result("Socket.IO Handshake", False, 0, str(e))
+            return False
+
+    def test_crypto_listing(self):
+        """Test: GET /api/crypto returns cryptocurrency data"""
+        try:
+            response = self.make_request('GET', '/api/crypto')
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0:
+                    # Check if crypto data has expected structure
+                    first_coin = data[0]
+                    expected_fields = ['id', 'symbol', 'name', 'price']
+                    has_fields = all(field in first_coin for field in expected_fields)
+                    
+                    self.log_result("Crypto Listing", has_fields, response.status_code,
+                                  None if has_fields else f"Missing fields: {expected_fields}",
+                                  {"count": len(data), "first_coin": first_coin})
+                    return has_fields
+                else:
+                    self.log_result("Crypto Listing", False, response.status_code,
+                                  "Empty or invalid crypto list")
+            else:
+                self.log_result("Crypto Listing", False, response.status_code,
+                              response.text)
+            return False
+        except Exception as e:
+            self.log_result("Crypto Listing", False, 0, str(e))
+            return False
+
+    def test_auth_signup(self):
+        """Test: POST /api/auth/signup creates user"""
+        try:
+            # Generate unique email
+            timestamp = int(time.time())
+            email = f"test{timestamp}@example.com"
+            
+            response = self.make_request('POST', '/api/auth/signup', json={
+                "email": email,
+                "password": "Test123!@#",
+                "name": "Test User"
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'user' in data or 'message' in data:
+                    self.log_result("Auth Signup", True, response.status_code,
+                                  details={"email": email, "response_keys": list(data.keys())})
+                    return True, email
+                else:
+                    self.log_result("Auth Signup", False, response.status_code,
+                                  "No user or message in response")
+            else:
+                self.log_result("Auth Signup", False, response.status_code,
+                              response.text[:200])
+            return False, None
+        except Exception as e:
+            self.log_result("Auth Signup", False, 0, str(e))
+            return False, None
+
+    def test_auth_login(self, email: str = None, password: str = None):
+        """Test: POST /api/auth/login returns access_token in body"""
+        if not email:
+            email = "testuser@example.com"
+            password = "Test123!@#"
+            
+        try:
+            response = self.make_request('POST', '/api/auth/login', json={
+                "email": email,
+                "password": password
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Check for access_token in response body
+                if 'access_token' in data:
+                    self.user_token = data['access_token']
+                    self.log_result("Auth Login (access_token in body)", True, response.status_code,
+                                  details={"has_access_token": True, "token_length": len(self.user_token)})
+                    return True
+                else:
+                    self.log_result("Auth Login (access_token in body)", False, response.status_code,
+                                  "No access_token in response body",
+                                  details={"response_keys": list(data.keys())})
+            else:
+                self.log_result("Auth Login (access_token in body)", False, response.status_code,
+                              response.text[:200])
+            return False
+        except Exception as e:
+            self.log_result("Auth Login (access_token in body)", False, 0, str(e))
+            return False
+
+    def test_wallet_balance_with_auth(self):
+        """Test: GET /api/wallet/balance returns wallet data (with auth cookie)"""
+        if not self.user_token:
+            self.log_result("Wallet Balance (with auth)", False, 0, "No user token available")
+            return False
+            
+        try:
+            headers = {"Authorization": f"Bearer {self.user_token}"}
+            response = self.make_request('GET', '/api/wallet/balance', headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict) and ('balance' in data or 'balances' in data):
+                    self.log_result("Wallet Balance (with auth)", True, response.status_code,
+                                  details={"response_keys": list(data.keys())})
+                    return True
+                else:
+                    self.log_result("Wallet Balance (with auth)", False, response.status_code,
+                                  "No balance data in response")
+            else:
+                self.log_result("Wallet Balance (with auth)", False, response.status_code,
+                              response.text[:200])
+            return False
+        except Exception as e:
+            self.log_result("Wallet Balance (with auth)", False, 0, str(e))
+            return False
+
+    def test_admin_login_csrf_fix(self):
+        """Test: POST /api/admin/login no longer fails with CSRF error"""
+        try:
+            response = self.make_request('POST', '/api/admin/login', json={
+                "email": "admin@cryptovault.financial",
+                "password": "wrongpassword"  # Expect auth error, not CSRF error
+            })
+            
+            # We expect 401 (auth error), NOT 403 (CSRF error)
+            if response.status_code == 401:
+                self.log_result("Admin Login CSRF Fix", True, response.status_code,
+                              "Returns auth error instead of CSRF error")
+                return True
+            elif response.status_code == 403:
+                # Check if it's a CSRF error
+                error_text = response.text.lower()
+                if 'csrf' in error_text:
+                    self.log_result("Admin Login CSRF Fix", False, response.status_code,
+                                  "Still failing with CSRF error")
+                else:
+                    self.log_result("Admin Login CSRF Fix", True, response.status_code,
+                                  "Returns 403 but not CSRF related")
+                    return True
+            else:
+                # Other status codes might be OK depending on implementation
+                self.log_result("Admin Login CSRF Fix", True, response.status_code,
+                              f"No CSRF error, returns {response.status_code}")
+                return True
+            return False
+        except Exception as e:
+            self.log_result("Admin Login CSRF Fix", False, 0, str(e))
+            return False
+
+    def test_admin_dashboard_stats(self):
+        """Test: GET /api/admin/dashboard/stats returns 401 (exists but requires auth)"""
+        try:
+            response = self.make_request('GET', '/api/admin/dashboard/stats')
+            
+            # We expect 401 (unauthorized) not 404 (not found)
+            if response.status_code == 401:
+                self.log_result("Admin Dashboard Stats Endpoint Exists", True, response.status_code,
+                              "Returns 401 (unauthorized) - endpoint exists")
+                return True
+            elif response.status_code == 404:
+                self.log_result("Admin Dashboard Stats Endpoint Exists", False, response.status_code,
+                              "Returns 404 - endpoint not found")
+            else:
+                self.log_result("Admin Dashboard Stats Endpoint Exists", True, response.status_code,
+                              f"Endpoint exists, returns {response.status_code}")
+                return True
+            return False
+        except Exception as e:
+            self.log_result("Admin Dashboard Stats Endpoint Exists", False, 0, str(e))
+            return False
+
+    def test_p2p_transfer_endpoint(self):
+        """Test: POST /api/transfers/p2p returns auth error (not 404)"""
+        try:
+            response = self.make_request('POST', '/api/transfers/p2p', json={
+                "recipient_email": "test@example.com",
+                "amount": 10,
+                "currency": "USD"
+            })
+            
+            # We expect 401 (unauthorized) not 404 (not found)
+            if response.status_code == 401:
+                self.log_result("P2P Transfer Endpoint Exists", True, response.status_code,
+                              "Returns auth error (not 404) - endpoint exists")
+                return True
+            elif response.status_code == 404:
+                self.log_result("P2P Transfer Endpoint Exists", False, response.status_code,
+                              "Returns 404 - endpoint not found")
+            else:
+                self.log_result("P2P Transfer Endpoint Exists", True, response.status_code,
+                              f"Endpoint exists, returns {response.status_code}")
+                return True
+            return False
+        except Exception as e:
+            self.log_result("P2P Transfer Endpoint Exists", False, 0, str(e))
+            return False
+
+    def test_double_prefix_bug_fix(self):
+        """Test: GET /api/api/admin/dashboard/stats returns 404 (not 401)"""
+        try:
+            response = self.make_request('GET', '/api/api/admin/dashboard/stats')
+            
+            # We expect 404 (not found) because double prefix is invalid
+            if response.status_code == 404:
+                self.log_result("Double-Prefix Bug Fixed", True, response.status_code,
+                              "Returns 404 for double prefix (bug fixed)")
+                return True
+            elif response.status_code == 401:
+                self.log_result("Double-Prefix Bug Fixed", False, response.status_code,
+                              "Still routes to admin endpoint (bug not fixed)")
+            else:
+                # Other codes might be acceptable
+                self.log_result("Double-Prefix Bug Fixed", True, response.status_code,
+                              f"Double prefix handled appropriately: {response.status_code}")
+                return True
+            return False
+        except Exception as e:
+            self.log_result("Double-Prefix Bug Fixed", False, 0, str(e))
+            return False
+
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "="*60)
+        print("🔬 CRYPTOVAULT API TEST SUMMARY")
+        print("="*60)
+        print(f"📊 Tests Run: {self.tests_run}")
+        print(f"✅ Tests Passed: {self.tests_passed}")
+        print(f"❌ Tests Failed: {self.tests_run - self.tests_passed}")
+        print(f"📈 Success Rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
+        print("="*60)
+        
+        # Show failed tests
+        failed_tests = [r for r in self.results if not r['passed']]
+        if failed_tests:
+            print("\n❌ FAILED TESTS:")
+            for result in failed_tests:
+                print(f"  - {result['test']}: {result['error']}")
+        
+        print(f"\n📋 Full results saved to backend_test_results.json")
+        
+        # Save results to file
+        with open('/app/test_reports/backend_test_results.json', 'w') as f:
+            json.dump({
+                "summary": {
+                    "total_tests": self.tests_run,
+                    "passed_tests": self.tests_passed,
+                    "failed_tests": self.tests_run - self.tests_passed,
+                    "success_rate": (self.tests_passed/self.tests_run)*100 if self.tests_run > 0 else 0,
+                    "timestamp": datetime.utcnow().isoformat()
+                },
+                "results": self.results
+            }, f, indent=2)
         
         return self.tests_passed == self.tests_run
 
 def main():
-    tester = CryptoVaultAPITester()
-    success = tester.run_backend_tests()
+    print("🚀 Starting CryptoVault Backend API Tests")
+    print("🌐 Testing against: https://cryptovault-api.onrender.com")
+    print("-" * 60)
     
-    if success:
-        print("\n🎉 All backend tests passed!")
-        sys.exit(0)
-    else:
-        print("\n❌ Some backend tests failed!")
-        sys.exit(1)
+    tester = CryptoVaultAPITester()
+    
+    # Run all tests in sequence
+    tests_to_run = [
+        # Core infrastructure
+        tester.test_backend_health,
+        tester.test_csrf_endpoint,
+        tester.test_config_endpoint,
+        tester.test_socketio_handshake,
+        
+        # API endpoints
+        tester.test_crypto_listing,
+        
+        # Authentication flow
+        tester.test_auth_signup,
+        lambda: tester.test_auth_login(),  # Use default test user
+        tester.test_wallet_balance_with_auth,
+        
+        # Admin and fixes
+        tester.test_admin_login_csrf_fix,
+        tester.test_admin_dashboard_stats,
+        tester.test_p2p_transfer_endpoint,
+        tester.test_double_prefix_bug_fix,
+    ]
+    
+    # Execute tests
+    for test_func in tests_to_run:
+        try:
+            test_func()
+        except Exception as e:
+            print(f"❌ Test execution error: {e}")
+    
+    # Print summary
+    all_passed = tester.print_summary()
+    
+    # Return appropriate exit code
+    return 0 if all_passed else 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
