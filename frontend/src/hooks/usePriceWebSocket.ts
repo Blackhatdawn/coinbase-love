@@ -291,14 +291,55 @@ export function usePriceWebSocket(options: UsePriceWebSocketOptions = {}) {
     [prices]
   );
 
-  // Auto-connect on mount
+  // Auto-connect on mount (stable - only depends on url)
   useEffect(() => {
-    connect();
+    const ws = new WebSocket(url);
+    
+    ws.onopen = () => {
+      log('Connected');
+      updateStatus({
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+        reconnectAttempt: 0,
+      });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message: PriceUpdate = JSON.parse(event.data);
+        if (message.type === 'price_update' && message.prices) {
+          setPrices(message.prices);
+          onPriceUpdate?.(message.prices);
+          setStatus(prev => ({
+            ...prev,
+            lastUpdate: new Date(),
+            source: (message.source as any) || prev.source,
+            pricesCached: Object.keys(message.prices!).length,
+            error: null,
+          }));
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    };
+
+    ws.onerror = () => {
+      updateStatus({ error: 'WebSocket error', isConnected: false, isConnecting: false });
+    };
+
+    ws.onclose = () => {
+      updateStatus({ isConnected: false, isConnecting: false });
+    };
+
+    websocketRef.current = ws;
 
     return () => {
-      disconnect();
+      ws.close();
+      websocketRef.current = null;
     };
-  }, [connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
 
   return {
     prices,
