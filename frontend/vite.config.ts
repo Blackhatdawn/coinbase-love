@@ -165,6 +165,7 @@ export default defineConfig(({ mode }) => ({
       '.vercel.app',
       '.gitpod.io',
       '.codesandbox.io',
+      '.preview.emergentagent.com',
     ],
     // SECURITY FIX: Enable CORS with explicit origins
     cors: {
