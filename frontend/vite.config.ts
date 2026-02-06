@@ -207,6 +207,13 @@ export default defineConfig(({ mode }) => ({
         ws: true,
         logLevel: "warn",
       },
+      "/ws": {
+        target: BACKEND_URL,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        logLevel: "warn",
+      },
       "/health": {
         target: BACKEND_URL,
         changeOrigin: true,
