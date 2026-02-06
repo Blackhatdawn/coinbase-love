@@ -1,71 +1,134 @@
 {
-  "timestamp": "2026-02-06T12:46:12.657558",
-  "tests_run": 9,
-  "tests_passed": 9,
-  "success_rate": 100.0,
+  "summary": {
+    "total_tests": 12,
+    "passed_tests": 6,
+    "failed_tests": 6,
+    "success_rate": 50.0,
+    "timestamp": "2026-02-06T13:31:03.051705"
+  },
   "results": [
     {
-      "test": "Health Check",
-      "success": true,
-      "details": "Status: healthy, Database: connected",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:11.233641"
+      "test": "Backend Health Check",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-06T13:30:55.534725"
     },
     {
-      "test": "Crypto List Endpoint",
-      "success": true,
-      "details": "Endpoint /crypto returned 20 cryptocurrencies",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.339467"
+      "test": "CSRF Token Generation",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "csrf_token_length": 64
+      },
+      "timestamp": "2026-02-06T13:30:55.837057"
     },
     {
-      "test": "CORS Headers",
-      "success": true,
-      "details": "CORS configured: Origin=https://400dc717-e040-4c41-aaa7-d04c7e41aa10.preview.emergentagent.com, Credentials=true",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.350121"
-    },
-    {
-      "test": "Socket.IO Basic Endpoint",
-      "success": true,
-      "details": "Socket.IO accessible (HTTP 400)",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.358858"
+      "test": "Config Endpoint",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "config_keys": [
+          "appUrl",
+          "apiBaseUrl",
+          "preferRelativeApi",
+          "wsBaseUrl",
+          "socketIoPath",
+          "environment",
+          "version",
+          "sentry",
+          "branding"
+        ]
+      },
+      "timestamp": "2026-02-06T13:30:55.968946"
     },
     {
       "test": "Socket.IO Handshake",
-      "success": true,
-      "details": "Socket.IO handshake successful",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.366973"
+      "passed": false,
+      "status_code": 404,
+      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"81aa4853-0135-4a04-abf1-bb2f3c4b05b6\",\"timestamp\":\"2026-02-06T13:30:56.035105\"}}",
+      "details": null,
+      "timestamp": "2026-02-06T13:30:56.088714"
     },
     {
-      "test": "Admin API /admin/dashboard/stats",
-      "success": true,
-      "details": "Endpoint exists and requires authentication (HTTP 401)",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.376032"
+      "test": "Crypto Listing",
+      "passed": false,
+      "status_code": 200,
+      "error": "Empty or invalid crypto list",
+      "details": null,
+      "timestamp": "2026-02-06T13:30:56.716830"
     },
     {
-      "test": "Admin API /admin/users",
-      "success": true,
-      "details": "Endpoint exists and requires authentication (HTTP 401)",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.383781"
+      "test": "Auth Signup",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "email": "test1770384656@example.com",
+        "response_keys": [
+          "user",
+          "message",
+          "emailSent",
+          "verificationRequired",
+          "kyc_status"
+        ]
+      },
+      "timestamp": "2026-02-06T13:31:01.049065"
     },
     {
-      "test": "Admin API /admin/system/health",
-      "success": true,
-      "details": "Endpoint exists and requires authentication (HTTP 401)",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.391478"
+      "test": "Auth Login (access_token in body)",
+      "passed": false,
+      "status_code": 200,
+      "error": "No access_token in response body",
+      "details": {
+        "response_keys": [
+          "user"
+        ]
+      },
+      "timestamp": "2026-02-06T13:31:01.884160"
     },
     {
-      "test": "Auth Login Endpoint",
-      "success": true,
-      "details": "Login endpoint correctly rejects invalid credentials",
-      "response_data": null,
-      "timestamp": "2026-02-06T12:46:12.657434"
+      "test": "Wallet Balance (with auth)",
+      "passed": false,
+      "status_code": 0,
+      "error": "No user token available",
+      "details": null,
+      "timestamp": "2026-02-06T13:31:01.884197"
+    },
+    {
+      "test": "Admin Login CSRF Fix",
+      "passed": true,
+      "status_code": 401,
+      "error": "Returns auth error instead of CSRF error",
+      "details": null,
+      "timestamp": "2026-02-06T13:31:02.596713"
+    },
+    {
+      "test": "Admin Dashboard Stats Endpoint Exists",
+      "passed": true,
+      "status_code": 401,
+      "error": "Returns 401 (unauthorized) - endpoint exists",
+      "details": null,
+      "timestamp": "2026-02-06T13:31:02.708422"
+    },
+    {
+      "test": "P2P Transfer Endpoint Exists",
+      "passed": false,
+      "status_code": 404,
+      "error": "Returns 404 - endpoint not found",
+      "details": null,
+      "timestamp": "2026-02-06T13:31:02.939842"
+    },
+    {
+      "test": "Double-Prefix Bug Fixed",
+      "passed": false,
+      "status_code": 401,
+      "error": "Still routes to admin endpoint (bug not fixed)",
+      "details": null,
+      "timestamp": "2026-02-06T13:31:03.050576"
     }
   ]
 }
