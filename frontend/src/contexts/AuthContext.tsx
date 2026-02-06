@@ -30,6 +30,7 @@ const RETRY_DELAY = 1000;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isCheckingSession = useRef(false);
   const sessionCheckTimerRef = useRef<NodeJS.Timeout | null>(null);
