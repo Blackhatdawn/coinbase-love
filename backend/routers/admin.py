@@ -319,12 +319,14 @@ async def admin_verify_otp(
     )
     
     # Set secure cookie (15-minute idle timeout for enhanced security)
+    same_site = "none" if settings.use_cross_site_cookies else "lax"
+    secure = settings.is_production or settings.use_cross_site_cookies
     response.set_cookie(
         key="admin_token",
         value=token,
         httponly=True,
-        secure=settings.is_production,
-        samesite="lax" if not settings.use_cross_site_cookies else "none",
+        secure=secure,
+        samesite=same_site,
         max_age=15 * 60,  # 15 minutes (enhanced security)
         path="/api/admin"
     )
