@@ -1,56 +1,98 @@
 # CryptoVault - PRD & Investigation Report
-## Date: 2026-02-06
+## Date: 2026-02-06 (Updated)
 
-## Original Problem Statement
-Deep investigate CryptoVault's entire codespace. Ensure frontend and backend are in perfect enterprise-grade production sync. Optimized CORS and WebSocket connection. Optimized production Database system. Fix admin dashboard loading issue. Full stack reads env from backend server hosted on Render.
+## Production URLs
+- **Frontend**: https://coinbase-love.vercel.app (Vercel)
+- **Backend**: https://cryptovault-api.onrender.com (Render)
+- **Database**: MongoDB Atlas (cryptovaultcluster)
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript + Tailwind + shadcn/ui
 - **Backend**: FastAPI + Python 3.11 + Motor (async MongoDB)
-- **Database**: MongoDB (Atlas for prod, local for dev)
+- **Database**: MongoDB Atlas
 - **Auth**: JWT with httpOnly cookies + OTP for admin
-- **WebSocket**: Socket.IO (python-socketio + ASGI)
+- **WebSocket**: Socket.IO (python-socketio + ASGI) + Native WS for prices
 - **Deployment**: Render (backend), Vercel (frontend)
 
-## Critical Issues Found & Fixed
+## Session 1 Fixes (Container/Dev Environment)
 
-### P0 - Service Crashers
-1. **Missing `pydantic-settings`** - Backend failed to start
-2. **Missing `pyotp`** - Auth module crash
-3. **Missing `redis`** - Blacklist module crash
-4. **Missing `python-socketio`** - Socket.IO server crash
-5. **Missing `psutil`** - Monitoring router crash
-6. **Invalid `packageManager: "pnpm@9.0.0"`** in root & frontend package.json - Frontend couldn't start
+### P0 - Service Crashers (Fixed)
+1. Missing Python deps: pydantic-settings, pyotp, redis, python-socketio, psutil, slowapi
+2. Invalid `packageManager: "pnpm@9.0.0"` in root & frontend package.json
+3. Socket.IO ASGI app not exported (`app = socket_app`)
+4. `PUBLIC_WS_URL` pointed to dead Fly.io (`wss://coinbase-love.fly.dev`)
+5. `send_to_user` method missing on SocketIOManager
 
-### P0 - WebSocket Broken
-7. **Socket.IO ASGI app not exported** - `uvicorn server:app` loaded raw FastAPI, not Socket.IO-wrapped app. Fixed by reassigning `app = socket_app`
-8. **`PUBLIC_WS_URL` pointed to dead Fly.io** (`wss://coinbase-love.fly.dev`) - Changed to `wss://cryptovault-api.onrender.com`
-9. **`send_to_user` method missing** on SocketIOManager - Admin router called it but only `broadcast_to_user` existed. Added alias.
+### P0 - Frontend-Backend Sync (Fixed)
+6. Admin API endpoint mismatches (frontend vs backend paths)
+7. AuthContext missing `token` field for WebSocket auth
+8. Admin fetch used relative URLs without CSRF token
+9. CSRF middleware blocked `/api/admin/login` and `/api/admin/verify-otp`
+10. Admin router double-mounted (duplicate at `/api/api/admin/*`)
+11. Runtime config pushed Render URL to dev frontend (CORS blocked)
+12. WebSocket price hook had infinite reconnection loop
+13. Vite proxy missing `/ws` path for native WebSocket
+14. CSP headers referenced dead Fly.io URLs
+15. COEP/CORP headers too strict (blocked cross-origin crypto images)
 
-### P1 - Frontend-Backend Sync
-10. **Admin API endpoint mismatches** - Frontend called `/api/admin/stats` but backend has `/api/admin/dashboard/stats`. Realigned all admin API paths in `apiClient.ts`
-11. **AuthContext missing `token` field** - SocketContext destructured `token` from `useAuth()` but it didn't exist. Added token storage from login response.
-12. **Admin fetch used relative URLs** - `fetch('/api/admin...')` doesn't work in production. Added `VITE_API_BASE_URL` prefix.
-13. **Vite dev server bound to 127.0.0.1** - Changed to `0.0.0.0` for container access
-14. **Vite `allowedHosts` missing emergent preview domain** - Added `.preview.emergentagent.com`
+## Session 2 Findings (Production Review)
 
-### P1 - Database & CORS
-15. **DB pool size hardcoded** - server.py ignored `.env` settings (MONGO_MAX_POOL_SIZE). Fixed to use config values.
-16. **CORS origins missing preview URL** - Added emergent preview domain to allowed origins.
-17. **Missing `__init__.py`** in middleware directory
+### Render Backend (LIVE)
+- Health: healthy, DB connected
+- CORS: Properly allows `coinbase-love.vercel.app`
+- Crypto API: 20 cryptos loaded
+- Config endpoint: Returns correct production config
 
-## What's Implemented (Verified Working)
-- Backend health check: healthy, database connected
-- 20 cryptocurrencies loaded via /api/crypto
-- Admin login page loads with OTP-based 2FA
-- Socket.IO handshake succeeds with WebSocket upgrade
-- Vite proxy correctly forwards /api/* to backend
-- CORS properly configured for all environments
-- All admin API endpoints properly secured (401 for unauth)
+### Render Backend Issues (Need Redeployment)
+- **CSRF blocks admin login** — `/api/admin/login` not in CSRF skip paths
+- **Socket.IO returns 404** — `socket_app` not exported as `app`
+- **CSP references old Fly.io** in `connect-src`
+- **COEP/CORP too strict** — blocks cross-origin resources
 
-## Backlog / Future
-- P1: SendGrid integration for admin OTP emails (currently mock)
-- P1: Redis cache for production (currently using in-memory)
-- P2: WebSocket reconnection resilience testing
-- P2: Admin dashboard full E2E test with real admin credentials
-- P3: Rate limiting fine-tuning for production load
+### Vercel Frontend Issues (Need Redeployment)
+- **ALL sub-routes 404** — SPA catch-all regex pattern broken in vercel.json
+- **Build uses pnpm** but `packageManager` field removed (changed to `yarn`)
+- **Missing `/ws` rewrite** for native WebSocket price streaming
+- **CORP header `same-origin`** blocks cross-origin resources
+
+## Changes Made in This Session
+
+### vercel.json (Critical for Vercel)
+- Simplified SPA rewrite: `"/:path*" → "/index.html"` (was broken regex)
+- Changed build/install commands from `pnpm` to `yarn`
+- Added `/ws/:path*` rewrite for price WebSocket
+- Added `coincap.io` to CSP connect-src
+- Fixed COEP: `unsafe-none`, CORP: `cross-origin`, COOP: `same-origin-allow-popups`
+
+### Backend Fixes (Need Render Redeploy)
+- CSRF skip: Added `/api/admin/login` and `/api/admin/verify-otp`
+- Socket.IO: `app = socket_app` for proper ASGI mount
+- Removed admin router double-mount
+- CSP updated from Fly.io to Render URLs
+- DB pool uses .env config values
+
+### Frontend Fixes (Need Vercel Redeploy)
+- AdminLogin.tsx: Uses api client with CSRF handling
+- AdminDashboard.tsx: Includes CSRF token + base URL
+- runtimeConfig.ts: Prefers relative API in non-production environments
+- usePriceWebSocket.ts: Fixed infinite reconnection loop
+- AuthContext.tsx: Exposes access_token for WebSocket auth
+- apiClient.ts: All admin endpoints aligned with backend routes
+
+## Deployment Checklist
+
+### To Deploy to Render:
+1. Push updated backend code (server.py, middleware/security.py, socketio_server.py)
+2. Ensure Render env has: `CORS_ORIGINS` including `coinbase-love.vercel.app`
+3. Verify `PUBLIC_WS_URL=wss://cryptovault-api.onrender.com`
+
+### To Deploy to Vercel:
+1. Push updated frontend code + vercel.json
+2. Set Vercel env: `VITE_API_BASE_URL=https://cryptovault-api.onrender.com`
+3. Trigger redeploy
+
+## Backlog
+- P1: SendGrid integration for admin OTP emails
+- P1: Redis cache for production token blacklisting
+- P2: E2E admin dashboard test with real credentials
+- P3: Rate limiting fine-tuning
