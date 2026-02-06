@@ -100,9 +100,15 @@ const mergeConfig = (base: RuntimeConfig, incoming: Partial<RuntimeConfig>): Run
     ? ''
     : normalizeBaseUrl(merged.apiBaseUrl || base.apiBaseUrl);
   merged.socketIoPath = merged.socketIoPath || DEFAULT_SOCKET_PATH;
-  merged.wsBaseUrl = normalizeBaseUrl(
-    merged.wsBaseUrl || deriveWsBaseUrl(merged.apiBaseUrl || base.apiBaseUrl || merged.appUrl)
-  );
+  
+  // When using relative API (dev/preview), WebSocket should also use current origin
+  if (preferRelativeApi) {
+    merged.wsBaseUrl = '';
+  } else {
+    merged.wsBaseUrl = normalizeBaseUrl(
+      merged.wsBaseUrl || deriveWsBaseUrl(merged.apiBaseUrl || base.apiBaseUrl || merged.appUrl)
+    );
+  }
 
   return merged;
 };
