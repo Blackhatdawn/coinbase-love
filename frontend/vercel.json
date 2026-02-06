@@ -2,21 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "vite",
-  "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
-  "devCommand": "pnpm dev",
+  "buildCommand": "yarn build",
+  "installCommand": "yarn install",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
-
-  "env": {
-    "VITE_API_BASE_URL": "https://cryptovault-api.onrender.com",
-    "VITE_SENTRY_DSN": "",
-    "VITE_ENABLE_SENTRY": "false",
-    "VITE_SENTRY_ENVIRONMENT": "production",
-    "VITE_APP_NAME": "CryptoVault",
-    "VITE_APP_VERSION": "1.0.0"
-  },
 
   "rewrites": [
     {
@@ -40,7 +30,11 @@
       "destination": "https://cryptovault-api.onrender.com/socket.io/:path*"
     },
     {
-      "source": "/((?!api|health|ping|csrf|socket\\.io).*)",
+      "source": "/ws/:path*",
+      "destination": "https://cryptovault-api.onrender.com/ws/:path*"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ],
@@ -58,7 +52,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com https://vitals.vercel-insights.com https://*.sentry.io; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com https://api.coincap.io wss://ws.coincap.io https://vitals.vercel-insights.com https://*.sentry.io; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
@@ -66,9 +60,9 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }
+        { "key": "Cross-Origin-Embedder-Policy", "value": "unsafe-none" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" }
       ]
     },
     {
