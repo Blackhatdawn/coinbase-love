@@ -217,6 +217,14 @@ class SocketIOManager:
     # BROADCASTING METHODS
     # ============================================
     
+    async def send_to_user(self, user_id: str, event: str, data: Dict):
+        """Send message to specific user (alias for broadcast_to_user)."""
+        await self.broadcast_to_user(user_id, event, data)
+
+    async def broadcast(self, event: str, data: Dict):
+        """Broadcast message to all connected clients (alias for broadcast_global)."""
+        await self.broadcast_global(event, data)
+
     async def broadcast_to_user(self, user_id: str, event: str, data: Dict):
         """Broadcast message to specific user (all their sessions)."""
         room = f"user:{user_id}"
