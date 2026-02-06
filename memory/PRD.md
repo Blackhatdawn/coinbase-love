@@ -1,184 +1,56 @@
-# CryptoVault - Product Requirements Document
+# CryptoVault - PRD & Investigation Report
+## Date: 2026-02-06
 
-## Project Overview
-- **Application**: CryptoVault - Enterprise Cryptocurrency Trading Platform
-- **Frontend**: React + Vite + TypeScript → Vercel (https://www.cryptovault.financial)
-- **Backend**: FastAPI + Python + MongoDB Atlas → **Fly.io** (https://coinbase-love.fly.dev)
-- **Real-time**: Socket.IO + CoinCap WebSocket
-- **Database**: MongoDB Atlas (cloud-hosted)
-- **Cache**: Upstash Redis (cloud-hosted)
-
----
-
-## Latest Updates (January 26, 2026)
-
-### Enterprise Frontend & Version Sync Complete ✅
-
-#### What Was Done:
-1. **Removed ALL Render References**
-   - Deleted `render.yaml`
-   - Updated CSP headers → fly.dev domains
-   - Updated Sentry trace propagation → fly.dev
-   - Updated fallback URLs → coinbase-love.fly.dev
-   - Cleaned up legacy documentation
-
-2. **Enterprise Fly.io Configuration**
-   - `fly.toml` - Production config for `coinbase-love` app
-   - `Dockerfile.fly` - Optimized multi-stage build
-   - Auto-scaling: 1-3 instances based on connections
-   - Health checks at `/health`
-
-3. **Version Sync System** (Prevents Frontend-Backend Mismatches)
-   - `GET /api/version` - Server version info
-   - `GET /api/version/check` - Client compatibility check
-   - `GET /api/version/features` - Feature flags
-   - `GET /api/version/deployment` - Fly.io deployment info
-   - Frontend hook: `useVersionSync()` - Automatic sync
-   - `VersionMismatchBanner` - Auto-shows when update needed
-
-4. **Enterprise Responsive Frontend**
-   - `responsive-layout.tsx` - Container, BentoGrid, StatsCard components
-   - Mobile-first design patterns
-   - Touch-friendly targets (44px minimum)
-   - Responsive typography
-   - Glassmorphism cards with proper blur
-
-5. **Production Environment**
-   - All secrets configured for Fly.io
-   - CORS includes Fly.io domains
-   - CSP headers updated for Fly.io
-   - Firebase credentials configured
-
----
+## Original Problem Statement
+Deep investigate CryptoVault's entire codespace. Ensure frontend and backend are in perfect enterprise-grade production sync. Optimized CORS and WebSocket connection. Optimized production Database system. Fix admin dashboard loading issue. Full stack reads env from backend server hosted on Render.
 
 ## Architecture
+- **Frontend**: React + Vite + TypeScript + Tailwind + shadcn/ui
+- **Backend**: FastAPI + Python 3.11 + Motor (async MongoDB)
+- **Database**: MongoDB (Atlas for prod, local for dev)
+- **Auth**: JWT with httpOnly cookies + OTP for admin
+- **WebSocket**: Socket.IO (python-socketio + ASGI)
+- **Deployment**: Render (backend), Vercel (frontend)
 
-### Communication Flow
-```
-Frontend (Vercel) ─── HTTPS ───> Vercel Rewrites
-                                      │
-                                      ▼
-                              Fly.io Backend
-                              (coinbase-love.fly.dev)
-                                      │
-                     ┌────────────────┼────────────────┐
-                     ▼                ▼                ▼
-              MongoDB Atlas    Upstash Redis    CoinCap API
-```
+## Critical Issues Found & Fixed
 
-### Version Sync Flow
-```
-Frontend (on load/tab focus)
-         │
-         ▼
-GET /api/version/check?client_version=1.0.0
-         │
-         ▼
-Backend validates compatibility
-         │
-         ├── Compatible ──> Continue
-         │
-         └── Incompatible ──> Show refresh toast
-```
+### P0 - Service Crashers
+1. **Missing `pydantic-settings`** - Backend failed to start
+2. **Missing `pyotp`** - Auth module crash
+3. **Missing `redis`** - Blacklist module crash
+4. **Missing `python-socketio`** - Socket.IO server crash
+5. **Missing `psutil`** - Monitoring router crash
+6. **Invalid `packageManager: "pnpm@9.0.0"`** in root & frontend package.json - Frontend couldn't start
 
----
+### P0 - WebSocket Broken
+7. **Socket.IO ASGI app not exported** - `uvicorn server:app` loaded raw FastAPI, not Socket.IO-wrapped app. Fixed by reassigning `app = socket_app`
+8. **`PUBLIC_WS_URL` pointed to dead Fly.io** (`wss://coinbase-love.fly.dev`) - Changed to `wss://cryptovault-api.onrender.com`
+9. **`send_to_user` method missing** on SocketIOManager - Admin router called it but only `broadcast_to_user` existed. Added alias.
 
-## Deployment
+### P1 - Frontend-Backend Sync
+10. **Admin API endpoint mismatches** - Frontend called `/api/admin/stats` but backend has `/api/admin/dashboard/stats`. Realigned all admin API paths in `apiClient.ts`
+11. **AuthContext missing `token` field** - SocketContext destructured `token` from `useAuth()` but it didn't exist. Added token storage from login response.
+12. **Admin fetch used relative URLs** - `fetch('/api/admin...')` doesn't work in production. Added `VITE_API_BASE_URL` prefix.
+13. **Vite dev server bound to 127.0.0.1** - Changed to `0.0.0.0` for container access
+14. **Vite `allowedHosts` missing emergent preview domain** - Added `.preview.emergentagent.com`
 
-### Backend (Fly.io)
+### P1 - Database & CORS
+15. **DB pool size hardcoded** - server.py ignored `.env` settings (MONGO_MAX_POOL_SIZE). Fixed to use config values.
+16. **CORS origins missing preview URL** - Added emergent preview domain to allowed origins.
+17. **Missing `__init__.py`** in middleware directory
 
-**Step 1: Set Secrets**
-```bash
-flyctl secrets set \
-  MONGO_URL="mongodb+srv://..." \
-  JWT_SECRET="..." \
-  CSRF_SECRET="..." \
-  SENDGRID_API_KEY="..." \
-  COINCAP_API_KEY="..." \
-  NOWPAYMENTS_API_KEY="..." \
-  NOWPAYMENTS_IPN_SECRET="..." \
-  UPSTASH_REDIS_REST_URL="..." \
-  UPSTASH_REDIS_REST_TOKEN="..." \
-  SENTRY_DSN="..." \
-  CORS_ORIGINS='["https://www.cryptovault.financial","https://cryptovault.financial","https://coinbase-love.fly.dev"]' \
-  --app coinbase-love
-```
+## What's Implemented (Verified Working)
+- Backend health check: healthy, database connected
+- 20 cryptocurrencies loaded via /api/crypto
+- Admin login page loads with OTP-based 2FA
+- Socket.IO handshake succeeds with WebSocket upgrade
+- Vite proxy correctly forwards /api/* to backend
+- CORS properly configured for all environments
+- All admin API endpoints properly secured (401 for unauth)
 
-**Step 2: Deploy**
-```bash
-cd /app/backend
-flyctl deploy --app coinbase-love
-```
-
-**Step 3: Verify**
-```bash
-curl https://coinbase-love.fly.dev/health
-curl https://coinbase-love.fly.dev/api/version
-```
-
-### Frontend (Vercel)
-```bash
-# Environment Variables in Vercel Dashboard:
-VITE_API_BASE_URL=https://coinbase-love.fly.dev
-```
-
----
-
-## API Endpoints
-
-### Core
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/api/health` | GET | API health with DB status |
-| `/ping` | GET | Keep-alive ping |
-
-### Version (NEW)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/version` | GET | Server version info |
-| `/api/version/check` | GET | Compatibility check |
-| `/api/version/features` | GET | Feature flags |
-| `/api/version/deployment` | GET | Fly.io deployment info |
-
-### Monitoring
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/fly/status` | GET | Fly.io machine info |
-| `/api/fly/region` | GET | Current region |
-| `/api/optimization/metrics` | GET | Cache & security stats |
-
----
-
-## Features
-
-### Core Features ✅
-- [x] User authentication (JWT + cookies)
-- [x] 2FA with TOTP
-- [x] Cryptocurrency trading
-- [x] Portfolio management
-- [x] Wallet operations
-- [x] P2P transfers
-- [x] Price alerts
-- [x] Admin dashboard
-
-### Infrastructure ✅
-- [x] Fly.io deployment
-- [x] Auto-scaling (1-3 instances)
-- [x] Version sync system
-- [x] Feature flags
-- [x] Redis caching
-- [x] Sentry monitoring
-- [x] Rate limiting
-- [x] CORS + CSP security
-
----
-
-## Test Reports
-- Latest: `/app/test_reports/iteration_15.json`
-- Status: 100% pass rate (9/9 tests)
-
----
-
-*Last Updated: January 25, 2026*
-*Platform: Fly.io (coinbase-love)*
+## Backlog / Future
+- P1: SendGrid integration for admin OTP emails (currently mock)
+- P1: Redis cache for production (currently using in-memory)
+- P2: WebSocket reconnection resilience testing
+- P2: Admin dashboard full E2E test with real admin credentials
+- P3: Rate limiting fine-tuning for production load
