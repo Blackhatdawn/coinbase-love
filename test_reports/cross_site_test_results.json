@@ -1,0 +1,96 @@
+{
+  "summary": {
+    "total_tests": 8,
+    "passed_tests": 3,
+    "failed_tests": 5,
+    "success_rate": 37.5,
+    "timestamp": "2026-02-06T18:55:19.680655",
+    "base_url": "https://cryptovault-api.onrender.com",
+    "frontend_origin": "https://coinbase-love.vercel.app"
+  },
+  "results": [
+    {
+      "test": "CSRF Cookie SameSite=none & Secure",
+      "passed": false,
+      "status_code": 200,
+      "error": "Missing flags - CSRF found: True, SameSite=none: False, Secure: True",
+      "details": {
+        "set_cookie_headers": [
+          "csrf_token=e164244ee9d83e3963d0d7254dee41092fd0bd5eb7f0e27fec84f6cd77a1d3dd; HttpOnly; Max-Age=3600; Path=/; SameSite=lax; Secure, csrf_timestamp=1770404114.1623883; HttpOnly; Max-Age=3600; Path=/; SameSite=lax; Secure"
+        ]
+      },
+      "timestamp": "2026-02-06T18:55:14.211837"
+    },
+    {
+      "test": "Auth Login Cookie SameSite=none & Secure",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "access_token_in_body": false,
+        "set_cookie_headers": [
+          "access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2Q3OTFjYS0xNDU2LTRjYzAtYTFkOC0wNjQyMzAzYmIyYTYiLCJleHAiOjE3NzA0MDU5MTUsInR5cGUiOiJhY2Nlc3MifQ.ZFtWDwsLQBs3MppwVkFDGJrmptndO1KSso-ZCQuOG3Y; HttpOnly; Max-Age=1800; Path=/; SameSite=none; Secure, refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2Q3OTFjYS0xNDU2LTRjYzAtYTFkOC0wNjQyMzAzYmIyYTYiLCJleHAiOjE3NzEwMDg5MTUsInR5cGUiOiJyZWZyZXNoIn0.dSf2qJ4sYXYxbqGHWoQJZVPY45JG7xqBAzX3gcnF3dA; HttpOnly; Max-Age=604800; Path=/; SameSite=none; Secure"
+        ]
+      },
+      "timestamp": "2026-02-06T18:55:15.493890"
+    },
+    {
+      "test": "CORS Allow Credentials",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "access_control_allow_credentials": "true",
+        "access_control_allow_origin": "https://coinbase-love.vercel.app",
+        "all_cors_headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-headers": "Accept, Accept-Encoding, Accept-Language, Authorization, Cache-Control, Content-Language, Content-Type, If-Match, If-None-Match, Pragma, X-CSRF-Token, X-Nowpayments-Sig, X-Request-ID, X-Requested-With",
+          "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
+          "access-control-allow-origin": "https://coinbase-love.vercel.app",
+          "access-control-max-age": "3600"
+        }
+      },
+      "timestamp": "2026-02-06T18:55:16.120397"
+    },
+    {
+      "test": "Socket.IO Handshake Works",
+      "passed": false,
+      "status_code": 404,
+      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"42b2a434-8f50-4b19-b389-03e6e64040bc\",\"timestamp\":\"2026-02-06T18:55:16.708227\"}}",
+      "details": null,
+      "timestamp": "2026-02-06T18:55:16.750770"
+    },
+    {
+      "test": "Socket.IO CORS Allows Vercel",
+      "passed": false,
+      "status_code": 404,
+      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"b95ccb41-e3da-44d7-b980-325adb229647\",\"timestamp\":\"2026-02-06T18:55:17.320229\"}}",
+      "details": null,
+      "timestamp": "2026-02-06T18:55:17.401450"
+    },
+    {
+      "test": "Backend Health",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-06T18:55:18.061107"
+    },
+    {
+      "test": "Admin Login Not Blocked by CSRF",
+      "passed": false,
+      "status_code": 403,
+      "error": "Still blocked by CSRF protection",
+      "details": null,
+      "timestamp": "2026-02-06T18:55:18.680215"
+    },
+    {
+      "test": "Login Returns Access Token in Body",
+      "passed": false,
+      "status_code": 0,
+      "error": "No access token available - login may have failed",
+      "details": null,
+      "timestamp": "2026-02-06T18:55:19.180335"
+    }
+  ]
+}
