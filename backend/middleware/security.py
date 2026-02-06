@@ -45,15 +45,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Referrer policy
             "Referrer-Policy": "strict-origin-when-cross-origin",
             
-            # Cross-Origin Isolation (Enhanced Security for Crypto/Fintech)
-            # COEP - Requires explicit opt-in for cross-origin resources
-            "Cross-Origin-Embedder-Policy": "require-corp",
+            # Cross-Origin Isolation (Relaxed for cross-origin resources like crypto images)
+            "Cross-Origin-Embedder-Policy": "unsafe-none",
             
             # COOP - Isolates browsing context from other origins
-            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
             
-            # CORP - Controls cross-origin resource sharing
-            "Cross-Origin-Resource-Policy": "same-origin",
+            # CORP - Allow cross-origin resources
+            "Cross-Origin-Resource-Policy": "cross-origin",
             
             # Content Security Policy
             # Note: This is for API responses. Frontend CSP is set in vercel.json
