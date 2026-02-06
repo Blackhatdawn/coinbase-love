@@ -636,22 +636,21 @@ export const api = {
       apiClient.get(`/api/users/${userId}`),
   },
 
-  // P2P Transfers (DEPRECATED - use wallet.transfer instead)
-  // These endpoints don't exist in backend - they're zombie endpoints
-  // Use wallet.transfer() and wallet.getTransfers() instead
-  /*
+  // P2P Transfers (backend: /api/transfers/p2p)
   transfers: {
     p2p: (data: {
       recipient_email: string;
       amount: number;
-      currency: string;
+      currency?: string;
       note?: string;
+      priority?: string;
     }) =>
-      apiClient.post('/api/transfers/p2p', data),  // ❌ ZOMBIE - doesn't exist
+      apiClient.post('/api/transfers/p2p', data),
     getHistory: (skip: number = 0, limit: number = 50) =>
-      apiClient.get(`/api/transfers/p2p/history?skip=${skip}&limit=${limit}`),  // ❌ ZOMBIE - doesn't exist
+      apiClient.get(`/api/transfers/p2p/history?skip=${skip}&limit=${limit}`),
+    getFeeEstimate: (amount: number, currency: string, priority?: string) =>
+      apiClient.get(`/api/transfers/fee-estimate?amount=${amount}&currency=${currency}${priority ? `&priority=${priority}` : ''}`),
   },
-  */
 
   // Notifications
   notifications: {
