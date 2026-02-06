@@ -582,31 +582,50 @@ export const api = {
 
   // Admin (requires admin privileges)
   admin: {
+    login: (data: { email: string; password: string }) =>
+      apiClient.post('/api/admin/login', data),
+    verifyOtp: (data: { email: string; otp_code: string }) =>
+      apiClient.post('/api/admin/verify-otp', data),
+    logout: () =>
+      apiClient.post('/api/admin/logout'),
+    getMe: () =>
+      apiClient.get('/api/admin/me'),
     getStats: () =>
-      apiClient.get('/api/admin/stats'),
-    getUsers: (skip: number = 0, limit: number = 50) =>
-      apiClient.get(`/api/admin/users?skip=${skip}&limit=${limit}`),
-    getTrades: (skip: number = 0, limit: number = 100) =>
-      apiClient.get(`/api/admin/trades?skip=${skip}&limit=${limit}`),
-    getAuditLogs: (skip: number = 0, limit: number = 100, userId?: string, action?: string) => {
+      apiClient.get('/api/admin/dashboard/stats'),
+    getCharts: (period: string = 'week') =>
+      apiClient.get(`/api/admin/dashboard/charts?period=${period}`),
+    getUsers: (skip: number = 0, limit: number = 50, search?: string, status?: string) => {
+      const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+      if (search) params.set('search', search);
+      if (status && status !== 'all') params.set('status', status);
+      return apiClient.get(`/api/admin/users?${params}`);
+    },
+    getUserDetail: (userId: string) =>
+      apiClient.get(`/api/admin/users/${userId}`),
+    performUserAction: (userId: string, data: { action: string; reason?: string }) =>
+      apiClient.post(`/api/admin/users/${userId}/action`, data),
+    adjustWallet: (data: { user_id: string; currency: string; amount: number; reason: string }) =>
+      apiClient.post('/api/admin/wallets/adjust', data),
+    getTransactions: (skip: number = 0, limit: number = 50, type?: string, status?: string) => {
+      const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+      if (type) params.set('type', type);
+      if (status) params.set('status', status);
+      return apiClient.get(`/api/admin/transactions?${params}`);
+    },
+    getSystemHealth: () =>
+      apiClient.get('/api/admin/system/health'),
+    broadcast: (data: { title: string; message: string; type?: string }) =>
+      apiClient.post('/api/admin/system/broadcast', data),
+    getAuditLogs: (skip: number = 0, limit: number = 100, adminId?: string, action?: string) => {
       let url = `/api/admin/audit-logs?skip=${skip}&limit=${limit}`;
-      if (userId) url += `&user_id=${userId}`;
+      if (adminId) url += `&admin_id=${adminId}`;
       if (action) url += `&action=${action}`;
       return apiClient.get(url);
     },
-    setupFirstAdmin: (email: string) =>
-      apiClient.post('/api/admin/setup-first-admin', { email }),
-    getWithdrawals: (skip: number = 0, limit: number = 50, status?: string) => {
-      let url = `/api/admin/withdrawals?skip=${skip}&limit=${limit}`;
-      if (status) url += `&status=${status}`;
-      return apiClient.get(url);
-    },
-    approveWithdrawal: (withdrawalId: string) =>
-      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/approve`),
-    completeWithdrawal: (withdrawalId: string, transactionHash: string) =>
-      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/complete`, { transaction_hash: transactionHash }),
-    rejectWithdrawal: (withdrawalId: string, reason: string) =>
-      apiClient.post(`/api/admin/withdrawals/${withdrawalId}/reject`, { reason }),
+    listAdmins: () =>
+      apiClient.get('/api/admin/admins'),
+    createAdmin: (data: { email: string; name: string; password: string; role?: string }) =>
+      apiClient.post('/api/admin/admins', data),
   },
 
   // User Search
