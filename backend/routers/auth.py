@@ -307,7 +307,8 @@ async def login(
             email=user.email,
             name=user.name,
             createdAt=user.created_at.isoformat()
-        ).dict()
+        ).dict(),
+        "access_token": access_token
     })
     
     # Set auth cookies with proper SameSite and Secure attributes
