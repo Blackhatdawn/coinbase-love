@@ -52,7 +52,8 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/admin/login', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await fetch(`${baseUrl}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
