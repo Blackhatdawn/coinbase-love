@@ -212,9 +212,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('[Auth] ⚠️ Logout API error (continuing anyway):', error);
     }
     
-    // SECURITY FIX: No localStorage to clear - just clear state
-    // Backend invalidates httpOnly cookie
     setUser(null);
+    setToken(null);
     clearSentryUser();
     console.log('[Auth] ✅ Signed out');
   };
