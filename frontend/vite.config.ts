@@ -156,8 +156,7 @@ export default defineConfig(({ mode }) => ({
   // ============================================
   server: {
     port: 3000,
-    // SECURITY FIX: Bind to localhost only in development
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     strictPort: true,
     // SECURITY FIX: Explicit allowed hosts (prevents DNS rebinding)
     allowedHosts: [
