@@ -722,7 +722,7 @@ app.include_router(portfolio.router, prefix="/api", tags=["legacy"])
 app.include_router(trading.router, prefix="/api", tags=["legacy"])
 app.include_router(crypto.router, prefix="/api", tags=["legacy"])
 app.include_router(prices.router, prefix="/api", tags=["legacy"])
-app.include_router(admin.router, prefix="/api", tags=["legacy"])
+# admin router mounted separately below with correct prefix
 app.include_router(wallet.router, prefix="/api", tags=["legacy"])
 app.include_router(alerts.router, prefix="/api", tags=["legacy"])
 app.include_router(notifications.router, prefix="/api", tags=["legacy"])
