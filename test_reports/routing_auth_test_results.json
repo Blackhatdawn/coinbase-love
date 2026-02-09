@@ -1,0 +1,133 @@
+{
+  "summary": {
+    "total_tests": 13,
+    "passed_tests": 12,
+    "failed_tests": 1,
+    "success_rate": 92.3076923076923,
+    "timestamp": "2026-02-09T13:16:26.636845"
+  },
+  "results": [
+    {
+      "test": "Public Route: /api/health",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "status": "healthy"
+      },
+      "timestamp": "2026-02-09T13:16:20.186513"
+    },
+    {
+      "test": "Public Route: /api/crypto",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "data_type": "dict",
+        "length": null
+      },
+      "timestamp": "2026-02-09T13:16:20.989314"
+    },
+    {
+      "test": "Public Route: /api/prices",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "data_type": "dict"
+      },
+      "timestamp": "2026-02-09T13:16:21.084787"
+    },
+    {
+      "test": "Public Route: /api/config",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "has_config": true
+      },
+      "timestamp": "2026-02-09T13:16:21.180757"
+    },
+    {
+      "test": "Protected Route: /api/auth/me returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.275131"
+    },
+    {
+      "test": "Protected Route: /api/wallet/balance returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.373288"
+    },
+    {
+      "test": "Protected Route: /api/portfolio returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.468721"
+    },
+    {
+      "test": "Protected Route: /api/alerts returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.566181"
+    },
+    {
+      "test": "Admin Route: /api/admin/me returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.661425"
+    },
+    {
+      "test": "Admin Route: /api/admin/dashboard/stats returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.761896"
+    },
+    {
+      "test": "Admin Route: /api/admin/users returns 401",
+      "passed": true,
+      "status_code": 401,
+      "error": null,
+      "details": null,
+      "timestamp": "2026-02-09T13:16:21.849947"
+    },
+    {
+      "test": "User Signup Flow",
+      "passed": true,
+      "status_code": 200,
+      "error": null,
+      "details": {
+        "email": "routingtest1770642981@example.com",
+        "response_keys": [
+          "user",
+          "message",
+          "emailSent",
+          "verificationRequired",
+          "kyc_status"
+        ]
+      },
+      "timestamp": "2026-02-09T13:16:26.033413"
+    },
+    {
+      "test": "User Login Flow",
+      "passed": false,
+      "status_code": 401,
+      "error": "{\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Email not verified. Please check your email and verify your account.\",\"request_id\":\"673ee1da-88a7-42c3-8993-96ff6bbfe35b\",\"timestamp\":\"2026-02-09T13:16:26.59",
+      "details": null,
+      "timestamp": "2026-02-09T13:16:26.636668"
+    }
+  ]
+}
