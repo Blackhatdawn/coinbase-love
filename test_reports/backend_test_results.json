@@ -4,7 +4,7 @@
     "passed_tests": 7,
     "failed_tests": 7,
     "success_rate": 50.0,
-    "timestamp": "2026-02-09T13:07:54.922984"
+    "timestamp": "2026-02-09T13:15:30.494342"
   },
   "results": [
     {
@@ -13,7 +13,7 @@
       "status_code": 200,
       "error": null,
       "details": null,
-      "timestamp": "2026-02-09T13:07:47.860708"
+      "timestamp": "2026-02-09T13:15:22.986209"
     },
     {
       "test": "CSRF Token Generation",
@@ -23,7 +23,7 @@
       "details": {
         "csrf_token_length": 64
       },
-      "timestamp": "2026-02-09T13:07:47.980464"
+      "timestamp": "2026-02-09T13:15:23.096880"
     },
     {
       "test": "Config Endpoint",
@@ -43,15 +43,15 @@
           "branding"
         ]
       },
-      "timestamp": "2026-02-09T13:07:48.099398"
+      "timestamp": "2026-02-09T13:15:23.214101"
     },
     {
       "test": "Socket.IO Handshake",
       "passed": false,
       "status_code": 404,
-      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"a484acb8-43b5-49e1-91ef-a22d90800ae0\",\"timestamp\":\"2026-02-09T13:07:48.173880\"}}",
+      "error": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Not Found\",\"request_id\":\"2b4e432e-dc9c-4d5d-9ac2-8382a8424747\",\"timestamp\":\"2026-02-09T13:15:23.302017\"}}",
       "details": null,
-      "timestamp": "2026-02-09T13:07:48.215278"
+      "timestamp": "2026-02-09T13:15:23.353322"
     },
     {
       "test": "Socket.IO Stats Endpoint",
@@ -59,7 +59,7 @@
       "status_code": 200,
       "error": "Missing expected fields: ['active_connections']",
       "details": null,
-      "timestamp": "2026-02-09T13:07:48.326838"
+      "timestamp": "2026-02-09T13:15:23.516218"
     },
     {
       "test": "Socket.IO WebSocket Transport Availability",
@@ -67,7 +67,7 @@
       "status_code": 404,
       "error": "WebSocket transport not found",
       "details": null,
-      "timestamp": "2026-02-09T13:07:48.494040"
+      "timestamp": "2026-02-09T13:15:23.965904"
     },
     {
       "test": "Crypto Listing",
@@ -75,7 +75,7 @@
       "status_code": 200,
       "error": "Empty or invalid crypto list",
       "details": null,
-      "timestamp": "2026-02-09T13:07:49.111513"
+      "timestamp": "2026-02-09T13:15:24.596016"
     },
     {
       "test": "Auth Signup",
@@ -83,7 +83,7 @@
       "status_code": 200,
       "error": null,
       "details": {
-        "email": "test1770642469@example.com",
+        "email": "test1770642924@example.com",
         "response_keys": [
           "user",
           "message",
@@ -92,15 +92,15 @@
           "kyc_status"
         ]
       },
-      "timestamp": "2026-02-09T13:07:53.288678"
+      "timestamp": "2026-02-09T13:15:28.880386"
     },
     {
       "test": "Auth Login (access_token in body)",
       "passed": false,
       "status_code": 401,
-      "error": "{\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid credentials\",\"request_id\":\"64028077-bd95-4d91-b257-79a7d8638d1b\",\"timestamp\":\"2026-02-09T13:07:53.828136\"}}",
+      "error": "{\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid credentials\",\"request_id\":\"a9129ff1-f0b5-47e9-9b8d-15b4a02e266a\",\"timestamp\":\"2026-02-09T13:15:29.422637\"}}",
       "details": null,
-      "timestamp": "2026-02-09T13:07:53.865457"
+      "timestamp": "2026-02-09T13:15:29.467204"
     },
     {
       "test": "Wallet Balance (with auth)",
@@ -108,7 +108,7 @@
       "status_code": 0,
       "error": "No user token available",
       "details": null,
-      "timestamp": "2026-02-09T13:07:53.865496"
+      "timestamp": "2026-02-09T13:15:29.467247"
     },
     {
       "test": "Admin Login CSRF Fix",
@@ -116,7 +116,7 @@
       "status_code": 401,
       "error": "Returns auth error instead of CSRF error",
       "details": null,
-      "timestamp": "2026-02-09T13:07:54.528636"
+      "timestamp": "2026-02-09T13:15:30.126578"
     },
     {
       "test": "Admin Dashboard Stats Endpoint Exists",
@@ -124,7 +124,7 @@
       "status_code": 401,
       "error": "Returns 401 (unauthorized) - endpoint exists",
       "details": null,
-      "timestamp": "2026-02-09T13:07:54.655246"
+      "timestamp": "2026-02-09T13:15:30.242585"
     },
     {
       "test": "P2P Transfer Endpoint Exists",
@@ -132,7 +132,7 @@
       "status_code": 401,
       "error": "Returns auth error (not 404) - endpoint exists",
       "details": null,
-      "timestamp": "2026-02-09T13:07:54.802380"
+      "timestamp": "2026-02-09T13:15:30.351975"
     },
     {
       "test": "Double-Prefix Bug Fixed",
@@ -140,7 +140,7 @@
       "status_code": 401,
       "error": "Still routes to admin endpoint (bug not fixed)",
       "details": null,
-      "timestamp": "2026-02-09T13:07:54.922793"
+      "timestamp": "2026-02-09T13:15:30.494128"
     }
   ]
 }
