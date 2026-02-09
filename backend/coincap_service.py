@@ -93,9 +93,13 @@ class CoinCapService:
             prices = await self._fetch_real_prices(coin_ids)
             # Cache the results
             await redis_cache.cache_prices(prices)
+            self._api_error_logged = False  # Reset on success
             return prices
         except Exception as e:
-            logger.error(f"❌ CoinCap API error: {str(e)}. Falling back to mock data.")
+            # Only log API errors once to avoid log spam
+            if not self._api_error_logged:
+                logger.error(f"❌ CoinCap API error: {str(e)}. Falling back to mock data.")
+                self._api_error_logged = True
             prices = self._get_mock_prices(coin_ids or self.tracked_coins)
             await redis_cache.cache_prices(prices)
             return prices
