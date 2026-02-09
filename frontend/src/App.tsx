@@ -216,10 +216,13 @@ const AppContent = () => {
 
           {/* ============================================ */}
           {/* ADMIN ROUTES - Separate from user dashboard */}
+          {/* Uses AdminRoute wrapper for auth protection */}
           {/* ============================================ */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
 
           {/* ============================================ */}
           {/* PROTECTED ROUTES - With AppLayout (Dashboard layout) */}
