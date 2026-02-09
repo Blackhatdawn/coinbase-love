@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoVault API Client Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>CryptoVault API Client Test</h1>
+    <p>Testing specific fixes mentioned in review request:</p>
+    <ul>
+        <li>api.wallet.balance() alias working</li>
+        <li>api.health.health() call working</li>
+    </ul>
+    
+    <div id="results"></div>
+
+    <script>
+        async function testAPIClient() {
+            const results = document.getElementById('results');
+            
+            function logTest(name, success, message, details = null) {
+                const div = document.createElement('div');
+                div.className = `test ${success ? 'success' : 'error'}`;
+                div.innerHTML = `
+                    <strong>${success ? '✅' : '❌'} ${name}</strong><br>
+                    ${message}
+                    ${details ? `<pre>${JSON.stringify(details, null, 2)}</pre>` : ''}
+                `;
+                results.appendChild(div);
+            }
+
+            function logInfo(name, message, details = null) {
+                const div = document.createElement('div');
+                div.className = 'test info';
+                div.innerHTML = `
+                    <strong>ℹ️ ${name}</strong><br>
+                    ${message}
+                    ${details ? `<pre>${JSON.stringify(details, null, 2)}</pre>` : ''}
+                `;
+                results.appendChild(div);
+            }
+
+            logInfo("Test Start", "Beginning API client tests...");
+
+            // Test 1: Check if we're on the CryptoVault site
+            const currentUrl = window.location.href;
+            const isCryptoVaultSite = currentUrl.includes('cryptovault');
+            logTest("Environment Check", isCryptoVaultSite, 
+                   isCryptoVaultSite ? "Running on CryptoVault domain" : "Not on CryptoVault domain",
+                   { currentUrl });
+
+            // Test 2: Check if API client is available globally
+            const hasWindowApi = typeof window.api !== 'undefined';
+            logTest("API Client Available", hasWindowApi, 
+                   hasWindowApi ? "window.api is available" : "window.api not found on global scope");
+
+            if (!hasWindowApi) {
+                logInfo("Alternative Check", "Checking for API client in modules...");
+                
+                // Try to check if modules are loaded
+                const scripts = Array.from(document.querySelectorAll('script[src]')).map(s => s.src);
+                logInfo("Loaded Scripts", "Found " + scripts.length + " script tags", scripts.slice(0, 5));
+                
+                // Check for React/Next.js indicators
+                const hasReactIndicators = document.querySelector('[data-reactroot]') || 
+                                         document.querySelector('#__next') ||
+                                         document.querySelector('#root');
+                logInfo("React App", hasReactIndicators ? "React app detected" : "No React indicators found");
+                
+                return;
+            }
+
+            // Test 3: Check API structure
+            if (hasWindowApi) {
+                const api = window.api;
+                const hasWallet = api && typeof api.wallet === 'object';
+                const hasHealth = api && typeof api.health === 'object';
+                
+                logTest("API Structure - wallet", hasWallet, 
+                       hasWallet ? "api.wallet exists" : "api.wallet missing");
+                logTest("API Structure - health", hasHealth, 
+                       hasHealth ? "api.health exists" : "api.health missing");
+
+                // Test 4: Check wallet.balance() alias (the fix mentioned)
+                if (hasWallet) {
+                    const hasGetBalance = typeof api.wallet.getBalance === 'function';
+                    const hasBalance = typeof api.wallet.balance === 'function';
+                    
+                    logTest("Wallet getBalance Method", hasGetBalance, 
+                           hasGetBalance ? "api.wallet.getBalance() exists" : "api.wallet.getBalance() missing");
+                    logTest("Wallet balance Alias (FIX)", hasBalance, 
+                           hasBalance ? "api.wallet.balance() alias exists" : "api.wallet.balance() alias missing");
+
+                    // Test if both methods point to same function
+                    if (hasGetBalance && hasBalance) {
+                        const sameFunction = api.wallet.getBalance === api.wallet.balance;
+                        logTest("Balance Alias Correctness", sameFunction, 
+                               sameFunction ? "balance() is alias of getBalance()" : "balance() is different from getBalance()");
+                    }
+                }
+
+                // Test 5: Check health.health() method (the fix mentioned)
+                if (hasHealth) {
+                    const hasHealthMethod = typeof api.health.health === 'function';
+                    const hasPing = typeof api.health.ping === 'function';
+                    
+                    logTest("Health ping Method", hasPing, 
+                           hasPing ? "api.health.ping() exists" : "api.health.ping() missing");
+                    logTest("Health health Method (FIX)", hasHealthMethod, 
+                           hasHealthMethod ? "api.health.health() exists" : "api.health.health() missing");
+                }
+
+                // Test 6: Try to call the fixed methods (will fail due to auth but we can see if they exist)
+                try {
+                    if (api.health && typeof api.health.health === 'function') {
+                        logInfo("Testing Health Call", "Attempting api.health.health()...");
+                        const healthPromise = api.health.health();
+                        if (healthPromise && typeof healthPromise.then === 'function') {
+                            logTest("Health Method Callable", true, "api.health.health() returns a Promise");
+                            
+                            try {
+                                const result = await healthPromise;
+                                logTest("Health Method Response", true, "api.health.health() succeeded", result);
+                            } catch (error) {
+                                logInfo("Health Method Error", "api.health.health() failed (expected if no auth)", { error: error.message });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    logInfo("Health Test Error", "Error testing health method", { error: error.message });
+                }
+
+                try {
+                    if (api.wallet && typeof api.wallet.balance === 'function') {
+                        logInfo("Testing Wallet Balance Call", "Attempting api.wallet.balance()...");
+                        const balancePromise = api.wallet.balance();
+                        if (balancePromise && typeof balancePromise.then === 'function') {
+                            logTest("Wallet Balance Method Callable", true, "api.wallet.balance() returns a Promise");
+                            
+                            try {
+                                const result = await balancePromise;
+                                logTest("Wallet Balance Method Response", true, "api.wallet.balance() succeeded", result);
+                            } catch (error) {
+                                logInfo("Wallet Balance Method Error", "api.wallet.balance() failed (expected if no auth)", { error: error.message });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    logInfo("Wallet Balance Test Error", "Error testing wallet balance method", { error: error.message });
+                }
+            }
+
+            logInfo("Test Complete", "API client testing finished");
+        }
+
+        // Run tests when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', testAPIClient);
+        } else {
+            testAPIClient();
+        }
+    </script>
+</body>
+</html>
