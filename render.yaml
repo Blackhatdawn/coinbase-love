@@ -1,114 +1,179 @@
 # Render.com Deployment Configuration
-# This file configures the CryptoVault backend for Render Web Service deployment
+# CryptoVault Backend - Production Ready
+# Last Updated: 2026-02-09
 
 services:
   # Backend API Service
   - type: web
     name: cryptovault-backend
     runtime: python
-    plan: starter  # Can upgrade to standard/pro for more resources
+    plan: starter  # Upgrade to standard/pro for more resources
     region: oregon  # Choose closest to your users: oregon, frankfurt, singapore
     buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 2
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 4
+    
     envVars:
-      # Application
+      # ============================================
+      # APPLICATION SETTINGS
+      # ============================================
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
-        value: false
+        value: "false"
       - key: LOG_LEVEL
         value: INFO
-      - key: API_VERSION
-        value: v1
+      - key: APP_NAME
+        value: CryptoVault
+      - key: APP_VERSION
+        value: "2.0.0"
+      - key: WORKERS
+        value: "4"
       
-      # Database (MongoDB Atlas)
+      # ============================================
+      # DATABASE (MongoDB Atlas)
+      # ============================================
       - key: MONGO_URL
         sync: false  # Set as secret in Render dashboard
       - key: DB_NAME
         value: cryptovault
       - key: MONGO_MAX_POOL_SIZE
-        value: 10
+        value: "10"
       - key: MONGO_TIMEOUT_MS
-        value: 5000
+        value: "5000"
       
-      # Authentication
+      # ============================================
+      # AUTHENTICATION (JWT)
+      # ============================================
       - key: JWT_SECRET
         sync: false  # Set as secret
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 30
+        value: "30"
       - key: REFRESH_TOKEN_EXPIRE_DAYS
-        value: 7
+        value: "7"
       - key: CSRF_SECRET
         sync: false  # Set as secret
       
-      # CORS & URLs
+      # ============================================
+      # CORS & COOKIES
+      # ============================================
       - key: CORS_ORIGINS
-        value: '["https://www.cryptovault.financial","https://cryptovault.financial","http://localhost:3000"]'
+        value: '["https://www.cryptovault.financial","https://cryptovault.financial","https://coinbase-love.vercel.app"]'
       - key: USE_CROSS_SITE_COOKIES
-        value: true
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: COOKIE_SECURE
+        value: "true"
+      
+      # ============================================
+      # PUBLIC URLs
+      # ============================================
       - key: APP_URL
         value: https://www.cryptovault.financial
       - key: PUBLIC_API_URL
-        fromService:
-          name: cryptovault-backend
-          type: web
-          property: host
+        value: https://cryptovault-api.onrender.com
+      - key: PUBLIC_WS_URL
+        value: wss://cryptovault-api.onrender.com
+      - key: PUBLIC_SOCKET_IO_PATH
+        value: /socket.io
+      - key: EMAIL_VERIFICATION_URL
+        value: https://cryptovault.financial/verify
       
-      # Rate Limiting
+      # ============================================
+      # RATE LIMITING
+      # ============================================
       - key: RATE_LIMIT_PER_MINUTE
-        value: 60
+        value: "60"
       - key: COINCAP_RATE_LIMIT
-        value: 50
+        value: "200"
       
-      # Email (SendGrid)
+      # ============================================
+      # EMAIL (SendGrid)
+      # ============================================
       - key: EMAIL_SERVICE
-        value: sendgrid
+        value: mock  # Change to 'sendgrid' when valid key available
       - key: EMAIL_FROM
         value: team@cryptovault.financial
       - key: EMAIL_FROM_NAME
-        value: CryptoVault Financial
+        value: "CryptoVault Financial"
       - key: SENDGRID_API_KEY
-        sync: false  # Set as secret
+        sync: false  # Set as secret - NEED NEW VALID KEY
       
-      # Telegram Bot
+      # ============================================
+      # TELEGRAM NOTIFICATIONS
+      # ============================================
+      - key: TELEGRAM_ENABLED
+        value: "true"
       - key: TELEGRAM_BOT_TOKEN
         sync: false  # Set as secret
       - key: ADMIN_TELEGRAM_CHAT_ID
-        sync: false  # Set as secret
+        sync: false  # Set as secret (comma-separated IDs)
       
-      # External APIs
+      # ============================================
+      # EXTERNAL APIs
+      # ============================================
       - key: COINCAP_API_KEY
         sync: false  # Set as secret
       
-      # Payments (NOWPayments)
+      # ============================================
+      # PAYMENTS (NOWPayments)
+      # ============================================
       - key: NOWPAYMENTS_API_KEY
         sync: false  # Set as secret
       - key: NOWPAYMENTS_IPN_SECRET
         sync: false  # Set as secret
       - key: NOWPAYMENTS_SANDBOX
-        value: false
+        value: "false"
       
-      # Cache (Upstash Redis)
+      # ============================================
+      # CACHE (Upstash Redis)
+      # ============================================
       - key: USE_REDIS
-        value: true
+        value: "true"
       - key: UPSTASH_REDIS_REST_URL
         sync: false  # Set as secret
       - key: UPSTASH_REDIS_REST_TOKEN
         sync: false  # Set as secret
+      - key: REDIS_PREFIX
+        value: "cryptovault:prod:"
       
-      # Monitoring (Sentry)
+      # ============================================
+      # MONITORING (Sentry)
+      # ============================================
       - key: SENTRY_DSN
         sync: false  # Set as secret
       - key: SENTRY_TRACES_SAMPLE_RATE
-        value: 0.1
+        value: "0.1"
       - key: SENTRY_PROFILES_SAMPLE_RATE
-        value: 0.1
+        value: "0.1"
       
-      # Feature Flags
+      # ============================================
+      # FEATURE FLAGS
+      # ============================================
       - key: USE_MOCK_PRICES
-        value: false
+        value: "false"
+      - key: FEATURE_2FA_ENABLED
+        value: "true"
+      - key: FEATURE_DEPOSITS_ENABLED
+        value: "true"
+      - key: FEATURE_STAKING_ENABLED
+        value: "false"
+      - key: FEATURE_TRADING_ENABLED
+        value: "true"
+      - key: FEATURE_WITHDRAWALS_ENABLED
+        value: "true"
+      
+      # ============================================
+      # PUBLIC CONFIG (exposed to frontend)
+      # ============================================
+      - key: PUBLIC_LOGO_URL
+        value: https://www.cryptovault.financial/logo.svg
+      - key: PUBLIC_SITE_NAME
+        value: "CryptoVault Financial"
+      - key: PUBLIC_SUPPORT_EMAIL
+        value: support@cryptovault.financial
     
     # Health check endpoint
     healthCheckPath: /api/health
@@ -122,8 +187,9 @@ services:
       mountPath: /app/data
       sizeGB: 1
 
-# Frontend Static Site (Optional - if deploying frontend to Render)
-# Uncomment if you want to deploy frontend alongside backend
+# ============================================
+# FRONTEND (Optional - Uncomment if deploying to Render)
+# ============================================
 #  - type: web
 #    name: cryptovault-frontend
 #    runtime: static
@@ -131,10 +197,7 @@ services:
 #    staticPublishPath: frontend/dist
 #    envVars:
 #      - key: VITE_API_BASE_URL
-#        fromService:
-#          name: cryptovault-backend
-#          type: web
-#          property: host
+#        value: https://cryptovault-api.onrender.com
 #    routes:
 #      - type: rewrite
 #        source: /*
