@@ -160,22 +160,26 @@ const Dashboard = () => {
     queryFn: () => api.transactions.getAll(0, 5),
   });
 
-  // Calculate real-time portfolio value
+  // Calculate real-time portfolio value - memoized for performance
   const holdings = portfolioData?.portfolio?.holdings || [];
   const originalTotalValue = portfolioData?.portfolio?.totalBalance || 0;
 
-  const realTimeValue = holdings.reduce((sum: number, holding: any) => {
-    const wsPrice = prices[holding.symbol?.toLowerCase()];
-    if (wsPrice) {
-      return sum + (parseFloat(wsPrice) * holding.amount);
-    }
-    return sum + (holding.value || 0);
-  }, 0);
+  const { totalValue, portfolioChange } = useMemo(() => {
+    const realTimeValue = holdings.reduce((sum: number, holding: any) => {
+      const wsPrice = prices[holding.symbol?.toLowerCase()];
+      if (wsPrice) {
+        return sum + (parseFloat(wsPrice) * holding.amount);
+      }
+      return sum + (holding.value || 0);
+    }, 0);
 
-  const totalValue = realTimeValue || originalTotalValue;
-  const portfolioChange = originalTotalValue > 0
-    ? ((totalValue - originalTotalValue) / originalTotalValue) * 100
-    : 0;
+    const total = realTimeValue || originalTotalValue;
+    const change = originalTotalValue > 0
+      ? ((total - originalTotalValue) / originalTotalValue) * 100
+      : 0;
+
+    return { totalValue: total, portfolioChange: change };
+  }, [holdings, prices, originalTotalValue]);
 
   // Copy referral code
   const handleCopyReferral = () => {
