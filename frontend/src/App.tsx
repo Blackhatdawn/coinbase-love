@@ -8,6 +8,7 @@ import { Web3Provider } from "@/contexts/Web3Context";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
 import OnboardingLoader from "@/components/OnboardingLoader";
 import AppLayout from "@/layouts/AppLayout";
