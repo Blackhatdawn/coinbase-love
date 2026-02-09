@@ -527,7 +527,7 @@ CryptoVault Financial, Inc.
         """Send new device login notification."""
         from email_templates import login_new_device
         
-        subject = f"🔐 New Login to Your CryptoVault Account"
+        subject = "🔐 New Login to Your CryptoVault Account"
         html_content = login_new_device(
             name=name,
             device=device,
