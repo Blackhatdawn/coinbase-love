@@ -87,9 +87,8 @@ interface SystemHealth {
 const AdminDashboard = () => {
   const navigate = useNavigate();
   
-  // Auth state
+  // Auth state - AdminRoute wrapper handles redirect, we just load data
   const [admin, setAdmin] = useState<AdminData | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Dashboard state
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -113,24 +112,17 @@ const AdminDashboard = () => {
   const [walletAdjustModal, setWalletAdjustModal] = useState(false);
   const [walletAdjust, setWalletAdjust] = useState({ currency: 'USD', amount: 0, reason: '' });
 
-  // Check authentication
+  // Load admin data from sessionStorage (AdminRoute already verified auth)
   useEffect(() => {
-    const token = sessionStorage.getItem('adminToken');
     const adminData = sessionStorage.getItem('adminData');
-    
-    if (!token || !adminData) {
-      navigate('/admin/login');
-      return;
+    if (adminData) {
+      try {
+        setAdmin(JSON.parse(adminData));
+      } catch {
+        // AdminRoute will handle redirect if needed
+      }
     }
-    
-    try {
-      const parsed = JSON.parse(adminData);
-      setAdmin(parsed);
-      setIsAuthenticated(true);
-    } catch {
-      navigate('/admin/login');
-    }
-  }, [navigate]);
+  }, []);
 
   // Helper to get CSRF token from cookie
   const getCSRFToken = useCallback((): string | null => {
