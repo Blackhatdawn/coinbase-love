@@ -173,7 +173,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string): Promise<{ error?: string }> => {
+  const signUp = async (email: string, password: string, name: string): Promise<{ error?: string; verificationRequired?: boolean }> => {
     try {
       console.log('[Auth] 📝 Signing up...');
       const response = await api.auth.signup({ email, password, name });
@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('[Auth] ✅ Sign up successful');
-      return {};
+      return { verificationRequired: response.verificationRequired };
     } catch (error: any) {
       console.error('[Auth] ❌ Sign up failed:', error);
       return { error: error.message || "Failed to create account" };
