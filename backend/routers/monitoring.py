@@ -204,3 +204,152 @@ async def reset_circuit_breaker(name: str):
             return {"error": f"Circuit breaker '{name}' not found"}
     except ImportError:
         return {"error": "Circuit breakers not available"}
+
+
+@router.get("/health/detailed")
+async def detailed_health_check():
+    """
+    Detailed health check for all services.
+    Returns comprehensive status of database, cache, external APIs, and Socket.IO.
+    
+    Use Cases:
+    - Production monitoring dashboards
+    - Zero-downtime deployment verification
+    - Service dependency validation
+    """
+    health = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": settings.environment,
+        "version": settings.app_version,
+        "services": {}
+    }
+    
+    errors = []
+    
+    # 1. Database Health
+    try:
+        from dependencies import get_db_connection
+        db_conn = get_db_connection()
+        if db_conn and db_conn.is_connected:
+            # Quick ping test with timeout
+            await asyncio.wait_for(db_conn.health_check(), timeout=2.0)
+            health["services"]["database"] = {
+                "status": "healthy",
+                "type": "mongodb",
+                "pool_size": settings.mongo_max_pool_size
+            }
+        else:
+            health["services"]["database"] = {"status": "degraded", "error": "Not connected"}
+            errors.append("database")
+    except asyncio.TimeoutError:
+        health["services"]["database"] = {"status": "degraded", "error": "Timeout"}
+        errors.append("database")
+    except Exception as e:
+        health["services"]["database"] = {"status": "unhealthy", "error": str(e)}
+        errors.append("database")
+    
+    # 2. Redis Cache Health
+    try:
+        from redis_cache import redis_cache
+        if redis_cache.use_redis:
+            # Test Redis connection
+            test_key = "health_check_test"
+            await redis_cache.set(test_key, "ok", ttl=5)
+            result = await redis_cache.get(test_key)
+            
+            if result == "ok":
+                health["services"]["redis"] = {
+                    "status": "healthy",
+                    "type": "upstash_redis",
+                    "mode": "redis"
+                }
+            else:
+                health["services"]["redis"] = {"status": "degraded", "error": "Read/write test failed"}
+        else:
+            health["services"]["redis"] = {
+                "status": "healthy",
+                "type": "in_memory",
+                "mode": "fallback"
+            }
+    except Exception as e:
+        health["services"]["redis"] = {"status": "degraded", "error": str(e), "mode": "fallback"}
+    
+    # 3. Socket.IO Health
+    try:
+        from socketio_server import socketio_manager
+        stats = socketio_manager.get_stats()
+        health["services"]["socketio"] = {
+            "status": "healthy",
+            "connections": stats.get("total_connections", 0),
+            "authenticated_users": stats.get("authenticated_users", 0)
+        }
+    except Exception as e:
+        health["services"]["socketio"] = {"status": "degraded", "error": str(e)}
+    
+    # 4. Price Feed Health
+    try:
+        from services import price_stream_service
+        price_status = price_stream_service.get_status()
+        health["services"]["price_feed"] = {
+            "status": "healthy" if price_status.get("enabled") else "disabled",
+            "state": price_status.get("state", "unknown"),
+            "source": price_status.get("source", "unknown"),
+            "prices_cached": len(price_stream_service.prices)
+        }
+    except Exception as e:
+        health["services"]["price_feed"] = {"status": "degraded", "error": str(e)}
+    
+    # 5. Email Service Health
+    try:
+        from email_service import email_service
+        health["services"]["email"] = {
+            "status": "healthy",
+            "mode": email_service.mode,
+            "provider": "sendgrid" if email_service.mode == "sendgrid" else "mock"
+        }
+    except Exception as e:
+        health["services"]["email"] = {"status": "degraded", "error": str(e)}
+    
+    # 6. Sentry Health
+    if settings.is_sentry_available():
+        health["services"]["sentry"] = {
+            "status": "healthy",
+            "environment": settings.environment,
+            "sample_rate": settings.sentry_traces_sample_rate
+        }
+    else:
+        health["services"]["sentry"] = {"status": "disabled"}
+    
+    # 7. System Resources
+    try:
+        cpu = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        health["system"] = {
+            "cpu_percent": cpu,
+            "memory_percent": memory.percent,
+            "memory_available_mb": round(memory.available / (1024 * 1024), 2),
+            "disk_percent": disk.percent,
+            "disk_free_gb": round(disk.free / (1024 * 1024 * 1024), 2)
+        }
+        
+        # Flag if resources are low
+        if cpu > 90 or memory.percent > 90 or disk.percent > 90:
+            errors.append("system_resources")
+            health["system"]["warning"] = "High resource usage detected"
+    except Exception as e:
+        health["system"] = {"error": str(e)}
+    
+    # Determine overall status
+    if len(errors) == 0:
+        health["status"] = "healthy"
+    elif "database" in errors:
+        health["status"] = "unhealthy"
+    else:
+        health["status"] = "degraded"
+    
+    status_code = 200 if health["status"] == "healthy" else (503 if health["status"] == "unhealthy" else 200)
+    
+    return JSONResponse(content=health, status_code=status_code)
