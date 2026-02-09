@@ -39,6 +39,7 @@ class PriceFeedManager:
         self.consecutive_errors = 0
         self.max_consecutive_errors = 5
         self.backoff_multiplier = 1
+        self._dns_warning_logged = False  # Track if DNS warning was already logged
         
         # Top coins to track (using CoinCap IDs)
         self.tracked_coins = [
