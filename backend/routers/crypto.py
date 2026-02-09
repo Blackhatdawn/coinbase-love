@@ -1,6 +1,6 @@
 """Cryptocurrency market data endpoints with multi-source support."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 import logging
 
 from multi_source_crypto_service import multi_source_service
@@ -10,12 +10,15 @@ router = APIRouter(prefix="/crypto", tags=["cryptocurrency"])
 
 
 @router.get("")
-async def get_all_cryptocurrencies():
+async def get_all_cryptocurrencies(response: Response):
     """
     Get all cryptocurrency prices from multiple sources.
     Primary: CoinCap (200 req/min) → Fallback: CoinPaprika
     """
     try:
+        # Cache for 30 seconds - prices update frequently but not instantly
+        response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
+        
         prices = await multi_source_service.get_prices()
         return {"cryptocurrencies": prices}
     except Exception as e:
