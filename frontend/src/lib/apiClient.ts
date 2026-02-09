@@ -773,7 +773,7 @@ export async function checkBackendHealth(): Promise<boolean> {
 
   for (let attempt = 0; attempt < HEALTH_CHECK_RETRY_CONFIG.maxRetries; attempt++) {
     try {
-      await api.health();
+      await api.health.health();
       store.setConnected(true);
       store.setConnecting(false);
       return true;
