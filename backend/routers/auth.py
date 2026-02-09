@@ -139,11 +139,14 @@ async def signup(
         } if user_data.device_fingerprint else None
     )
 
+    # Auto-verify email when email service is mocked (for development/testing)
+    auto_verify = settings.email_service == 'mock'
+    
     user = User(
         email=user_data.email,
         name=user_data.name,
         password_hash=get_password_hash(user_data.password),
-        email_verified=False,
+        email_verified=auto_verify,  # Auto-verify when email is mocked
         email_verification_code=verification_code,
         email_verification_token=verification_token,
         email_verification_expires=verification_expires,
