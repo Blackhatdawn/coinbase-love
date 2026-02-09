@@ -66,7 +66,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "connect-src 'self' https://cryptovault-api.onrender.com wss://cryptovault-api.onrender.com "
                 "https://*.onrender.com wss://*.onrender.com "
                 "https://coinbase-love.vercel.app "
-                "https://solid-backend.preview.emergentagent.com wss://*.preview.emergentagent.com "
+                "https://web-fixer-8.preview.emergentagent.com wss://*.preview.emergentagent.com "
                 "https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io "
                 "https://sentry.io https://*.sentry.io https://*.ingest.sentry.io "
                 "https://vercel.live wss://vercel.live https://*.vercel.live; "
