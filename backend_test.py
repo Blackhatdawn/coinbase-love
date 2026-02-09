@@ -477,7 +477,11 @@ def main():
         tester.test_backend_health,
         tester.test_csrf_endpoint,
         tester.test_config_endpoint,
+        
+        # Socket.IO Tests (specific to current task)
         tester.test_socketio_handshake,
+        tester.test_socketio_stats,
+        tester.test_socketio_websocket_transport,
         
         # API endpoints
         tester.test_crypto_listing,
