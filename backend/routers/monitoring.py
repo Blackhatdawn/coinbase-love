@@ -9,7 +9,11 @@ from datetime import datetime
 import psutil
 import asyncio
 from typing import Dict, Any
+import logging
 
+from config import settings
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
 
 
