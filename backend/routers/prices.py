@@ -4,7 +4,7 @@ Real-time prices from Redis cache (updated by WebSocket streams)
 Includes monitoring and metrics endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from services import price_stream_service
 from redis_cache import redis_cache
 from monitoring import price_stream_metrics
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/prices", tags=["prices"])
 
 
 @router.get("")
-async def get_all_prices() -> Dict[str, Any]:
+async def get_all_prices(response: Response) -> Dict[str, Any]:
     """
     Get all cached cryptocurrency prices.
     Prices are updated in real-time by WebSocket stream.
@@ -38,6 +38,9 @@ async def get_all_prices() -> Dict[str, Any]:
     }
     """
     try:
+        # Add cache headers for CDN/browser caching (5 seconds for real-time data)
+        response.headers["Cache-Control"] = "public, max-age=5, stale-while-revalidate=10"
+        
         # Get all prices from service
         status = price_stream_service.get_status()
         
