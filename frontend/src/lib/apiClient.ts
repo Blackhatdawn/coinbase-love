@@ -523,6 +523,8 @@ export const api = {
   wallet: {
     getBalance: () =>
       apiClient.get('/api/wallet/balance'),
+    balance: () =>
+      apiClient.get('/api/wallet/balance'),  // Alias for getBalance
     createDeposit: (data: { amount: number; currency: string }) =>
       apiClient.post('/api/wallet/deposit/create', data),
     getDeposit: (orderId: string) =>
