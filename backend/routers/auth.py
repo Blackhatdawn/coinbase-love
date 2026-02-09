@@ -221,9 +221,9 @@ async def signup(
             name=user.name,
             createdAt=user.created_at.isoformat()
         ).dict(),
-        "message": "Account created! Please check your email to verify your account.",
+        "message": "Account created!" if auto_verify else "Account created! Please check your email to verify your account.",
         "emailSent": email_sent,
-        "verificationRequired": True,
+        "verificationRequired": not auto_verify,  # Skip verification in mock mode
         "kyc_status": user.kyc_status
     }
 
