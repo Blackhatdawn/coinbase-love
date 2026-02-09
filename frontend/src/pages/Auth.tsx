@@ -139,7 +139,15 @@ const Auth = () => {
             description: result.error,
             variant: "destructive",
           });
+        } else if (result.verificationRequired === false) {
+          // Email auto-verified (mock mode) - go directly to dashboard
+          toast({
+            title: "Account created!",
+            description: "Welcome to CryptoVault! Your account is ready.",
+          });
+          navigate("/dashboard");
         } else {
+          // Email verification required
           toast({
             title: "Account created!",
             description: "Please check your email for a verification code.",
