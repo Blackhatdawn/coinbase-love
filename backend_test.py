@@ -154,6 +154,60 @@ class CryptoVaultAPITester:
             self.log_result("Socket.IO Handshake", False, 0, str(e))
             return False
 
+    def test_socketio_stats(self):
+        """Test: GET /api/socketio/stats returns connection statistics"""
+        try:
+            response = self.make_request('GET', '/api/socketio/stats')
+            
+            if response.status_code == 200:
+                data = response.json()
+                expected_fields = ['total_connections', 'active_connections', 'authenticated_users', 'connections']
+                has_expected_fields = all(field in data for field in expected_fields)
+                
+                if has_expected_fields:
+                    self.log_result("Socket.IO Stats Endpoint", True, response.status_code,
+                                  details={
+                                      "total_connections": data.get('total_connections', 0),
+                                      "active_connections": data.get('active_connections', 0),
+                                      "authenticated_users": data.get('authenticated_users', 0)
+                                  })
+                    return True
+                else:
+                    missing_fields = [f for f in expected_fields if f not in data]
+                    self.log_result("Socket.IO Stats Endpoint", False, response.status_code,
+                                  f"Missing expected fields: {missing_fields}")
+            else:
+                self.log_result("Socket.IO Stats Endpoint", False, response.status_code,
+                              response.text)
+            return False
+        except Exception as e:
+            self.log_result("Socket.IO Stats Endpoint", False, 0, str(e))
+            return False
+
+    def test_socketio_websocket_transport(self):
+        """Test: GET /socket.io/?EIO=4&transport=websocket should handle WebSocket upgrade"""
+        try:
+            # Try websocket transport (this might fail but we check the response)
+            response = self.make_request('GET', '/socket.io/?EIO=4&transport=websocket')
+            
+            # For WebSocket upgrade, we might get 400 (Bad Request) which is expected for HTTP client
+            # The important thing is it doesn't return 404
+            if response.status_code in [400, 426]:  # 426 = Upgrade Required
+                self.log_result("Socket.IO WebSocket Transport Availability", True, response.status_code,
+                              "WebSocket transport detected (expected HTTP client failure)")
+                return True
+            elif response.status_code == 404:
+                self.log_result("Socket.IO WebSocket Transport Availability", False, response.status_code,
+                              "WebSocket transport not found")
+                return False
+            else:
+                self.log_result("Socket.IO WebSocket Transport Availability", True, response.status_code,
+                              f"WebSocket transport accessible (status: {response.status_code})")
+                return True
+        except Exception as e:
+            self.log_result("Socket.IO WebSocket Transport Availability", False, 0, str(e))
+            return False
+
     def test_crypto_listing(self):
         """Test: GET /api/crypto returns cryptocurrency data"""
         try:
