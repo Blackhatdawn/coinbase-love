@@ -176,26 +176,32 @@ class PriceFeedManager:
             error_str = str(e)
             # DNS or connection errors - use mock prices as fallback
             if "Name or service not known" in error_str or "getaddrinfo failed" in error_str:
-                logger.warning(
-                    "🌐 DNS resolution failed for CoinCap API. "
-                    "Using mock prices for real-time updates. "
-                    "Check DNS configuration to restore live prices."
-                )
+                # Only log DNS warning once to avoid log spam
+                if not self._dns_warning_logged:
+                    logger.warning(
+                        "🌐 DNS resolution failed for CoinCap API. "
+                        "Using mock prices for real-time updates. "
+                        "Check DNS configuration to restore live prices."
+                    )
+                    self._dns_warning_logged = True
                 # Fallback to mock prices
                 from services.mock_prices import mock_price_service
                 return mock_price_service.get_prices()
             elif "Connection refused" in error_str:
-                logger.warning(
-                    "🔌 Connection refused by CoinCap API. "
-                    "Using mock prices. Check firewall or CoinCap status."
-                )
+                if not self._dns_warning_logged:
+                    logger.warning(
+                        "🔌 Connection refused by CoinCap API. "
+                        "Using mock prices. Check firewall or CoinCap status."
+                    )
+                    self._dns_warning_logged = True
                 from services.mock_prices import mock_price_service
                 return mock_price_service.get_prices()
             else:
-                logger.warning(f"🔌 Connection error: {e}. Using mock prices.")
+                if not self._dns_warning_logged:
+                    logger.warning(f"🔌 Connection error: {e}. Using mock prices.")
+                    self._dns_warning_logged = True
                 from services.mock_prices import mock_price_service
                 return mock_price_service.get_prices()
-            self.consecutive_errors += 1
         except Exception as e:
             logger.error(
                 f"❌ Price fetch error: {e}. "
