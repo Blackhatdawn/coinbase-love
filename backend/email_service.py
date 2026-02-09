@@ -66,7 +66,9 @@ class EmailService:
     """
     
     def __init__(self):
-        self.sendgrid_api_key = settings.sendgrid_api_key
+        # Extract secret value if it's a SecretStr
+        api_key = settings.sendgrid_api_key
+        self.sendgrid_api_key = api_key.get_secret_value() if api_key else None
         self.from_email = settings.email_from
         self.from_name = settings.email_from_name
         self.use_mock = settings.email_service == 'mock'
