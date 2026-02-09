@@ -3,7 +3,7 @@
  * Bybit-inspired modular card layout with real-time data and drag-and-drop reordering
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
