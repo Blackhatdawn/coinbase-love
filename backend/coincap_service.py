@@ -32,6 +32,7 @@ class CoinCapService:
         self.api_key = settings.coincap_api_key
         self.use_mock = settings.use_mock_prices
         self.timeout = 15  # seconds
+        self._api_error_logged = False  # Track if API error was already logged
         
         # Top cryptocurrencies to track (CoinCap uses lowercase IDs)
         self.tracked_coins = [
