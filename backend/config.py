@@ -26,6 +26,50 @@ from pydantic import Field, validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def normalize_url(url: str) -> str:
+    """
+    Normalize URL by removing trailing slashes and ensuring proper format.
+    
+    Args:
+        url: URL to normalize
+        
+    Returns:
+        Normalized URL without trailing slashes
+    """
+    if not url:
+        return url
+    
+    # Remove trailing slashes but keep single slash for root
+    if url != "/" and url.endswith("/"):
+        url = url.rstrip("/")
+    
+    return url
+
+
+def normalize_socket_io_path(path: str) -> str:
+    """
+    Normalize Socket.IO path to ensure it starts with / and ends with /.
+    
+    Args:
+        path: Socket.IO path to normalize
+        
+    Returns:
+        Normalized Socket.IO path
+    """
+    if not path:
+        return "/socket.io/"
+    
+    # Ensure path starts with /
+    if not path.startswith("/"):
+        path = "/" + path
+    
+    # Ensure path ends with /
+    if not path.endswith("/"):
+        path = path + "/"
+    
+    return path
+
+
 def get_version_from_file() -> str:
     """Reads the version from the VERSION file."""
     try:
@@ -327,6 +371,20 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of {valid_levels}, got {v}")
         return v.upper()
+
+    @validator("app_url", "public_api_url", "public_ws_url", pre=True)
+    def normalize_urls(cls, v):
+        """Normalize URLs by removing trailing slashes."""
+        if isinstance(v, str) and v:
+            return normalize_url(v)
+        return v
+
+    @validator("public_socket_io_path", pre=True)
+    def normalize_socket_path(cls, v):
+        """Normalize Socket.IO path to ensure proper format."""
+        if isinstance(v, str):
+            return normalize_socket_io_path(v)
+        return v
 
     # ============================================
     # PROPERTIES
