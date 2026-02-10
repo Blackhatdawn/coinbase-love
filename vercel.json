@@ -3,65 +3,66 @@
   "version": 2,
   "name": "cryptovault",
   "framework": "vite",
-  "buildCommand": "cd frontend && pnpm install && pnpm build",
+  "buildCommand": "cd frontend && pnpm install && pnpm run build:prod",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && pnpm install",
+  "installCommand": "cd frontend && pnpm install --frozen-lockfile",
   "cleanUrls": true,
   "trailingSlash": false,
 
   "env": {
-    "VITE_API_BASE_URL": {
-      "description": "Production backend API base URL (leave empty to use relative paths)",
-      "default": ""
-    }
-  },
-
-  "build": {
-    "env": {
-      "VITE_API_BASE_URL": "@vite_api_base_url"
-    }
+    "VITE_API_BASE_URL": "",
+    "VITE_SENTRY_DSN": "",
+    "NODE_ENV": "production"
   },
 
   "rewrites": [
     {
       "source": "/api/docs",
-      "destination": "https://coinbase-love.fly.dev/api/docs"
+      "destination": "https://cryptovault-api.onrender.com/api/docs"
     },
     {
       "source": "/api/docs/:path*",
-      "destination": "https://coinbase-love.fly.dev/api/docs/:path*"
+      "destination": "https://cryptovault-api.onrender.com/api/docs/:path*"
     },
     {
       "source": "/api/redoc",
-      "destination": "https://coinbase-love.fly.dev/api/redoc"
+      "destination": "https://cryptovault-api.onrender.com/api/redoc"
     },
     {
       "source": "/api/openapi.json",
-      "destination": "https://coinbase-love.fly.dev/api/openapi.json"
+      "destination": "https://cryptovault-api.onrender.com/api/openapi.json"
     },
     {
       "source": "/api/v1/:path*",
-      "destination": "https://coinbase-love.fly.dev/api/v1/:path*"
+      "destination": "https://cryptovault-api.onrender.com/api/v1/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://coinbase-love.fly.dev/api/:path*"
+      "destination": "https://cryptovault-api.onrender.com/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://coinbase-love.fly.dev/health"
+      "destination": "https://cryptovault-api.onrender.com/health"
     },
     {
       "source": "/ping",
-      "destination": "https://coinbase-love.fly.dev/ping"
+      "destination": "https://cryptovault-api.onrender.com/ping"
     },
     {
       "source": "/csrf",
-      "destination": "https://coinbase-love.fly.dev/csrf"
+      "destination": "https://cryptovault-api.onrender.com/csrf"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://coinbase-love.fly.dev/socket.io/:path*"
+      "destination": "https://cryptovault-api.onrender.com/socket.io/:path*"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/manifest.json"
+    },
+    {
+      "source": "/sw.js",
+      "destination": "/sw.js"
     },
     {
       "source": "/(.*)",
@@ -120,7 +121,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self' https://www.cryptovault.financial; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://www.cryptovault.financial https://coinbase-love.fly.dev wss://coinbase-love.fly.dev ws://coinbase-love.fly.dev https://*.fly.dev wss://*.fly.dev https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://sentry.io https://*.sentry.io https://*.ingest.sentry.io https://vercel.live wss://vercel.live https://*.vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.vercel-scripts.com https://*.sentry.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://coinbase-love.fly.dev wss://coinbase-love.fly.dev https://*.fly.dev wss://*.fly.dev https://api.coincap.io https://ws.coincap.io wss://ws.coincap.io https://*.sentry.io https://*.ingest.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
         }
       ]
     },
