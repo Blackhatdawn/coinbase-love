@@ -169,6 +169,7 @@ s3transfer==0.16.0
 s5cmd==0.2.0
 Send2Trash==1.8.3
 sendgrid==6.12.5
+sentry-sdk==2.52.0
 setuptools==80.9.0
 shellingham==1.5.4
 simple-websocket==1.1.0
