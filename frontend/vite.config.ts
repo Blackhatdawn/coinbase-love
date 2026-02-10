@@ -1,6 +1,7 @@
 import { defineConfig, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { visualizer } from 'rollup-plugin-visualizer';
 
 // ============================================
 // VITE CONFIGURATION - CryptoVault Frontend
@@ -246,6 +247,13 @@ export default defineConfig(({ mode }) => ({
     }),
     // Split vendor chunks automatically
     splitVendorChunkPlugin(),
+    // Bundle analyzer - run with `npm run analyze`
+    mode === 'analyze' && visualizer({
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      filename: 'dist/stats.html',
+    }),
   ].filter(Boolean),
   
   // ============================================
