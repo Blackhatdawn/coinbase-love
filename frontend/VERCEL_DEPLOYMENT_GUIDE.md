@@ -9,7 +9,7 @@ This guide explains how to properly configure CryptoVault for deployment on Verc
 - ✅ `frontend/.env.production` - Production environment variables
 - ✅ `frontend/.env.development` - Development environment variables  
 - ✅ `frontend/.env.example` - Template for reference
-- ✅ `frontend/vercel.json` - Vercel configuration with API rewrites and security headers
+- ✅ `/vercel.json` - single source of truth for Vercel config (project root deployment)
 
 ### API Client Configuration
 - ✅ `frontend/src/lib/apiClient.ts` - Uses runtime config from `/api/config`
@@ -52,18 +52,22 @@ In your Vercel project dashboard, go to **Settings → Environment Variables** a
 
 ## Build Configuration
 
-Your `vercel.json` is already configured with:
+Your root `/vercel.json` is the only Vercel config and is configured for a **repo-root deployment**:
 
 ```json
 {
-  "version": 3,
-  "framework": null,
-  "buildCommand": "yarn build",
-  "installCommand": "yarn install",
-  "devCommand": "yarn dev",
-  "outputDirectory": "dist"
+  "framework": "vite",
+  "packageManager": "pnpm",
+  "installCommand": "cd frontend && pnpm install --frozen-lockfile",
+  "buildCommand": "cd frontend && pnpm run build:prod",
+  "outputDirectory": "frontend/dist"
 }
 ```
+
+In the Vercel dashboard this means:
+- **Root Directory** = `.` (repository root)
+- **Install Command** = `cd frontend && pnpm install --frozen-lockfile`
+- **Build Command** = `cd frontend && pnpm run build:prod`
 
 ## API Routing
 
@@ -97,7 +101,7 @@ The following security headers are automatically applied:
 - [ ] All environment variables are set in Vercel dashboard
 - [ ] Environment files (`.env.production`, `.env.development`) are committed
 - [ ] `.env.local` is in `.gitignore` (local overrides)
-- [ ] Run `yarn build` locally to verify build succeeds
+- [ ] Run `cd frontend && pnpm run build:prod` locally to verify build succeeds
 - [ ] Check for any console errors in local build
 
 ### After Pushing to Vercel
@@ -142,8 +146,8 @@ The following security headers are automatically applied:
 ### Issue: Build Fails on Vercel
 
 **Check build logs** for:
-- Missing dependencies: Run `yarn install` locally and recommit `yarn.lock`
-- TypeScript errors: Run `yarn build` locally to reproduce
+- Missing dependencies: Run `cd frontend && pnpm install --frozen-lockfile` locally and recommit `frontend/pnpm-lock.yaml` if needed
+- TypeScript errors: Run `cd frontend && pnpm run build:prod` locally to reproduce
 - Missing env vars: Ensure all VITE_* variables are set
 - Sentry DSN invalid: Verify exact format of `VITE_SENTRY_DSN`
 
@@ -161,11 +165,11 @@ To test environment variables locally:
 
 ```bash
 # Development (uses localhost backend)
-yarn dev
+cd frontend && pnpm dev
 
 # Production build (uses remote backend)
-yarn build
-yarn preview
+cd frontend && pnpm run build:prod
+cd frontend && pnpm preview
 ```
 
 Environment files are loaded in this order:
