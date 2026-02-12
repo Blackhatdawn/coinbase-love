@@ -55,6 +55,10 @@
       "destination": "https://cryptovault-api.onrender.com/socket.io/:path*"
     },
     {
+      "source": "/ws/:path*",
+      "destination": "https://cryptovault-api.onrender.com/ws/:path*"
+    },
+    {
       "source": "/manifest.json",
       "destination": "/manifest.json"
     },
