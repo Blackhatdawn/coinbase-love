@@ -15,7 +15,6 @@ services:
       pip install -r requirements.txt &&
       python -c "import config; print('Config loaded successfully')"
     startCommand: |
-      cd backend && 
       echo "Starting CryptoVault Backend..." &&
       echo "Environment: $ENVIRONMENT" &&
       echo "Port: $PORT" &&
