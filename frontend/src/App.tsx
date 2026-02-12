@@ -13,6 +13,7 @@ import RedirectLoadingSpinner from "@/components/RedirectLoadingSpinner";
 import OnboardingLoader from "@/components/OnboardingLoader";
 import AppLayout from "@/layouts/AppLayout";
 import { useState, useEffect, Suspense, lazy } from "react";
+import { getRuntimeConfigLoadState, RUNTIME_CONFIG_LOAD_STATE_EVENT, type RuntimeConfigLoadState } from "@/lib/runtimeConfig";
 import { useRedirectSpinner } from "@/hooks/useRedirectSpinner";
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster as HotToaster } from 'react-hot-toast';
@@ -101,6 +102,7 @@ const AppContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [apiAvailable, setApiAvailable] = useState(true);
+  const [runtimeConfigState, setRuntimeConfigState] = useState<RuntimeConfigLoadState>(getRuntimeConfigLoadState());
   
   // Version sync for frontend-backend compatibility
   const { 
@@ -166,6 +168,22 @@ const AppContent = () => {
     };
   }, []);
 
+
+  useEffect(() => {
+    const handleRuntimeConfigState = (event: Event) => {
+      const customEvent = event as CustomEvent<RuntimeConfigLoadState>;
+      if (customEvent.detail) {
+        setRuntimeConfigState(customEvent.detail);
+      }
+    };
+
+    window.addEventListener(RUNTIME_CONFIG_LOAD_STATE_EVENT, handleRuntimeConfigState);
+
+    return () => {
+      window.removeEventListener(RUNTIME_CONFIG_LOAD_STATE_EVENT, handleRuntimeConfigState);
+    };
+  }, []);
+
   return (
     <>
       {/* Version Mismatch Banner */}
@@ -175,6 +193,12 @@ const AppContent = () => {
           clientVersion={clientVersion}
           onRefresh={handleVersionRefresh}
         />
+      )}
+
+      {runtimeConfigState === "degraded" && (
+        <div className="fixed top-0 left-0 right-0 z-[120] bg-amber-500/95 px-4 py-2 text-center text-sm font-medium text-black shadow-lg">
+          Backend unavailable. Running in degraded mode using local fallback configuration.
+        </div>
       )}
       
       <OnboardingLoader isLoading={isInitializing} minDisplayTime={2000} />
