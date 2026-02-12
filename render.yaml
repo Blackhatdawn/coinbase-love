@@ -12,14 +12,13 @@ services:
     rootDir: backend
     buildCommand: |
       pip install --upgrade pip && 
-      pip install -r backend/requirements.txt &&
+      pip install -r requirements.txt &&
       python -c "import config; print('Config loaded successfully')"
     startCommand: |
-      cd backend &&
       echo "Starting CryptoVault Backend..." &&
       echo "Environment: $ENVIRONMENT" &&
       echo "Port: $PORT" &&
-      uvicorn server:app --host 0.0.0.0 --port $PORT --workers 4 --http h11 --proxy-headers --forwarded-allow-ips '*'
+      uvicorn server:app --host 0.0.0.0 --port $PORT --workers 4 --loop asyncio --http h11 --proxy-headers --forwarded-allow-ips '*'
     
     envVars:
       # ============================================
