@@ -9,8 +9,8 @@ services:
     runtime: python
     plan: starter  # Upgrade to standard/pro for more resources
     region: oregon  # Choose closest to your users: oregon, frankfurt, singapore
+    rootDir: backend
     buildCommand: |
-      cd backend && 
       pip install --upgrade pip && 
       pip install -r requirements.txt &&
       python -c "import config; print('Config loaded successfully')"
