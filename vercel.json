@@ -9,6 +9,11 @@
   "cleanUrls": true,
   "trailingSlash": false,
 
+  "env": {
+    "VITE_API_BASE_URL": "https://cryptovault-api.onrender.com",
+    "NODE_ENV": "production"
+  },
+
   "rewrites": [
     {
       "source": "/api/docs",
