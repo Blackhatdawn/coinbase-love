@@ -25,8 +25,24 @@ export interface RuntimeConfig {
 
 const DEFAULT_SOCKET_PATH = '/socket.io/';
 const CONFIG_ENDPOINT = '/api/config';
+const CONFIG_FETCH_TIMEOUT_MS = 2500;
+const RUNTIME_CONFIG_STATE_EVENT = 'runtime-config-state-change';
+
+export type RuntimeConfigLoadState = 'idle' | 'loading' | 'ready' | 'degraded';
 
 let runtimeConfig: RuntimeConfig | null = null;
+let runtimeConfigLoadState: RuntimeConfigLoadState = 'idle';
+
+
+const setRuntimeConfigLoadState = (nextState: RuntimeConfigLoadState): void => {
+  runtimeConfigLoadState = nextState;
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(RUNTIME_CONFIG_STATE_EVENT, { detail: nextState }));
+  }
+};
+
+export const RUNTIME_CONFIG_LOAD_STATE_EVENT = RUNTIME_CONFIG_STATE_EVENT;
 
 const sanitizeBaseUrl = (value: string): string => {
   if (!value) {
@@ -123,13 +139,20 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     return runtimeConfig;
   }
 
+  setRuntimeConfigLoadState('loading');
   const fallback = getFallbackConfig();
+
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => {
+    controller.abort();
+  }, CONFIG_FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(buildConfigUrl(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
       credentials: 'include',
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -138,10 +161,14 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
 
     const data = (await response.json()) as Partial<RuntimeConfig>;
     runtimeConfig = mergeConfig(fallback, data);
+    setRuntimeConfigLoadState('ready');
     return runtimeConfig;
   } catch (error) {
     runtimeConfig = mergeConfig(fallback, {});
+    setRuntimeConfigLoadState('degraded');
     return runtimeConfig;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 }
 
@@ -189,4 +216,8 @@ export function resolveSentryConfig(): RuntimeConfig['sentry'] {
 
 export function resolveSupportEmail(): string {
   return runtimeConfig?.branding?.supportEmail || 'support@example.com';
+}
+
+export function getRuntimeConfigLoadState(): RuntimeConfigLoadState {
+  return runtimeConfigLoadState;
 }
