@@ -27,8 +27,15 @@ class NOWPaymentsService:
         self.ipn_secret = ipn_secret.get_secret_value() if ipn_secret else ""
         self.sandbox = settings.nowpayments_sandbox
         
-        # Enable mock mode if no API key
-        self.mock_mode = not self.api_key or self.api_key.strip() == ""
+        # Enable mock mode only when explicitly allowed
+        missing_api_key = not self.api_key or self.api_key.strip() == ""
+        self.mock_mode = missing_api_key and settings.allow_mock_payment_fallback
+
+        if missing_api_key and not settings.allow_mock_payment_fallback:
+            if settings.is_production:
+                logger.critical("❌ NOWPAYMENTS_API_KEY is missing in production and mock fallback is disabled")
+                raise ValueError("NOWPAYMENTS_API_KEY is required in production when ALLOW_MOCK_PAYMENT_FALLBACK is false")
+            logger.warning("⚠️ NOWPAYMENTS_API_KEY missing. Development mode requires ALLOW_MOCK_PAYMENT_FALLBACK=true to create deposits.")
         
         # Use sandbox or production URL
         self.base_url = (
@@ -38,7 +45,7 @@ class NOWPaymentsService:
         )
         
         if self.mock_mode:
-            logger.info("📦 NOWPayments initialized in MOCK mode (no API key)")
+            logger.warning("⚠️ NOWPayments initialized in MOCK mode (explicitly enabled)")
         else:
             logger.info(f"📦 NOWPayments initialized (sandbox={self.sandbox})")
     

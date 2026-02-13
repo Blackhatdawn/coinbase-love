@@ -237,6 +237,10 @@ class Settings(BaseSettings):
     )
     coincap_rate_limit: int = Field(default=50, description="CoinCap API rate limit per minute")
     use_mock_prices: bool = Field(default=False, description="Use mock price data for testing")
+    allow_mock_payment_fallback: bool = Field(
+        default=False,
+        description="Allow NOWPayments mock fallback when API key is missing"
+    )
     
     # NowPayments (Payment Processing)
     nowpayments_api_key: Optional[SecretStr] = Field(
@@ -248,6 +252,15 @@ class Settings(BaseSettings):
         description="NowPayments IPN secret"
     )
     nowpayments_sandbox: bool = Field(default=False, description="Use NowPayments sandbox")
+
+    # ============================================
+    # FEATURE FLAGS
+    # ============================================
+    feature_2fa_enabled: bool = Field(default=True, description="Enable 2FA endpoints")
+    feature_deposits_enabled: bool = Field(default=True, description="Enable deposit endpoints")
+    feature_withdrawals_enabled: bool = Field(default=True, description="Enable withdrawal endpoints")
+    feature_trading_enabled: bool = Field(default=True, description="Enable trading endpoints")
+    feature_staking_enabled: bool = Field(default=False, description="Enable staking/earn endpoints")
 
     # ============================================
     # FIREBASE CONFIGURATION

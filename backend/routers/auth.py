@@ -140,7 +140,7 @@ async def signup(
     )
 
     # Auto-verify email when email service is mocked (for development/testing)
-    auto_verify = settings.email_service == 'mock'
+    auto_verify = settings.environment != 'production' and settings.email_service == 'mock'
     
     user = User(
         email=user_data.email,
@@ -283,8 +283,7 @@ async def login(
 
     # Skip email verification check when email service is mocked or in development mode
     skip_verification = (
-        settings.environment != 'production' or 
-        settings.email_service == 'mock'
+        settings.environment != 'production'
     )
     if not user.email_verified and not skip_verification:
         raise HTTPException(

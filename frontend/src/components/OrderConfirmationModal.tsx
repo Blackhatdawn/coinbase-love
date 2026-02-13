@@ -170,9 +170,18 @@ const OrderConfirmationModal = ({ isOpen, onClose, order }: OrderConfirmationMod
           </Button>
           <Button 
             className="flex-1 min-h-[44px] bg-gold-500 hover:bg-gold-600 text-black"
-            onClick={() => {
-              // Share functionality
-              toast.info('Share feature coming soon');
+            onClick={async () => {
+              const shareText = `Order ${order.orderId} | ${order.type.toUpperCase()} ${order.symbol} | Total ${formatCurrency(order.total)}`;
+              try {
+                if (navigator.share) {
+                  await navigator.share({ title: 'CryptoVault Order', text: shareText });
+                } else {
+                  await navigator.clipboard.writeText(shareText);
+                  toast.success('Order details copied to clipboard');
+                }
+              } catch {
+                toast.error('Unable to share order details');
+              }
             }}
           >
             <Share2 className="h-4 w-4 mr-2" />
