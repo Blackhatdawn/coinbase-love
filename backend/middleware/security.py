@@ -56,7 +56,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             
             # Content Security Policy
             # Note: This is for API responses. Frontend CSP is set in vercel.json
-            # Updated for Fly.io deployment (coinbase-love.fly.dev)
+            # Updated for split deployment (Vercel frontend + Render backend)
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://vercel.live https://*.vercel-scripts.com; "

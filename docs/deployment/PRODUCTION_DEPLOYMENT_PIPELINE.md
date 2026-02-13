@@ -70,3 +70,10 @@ Workflow: `.github/workflows/deploy.yml`
 - Render service ID: `srv-d5j1ttfpm1nc73fk1l8g`
 
 Set these in repository secrets/variables so workflow deploy targets and smoke checks stay aligned.
+
+
+## Render uvloop startup error fix
+If Render logs show `ModuleNotFoundError: No module named "uvloop"` on Python 3.13, use these safeguards:
+- Set `UVICORN_LOOP=asyncio` in Render environment.
+- Pin runtime via `PYTHON_VERSION=3.11.11` (until all deps are verified on 3.13).
+- Start with `python start_server.py` (already configured) so loop fallback logic is applied.
