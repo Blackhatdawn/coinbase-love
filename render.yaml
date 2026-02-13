@@ -36,6 +36,10 @@ services:
         value: "2.0.0"
       - key: WORKERS
         value: "4"
+      - key: UVICORN_LOOP
+        value: asyncio
+      - key: PYTHON_VERSION
+        value: 3.11.11
       
       # ============================================
       # DATABASE (MongoDB Atlas)

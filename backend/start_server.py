@@ -27,6 +27,9 @@ def _env_int(name: str, default: int) -> int:
 def _detect_loop() -> str:
     forced_loop = os.getenv("UVICORN_LOOP", "").strip().lower()
     if forced_loop:
+        if forced_loop == "uvloop" and importlib.util.find_spec("uvloop") is None:
+            print("[startup] UVICORN_LOOP=uvloop requested but uvloop is not installed. Falling back to asyncio.")
+            return "asyncio"
         return forced_loop
 
     # uvloop can be unavailable on bleeding-edge runtimes.

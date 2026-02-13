@@ -213,7 +213,7 @@ class SecurityHeadersMiddleware:
                 
                 # Baseline security headers - valid values per HTTP spec
                 # Build CSP dynamically from config
-                api_url = settings.public_api_url or "https://coinbase-love.fly.dev"
+                api_url = settings.public_api_url or "https://cryptovault-api.onrender.com"
                 ws_url = api_url.replace("https://", "wss://").replace("http://", "ws://")
                 coincap_api = settings.coincap_api_url.replace("/v2", "") if settings.coincap_api_url else "https://api.coincap.io"
                 coincap_ws = settings.coincap_ws_url.split("?")[0] if settings.coincap_ws_url else "wss://ws.coincap.io"
