@@ -6,13 +6,24 @@ import "./index.css";
 import { initSentry } from "@/lib/sentry";
 import { loadRuntimeConfig } from "@/lib/runtimeConfig";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-    <SpeedInsights />
-  </StrictMode>
-);
+const root = createRoot(document.getElementById("root")!);
 
-void loadRuntimeConfig().finally(() => {
-  initSentry();
-});
+const renderApp = () => {
+  root.render(
+    <StrictMode>
+      <App />
+      <SpeedInsights />
+    </StrictMode>
+  );
+};
+
+const bootstrap = async () => {
+  try {
+    await loadRuntimeConfig();
+  } finally {
+    initSentry();
+    renderApp();
+  }
+};
+
+void bootstrap();
