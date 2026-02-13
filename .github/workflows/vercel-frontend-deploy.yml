@@ -1,0 +1,52 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [main, production]
+    paths:
+      - 'frontend/**'
+      - 'vercel.json'
+      - '.github/workflows/vercel-frontend-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-frontend:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm --dir frontend install --frozen-lockfile
+
+      - name: Run frontend quality checks
+        run: |
+          pnpm --dir frontend type-check
+          pnpm --dir frontend build:prod
+
+      - name: Install Vercel CLI
+        run: pnpm add --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel artifact
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel production
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
