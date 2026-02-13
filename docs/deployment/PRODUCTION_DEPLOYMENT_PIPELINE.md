@@ -63,3 +63,10 @@ Workflow: `.github/workflows/deploy.yml`
 1. Merge backend changes to `main` and confirm staging health checks pass.
 2. Merge frontend changes to `main` and validate preview deploy.
 3. Promote frontend/backend to `production` branch for production rollout.
+
+
+## Current production backend target
+- Base URL: `https://cryptovault-api.onrender.com`
+- Render service ID: `srv-d5j1ttfpm1nc73fk1l8g`
+
+Set these in repository secrets/variables so workflow deploy targets and smoke checks stay aligned.
