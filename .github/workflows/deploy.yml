@@ -9,6 +9,13 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -17,11 +24,12 @@ jobs:
   security-scan:
     name: Backend Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
           scan-ref: backend
@@ -29,13 +37,14 @@ jobs:
           output: trivy-results.sarif
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
 
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       mongodb:
         image: mongo:7
@@ -57,6 +66,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
         working-directory: backend
@@ -78,7 +88,7 @@ jobs:
         run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./backend/coverage.xml
           flags: backend
@@ -87,6 +97,7 @@ jobs:
     name: Build Backend Docker Image
     needs: [security-scan, test-backend]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
     permissions:
       contents: read
@@ -132,20 +143,26 @@ jobs:
     name: Deploy Backend to Staging
     needs: [build-and-push]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.ref == 'refs/heads/main'
     environment:
       name: staging
 
     steps:
+      - name: Validate Render staging secrets
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_BACKEND: ${{ secrets.RENDER_STAGING_BACKEND_ID }}
+        run: |
+          test -n "$RENDER_API_KEY"
+          test -n "$RENDER_SERVICE_ID_BACKEND"
+
       - name: Deploy backend to Render (Staging)
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID_BACKEND: ${{ secrets.RENDER_STAGING_BACKEND_ID }}
         run: |
-          curl --fail --show-error --silent -X POST \
-            "https://api.render.com/v1/services/$RENDER_SERVICE_ID_BACKEND/deploys" \
-            -H "Authorization: Bearer $RENDER_API_KEY" \
-            -H "Content-Type: application/json"
+          curl --fail --show-error --silent             -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID_BACKEND/deploys"             -H "Authorization: Bearer $RENDER_API_KEY"             -H "Content-Type: application/json"
 
       - name: Run backend smoke tests
         env:
@@ -167,20 +184,26 @@ jobs:
     name: Deploy Backend to Production
     needs: [build-and-push]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.ref == 'refs/heads/production'
     environment:
       name: production
 
     steps:
+      - name: Validate Render production secrets
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_BACKEND: ${{ secrets.RENDER_PROD_BACKEND_ID }}
+        run: |
+          test -n "$RENDER_API_KEY"
+          test -n "$RENDER_SERVICE_ID_BACKEND"
+
       - name: Deploy backend to Render (Production)
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID_BACKEND: ${{ secrets.RENDER_PROD_BACKEND_ID }}
         run: |
-          curl --fail --show-error --silent -X POST \
-            "https://api.render.com/v1/services/$RENDER_SERVICE_ID_BACKEND/deploys" \
-            -H "Authorization: Bearer $RENDER_API_KEY" \
-            -H "Content-Type: application/json"
+          curl --fail --show-error --silent             -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID_BACKEND/deploys"             -H "Authorization: Bearer $RENDER_API_KEY"             -H "Content-Type: application/json"
 
       - name: Run backend smoke tests
         env:

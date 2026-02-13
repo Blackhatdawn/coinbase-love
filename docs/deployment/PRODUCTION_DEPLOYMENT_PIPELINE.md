@@ -8,6 +8,8 @@ This repository now uses separate deployment pipelines for frontend (Vercel) and
 2. Backend deploys depended on frontend test/image pipeline completion.
 3. Frontend workflow deployed production from both `main` and `production` (too risky for stable production promotion).
 4. Vercel CLI was unpinned (`latest`), which can introduce sudden breakages.
+5. Pipelines had no concurrency control, so overlapping commits could race deployments.
+6. Render/Vercel secret presence was not pre-validated, causing avoidable runtime failures.
 
 ## Frontend pipeline (Vercel)
 Workflow: `.github/workflows/vercel-frontend-deploy.yml`
@@ -30,6 +32,8 @@ Workflow: `.github/workflows/vercel-frontend-deploy.yml`
 2. Frontend install with frozen lockfile.
 3. Type-check and production build before deploy.
 4. Deterministic Vercel CLI version (`39.1.0`).
+5. Branch-safe deploy behavior: `main` = preview, `production` = production only.
+6. Concurrency guard prevents overlapping deploys per branch.
 
 ## Backend pipeline (Render)
 Workflow: `.github/workflows/deploy.yml`
@@ -52,6 +56,8 @@ Workflow: `.github/workflows/deploy.yml`
 2. Backend lint and tests.
 3. Backend-only Docker image build/push.
 4. Retry-based health check validation after Render deployment trigger.
+5. Preflight secret checks for Render API key and service IDs.
+6. Concurrency guard prevents overlapping backend deploys per branch.
 
 ## Recommended release flow
 1. Merge backend changes to `main` and confirm staging health checks pass.
