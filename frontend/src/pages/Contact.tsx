@@ -82,9 +82,8 @@ const Contact = () => {
                   <div>
                     <h3 className="font-medium mb-1">Live Chat</h3>
                     <p className="text-sm text-muted-foreground mb-3">24/7 Support Available</p>
-                    {/* TODO: Integrate Intercom */}
-                    <Button variant="outline" size="sm" disabled>
-                      Coming Soon
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`mailto:${supportEmail}?subject=Live%20Support%20Request`}>Start Support Chat</a>
                     </Button>
                   </div>
                 </div>
