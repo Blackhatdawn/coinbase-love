@@ -191,20 +191,27 @@ async def get_features():
 
 
 @router.get("/deployment")
-async def get_deployment_info():
-    """
-    Get deployment information for debugging.
-    
-    Returns Fly.io-specific metadata when deployed.
-    """
+async def get_deployment_info(request: Request):
+    """Get deployment metadata for debugging across platforms."""
+    platform = os.environ.get("DEPLOY_PLATFORM")
+    if not platform:
+        if os.environ.get("RENDER") == "true" or os.environ.get("RENDER_SERVICE_ID"):
+            platform = "render"
+        elif os.environ.get("FLY_APP_NAME"):
+            platform = "fly.io"
+        else:
+            platform = "unknown"
+
+    fallback_public_url = str(request.base_url).rstrip("/")
+
     return {
-        "platform": "fly.io",
-        "app_name": os.environ.get("FLY_APP_NAME", "coinbase-love"),
-        "region": os.environ.get("FLY_REGION", "unknown"),
-        "machine_id": os.environ.get("FLY_MACHINE_ID", "unknown"),
-        "alloc_id": os.environ.get("FLY_ALLOC_ID", "unknown"),
-        "image_ref": os.environ.get("FLY_IMAGE_REF", "unknown"),
-        "public_url": os.environ.get("PUBLIC_API_URL", "https://coinbase-love.fly.dev"),
+        "platform": platform,
+        "service_name": os.environ.get("RENDER_SERVICE_NAME") or os.environ.get("FLY_APP_NAME") or "cryptovault-backend",
+        "service_id": os.environ.get("RENDER_SERVICE_ID") or os.environ.get("FLY_ALLOC_ID") or "unknown",
+        "region": os.environ.get("RENDER_REGION") or os.environ.get("FLY_REGION") or "unknown",
+        "instance_id": os.environ.get("RENDER_INSTANCE_ID") or os.environ.get("FLY_MACHINE_ID") or "unknown",
+        "image_ref": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or os.environ.get("FLY_IMAGE_REF", "unknown"),
+        "public_url": os.environ.get("PUBLIC_API_URL", fallback_public_url),
         "environment": os.environ.get("ENVIRONMENT", "production"),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }

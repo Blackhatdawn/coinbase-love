@@ -1,31 +1,46 @@
 # Production Deployment Pipeline
 
-This repo now deploys frontend and backend independently for safer production releases.
+This repository now uses separate deployment pipelines for frontend (Vercel) and backend (Render). This is the production-standard setup for reducing blast radius and avoiding cross-service deploy failures.
 
-## Frontend (Vercel)
+## What was not production-standard (and now fixed)
+
+1. Frontend and backend deployment paths were still partially coupled.
+2. Backend deploys depended on frontend test/image pipeline completion.
+3. Frontend workflow deployed production from both `main` and `production` (too risky for stable production promotion).
+4. Vercel CLI was unpinned (`latest`), which can introduce sudden breakages.
+5. Pipelines had no concurrency control, so overlapping commits could race deployments.
+6. Render/Vercel secret presence was not pre-validated, causing avoidable runtime failures.
+
+## Frontend pipeline (Vercel)
 Workflow: `.github/workflows/vercel-frontend-deploy.yml`
 
 ### Trigger
-- Push to `main` or `production` with frontend-related file changes.
-- Manual run (`workflow_dispatch`).
+- Push to `main` or `production` for frontend-related changes.
+- Manual run via `workflow_dispatch`.
+
+### Behavior
+- `main` branch deploys **preview**.
+- `production` branch deploys **production**.
 
 ### Required GitHub Secrets
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-### What it does
-1. Installs frontend dependencies with pnpm.
-2. Runs type-check and production build.
-3. Pulls Vercel production environment.
-4. Builds with `vercel build` and deploys prebuilt output to production.
+### Checks included
+1. Secret presence validation.
+2. Frontend install with frozen lockfile.
+3. Type-check and production build before deploy.
+4. Deterministic Vercel CLI version (`39.1.0`).
+5. Branch-safe deploy behavior: `main` = preview, `production` = production only.
+6. Concurrency guard prevents overlapping deploys per branch.
 
-## Backend (Render)
-Workflow: `.github/workflows/deploy.yml` (`deploy-staging` and `deploy-production` jobs)
+## Backend pipeline (Render)
+Workflow: `.github/workflows/deploy.yml`
 
 ### Trigger
-- `main` branch deploys staging backend.
-- `production` branch deploys production backend.
+- Push to `main` or `production` with backend/deploy-file changes.
+- Manual run via `workflow_dispatch`.
 
 ### Required GitHub Secrets
 - `RENDER_API_KEY`
@@ -36,12 +51,22 @@ Workflow: `.github/workflows/deploy.yml` (`deploy-staging` and `deploy-productio
 - `STAGING_BACKEND_HEALTHCHECK_URL` (default: `https://cryptovault-api-staging.onrender.com/health`)
 - `PROD_BACKEND_HEALTHCHECK_URL` (default: `https://cryptovault-api.onrender.com/health`)
 
-### What it does
-1. Triggers backend deploy via Render API.
-2. Runs retry-based smoke health checks.
-3. Fails workflow if backend cannot recover within retry window.
+### Checks included
+1. Backend-only security scan (`backend/` scope).
+2. Backend lint and tests.
+3. Backend-only Docker image build/push.
+4. Retry-based health check validation after Render deployment trigger.
+5. Preflight secret checks for Render API key and service IDs.
+6. Concurrency guard prevents overlapping backend deploys per branch.
 
-## Recommended rollout
-1. Merge backend changes to `main` and confirm staging health checks.
-2. Merge frontend changes (or deploy frontend-only) and verify Vercel production.
-3. Promote backend to `production` branch when staging is stable.
+## Recommended release flow
+1. Merge backend changes to `main` and confirm staging health checks pass.
+2. Merge frontend changes to `main` and validate preview deploy.
+3. Promote frontend/backend to `production` branch for production rollout.
+
+
+## Current production backend target
+- Base URL: `https://cryptovault-api.onrender.com`
+- Render service ID: `srv-d5j1ttfpm1nc73fk1l8g`
+
+Set these in repository secrets/variables so workflow deploy targets and smoke checks stay aligned.

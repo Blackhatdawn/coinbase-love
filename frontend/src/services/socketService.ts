@@ -13,7 +13,7 @@
  */
 
 import { io, Socket, ManagerOptions, SocketOptions } from 'socket.io-client';
-import { resolveApiBaseUrl, resolveSocketIoPath } from '@/lib/runtimeConfig';
+import { resolveApiBaseUrl, resolveSocketIoPath, resolveWsBaseUrl } from '@/lib/runtimeConfig';
 
 // Connection configuration constants
 const CONNECTION_CONFIG = {
@@ -29,18 +29,36 @@ const CONNECTION_CONFIG = {
  * Resolve Socket.IO server URL
  * Handles development proxy and production direct connections
  */
+const normalizeSocketOrigin = (url: string): string => {
+  if (!url) {
+    return '';
+  }
+
+  // Socket.IO client expects an HTTP(S) origin URL. Convert ws schemes safely.
+  if (url.startsWith('wss://')) {
+    return `https://${url.slice('wss://'.length)}`;
+  }
+  if (url.startsWith('ws://')) {
+    return `http://${url.slice('ws://'.length)}`;
+  }
+
+  return url.replace(/\/+$/, '');
+};
+
 const getSocketURL = (): string => {
-  const apiUrl = resolveApiBaseUrl();
-  
-  // In development with proxy, use current origin
-  if (!apiUrl || apiUrl === '') {
+  const wsBaseUrl = normalizeSocketOrigin(resolveWsBaseUrl());
+  const apiUrl = normalizeSocketOrigin(resolveApiBaseUrl());
+
+  // In development with proxy, use current origin.
+  if (!wsBaseUrl && !apiUrl) {
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
     return '';
   }
-  
-  return apiUrl;
+
+  // Prefer explicit WS base URL when provided by backend runtime config.
+  return wsBaseUrl || apiUrl;
 };
 
 /**
