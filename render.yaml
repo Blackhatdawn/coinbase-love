@@ -14,11 +14,7 @@ services:
       pip install --upgrade pip && 
       pip install -r requirements.txt &&
       python -c "import config; print('Config loaded successfully')"
-    startCommand: |
-      echo "Starting CryptoVault Backend..." &&
-      echo "Environment: $ENVIRONMENT" &&
-      echo "Port: $PORT" &&
-      python start_server.py
+    startCommand: python start_server.py
     
     envVars:
       # ============================================
@@ -35,7 +31,7 @@ services:
       - key: APP_VERSION
         value: "2.0.0"
       - key: WORKERS
-        value: "4"
+        value: "1"
       - key: UVICORN_LOOP
         value: asyncio
       - key: PYTHON_VERSION
