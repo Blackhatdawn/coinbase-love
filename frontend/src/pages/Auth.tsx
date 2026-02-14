@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,7 @@ const Auth = () => {
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   const validateForm = (): boolean => {
@@ -62,6 +63,15 @@ const Auth = () => {
     const error = errors.find(e => e.field === field);
     return error ? error.message : null;
   };
+
+  useEffect(() => {
+    const referralFromUrl = new URLSearchParams(location.search).get("ref");
+    if (referralFromUrl) {
+      setIsLogin(false);
+      setSignupStep(2);
+      setReferralCode(referralFromUrl.toUpperCase());
+    }
+  }, [location.search]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();

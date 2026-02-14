@@ -176,6 +176,12 @@ async def signup(
         fraud_risk_level=fraud_data['risk_level']
     )
 
+    referral_code_input = referral_service.normalize_referral_code(user_data.referral_code or "")
+    if referral_code_input:
+        referral_validation = await referral_service.validate_referral_code(user.id, referral_code_input)
+        if not referral_validation.get("success"):
+            raise HTTPException(status_code=400, detail=referral_validation.get("error", "Invalid referral code"))
+
     await users_collection.insert_one(user.dict())
 
     from models import Portfolio, Wallet
@@ -185,16 +191,9 @@ async def signup(
     wallet = Wallet(user_id=user.id, balances={"USD": 0.0})
     await wallets_collection.insert_one(wallet.dict())
 
-
-    referral_code_input = (user_data.referral_code or "").strip().upper()
     referral_result = None
     if referral_code_input:
         referral_result = await referral_service.apply_referral_code(user.id, referral_code_input)
-        if not referral_result.get("success"):
-            await users_collection.delete_one({"id": user.id})
-            await portfolios_collection.delete_one({"user_id": user.id})
-            await wallets_collection.delete_one({"user_id": user.id})
-            raise HTTPException(status_code=400, detail=referral_result.get("error", "Invalid referral code"))
 
     generated_referral_code = await referral_service.get_or_create_referral_code(user.id)
 
