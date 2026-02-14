@@ -7,8 +7,6 @@ import string
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from bson import ObjectId
-
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -37,7 +35,7 @@ class ReferralService:
         """Get existing or create new referral code for user"""
         users_col = self.db.get_collection("users")
         
-        user = await users_col.find_one({"_id": ObjectId(user_id)})
+        user = await users_col.find_one({"id": user_id})
         if not user:
             raise ValueError("User not found")
         
@@ -54,7 +52,7 @@ class ReferralService:
             if not existing:
                 # Save to user
                 await users_col.update_one(
-                    {"_id": ObjectId(user_id)},
+                    {"id": user_id},
                     {"$set": {"referral_code": code, "referral_code_created_at": datetime.utcnow()}}
                 )
                 return code
@@ -77,7 +75,7 @@ class ReferralService:
         if not referrer:
             return {"success": False, "error": "Invalid referral code"}
         
-        referrer_id = str(referrer["_id"])
+        referrer_id = str(referrer.get("id") or referrer.get("_id"))
         
         # Prevent self-referral
         if referrer_id == referee_id:
@@ -105,7 +103,7 @@ class ReferralService:
         
         # Update referrer's stats
         await users_col.update_one(
-            {"_id": ObjectId(referrer_id)},
+            {"id": referrer_id},
             {
                 "$inc": {"total_referrals": 1},
                 "$push": {"referral_ids": referee_id}
@@ -114,7 +112,7 @@ class ReferralService:
         
         # Update referee's record
         await users_col.update_one(
-            {"_id": ObjectId(referee_id)},
+            {"id": referee_id},
             {"$set": {"referred_by": referrer_id, "referral_code_used": referral_code}}
         )
         
@@ -189,7 +187,7 @@ class ReferralService:
             
             # Credit referee bonus
             await users_col.update_one(
-                {"_id": ObjectId(user_id)},
+                {"id": user_id},
                 {"$inc": {"balance": self.REFEREE_BONUS}}
             )
             
@@ -203,7 +201,7 @@ class ReferralService:
         
         # Credit referrer reward
         await users_col.update_one(
-            {"_id": ObjectId(referrer_id)},
+            {"id": referrer_id},
             {"$inc": {"referral_earnings": referrer_reward, "balance": referrer_reward}}
         )
         
@@ -227,7 +225,7 @@ class ReferralService:
         users_col = self.db.get_collection("users")
         referrals_col = self.db.get_collection("referrals")
         
-        user = await users_col.find_one({"_id": ObjectId(user_id)})
+        user = await users_col.find_one({"id": user_id})
         if not user:
             return {"error": "User not found"}
         
