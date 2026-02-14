@@ -11,6 +11,7 @@ from dependencies import get_current_user_id, get_db, get_limiter
 from nowpayments_service import nowpayments_service, PaymentStatus
 from config import settings
 from services.transactions_utils import broadcast_transaction_event
+from email_service import email_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/wallet", tags=["wallet"])
@@ -108,10 +109,11 @@ async def create_deposit(
 ):
     """
     Create a crypto deposit invoice.
-    Uses NOWPayments integration (or mock in development).
+    Uses NOWPayments integration.
     """
-    
-    
+    if not settings.feature_deposits_enabled:
+        raise HTTPException(status_code=503, detail="Deposits are currently disabled")
+
     # Validate amount
     if data.amount < 10:
         raise HTTPException(status_code=400, detail="Minimum deposit is $10")
@@ -607,7 +609,9 @@ async def create_withdrawal(
     Create a withdrawal request.
     Validates balance, creates withdrawal record, and initiates processing.
     """
-    
+    if not settings.feature_withdrawals_enabled:
+        raise HTTPException(status_code=503, detail="Withdrawals are currently disabled")
+
     # Validate amount
     if data.amount < 10:
         raise HTTPException(status_code=400, detail="Minimum withdrawal is $10")
@@ -847,7 +851,8 @@ async def create_p2p_transfer(
     Create a peer-to-peer transfer to another user.
     Transfers are instant and free within the platform.
     """
-
+    if not settings.feature_transfers_enabled:
+        raise HTTPException(status_code=503, detail="Transfers are currently disabled")
 
     # Validate amount
     if data.amount <= 0:
@@ -1014,7 +1019,32 @@ async def create_p2p_transfer(
 
     logger.info(f"✅ P2P transfer completed: {transfer_id} - {data.amount} {data.currency} from {sender['email']} to {recipient['email']}")
 
-    # TODO: Send email notifications to both parties
+    # Send transfer confirmation emails (non-blocking for business flow)
+    try:
+        amount_display = f"{data.amount:.8f}".rstrip('0').rstrip('.')
+        await email_service.send_p2p_transfer_sent(
+            to_email=sender["email"],
+            sender_name=sender.get("name", "CryptoVault User"),
+            recipient_name=recipient.get("name", "CryptoVault User"),
+            recipient_email=recipient["email"],
+            amount=amount_display,
+            asset=data.currency.upper(),
+            gas_fee="0",
+            transaction_id=transfer_id,
+            note=None,
+        )
+        await email_service.send_p2p_transfer_received(
+            to_email=recipient["email"],
+            recipient_name=recipient.get("name", "CryptoVault User"),
+            sender_name=sender.get("name", "CryptoVault User"),
+            sender_email=sender["email"],
+            amount=amount_display,
+            asset=data.currency.upper(),
+            transaction_id=transfer_id,
+            note=None,
+        )
+    except Exception as email_error:
+        logger.warning(f"⚠️ Failed to send P2P transfer emails: {email_error}")
 
     return {
         "success": True,

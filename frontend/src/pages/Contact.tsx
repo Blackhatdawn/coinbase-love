@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { resolveSupportEmail } from "@/lib/runtimeConfig";
+import { api } from "@/lib/apiClient";
+import { toast } from "sonner";
 
 const Contact = () => {
   const supportEmail = resolveSupportEmail();
@@ -25,18 +27,29 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    // Here you would typically send the form data to a backend service
-    setFormData({
-      name: "",
-      email: "",
-      company: "",
-      phone: "",
-      subject: "",
-      message: "",
-    });
+    try {
+      await api.contact.submit({
+        name: formData.name,
+        email: formData.email,
+        company: formData.company || undefined,
+        phone: formData.phone || undefined,
+        subject: formData.subject,
+        message: formData.message,
+      });
+      toast.success("Message sent! Our team will contact you soon.");
+      setFormData({
+        name: "",
+        email: "",
+        company: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to submit message. Please try again.");
+    }
   };
 
   return (
@@ -82,9 +95,8 @@ const Contact = () => {
                   <div>
                     <h3 className="font-medium mb-1">Live Chat</h3>
                     <p className="text-sm text-muted-foreground mb-3">24/7 Support Available</p>
-                    {/* TODO: Integrate Intercom */}
-                    <Button variant="outline" size="sm" disabled>
-                      Coming Soon
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`mailto:${supportEmail}?subject=Live%20Support%20Request`}>Start Support Chat</a>
                     </Button>
                   </div>
                 </div>

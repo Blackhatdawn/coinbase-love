@@ -105,7 +105,7 @@ services:
       # EMAIL (SendGrid)
       # ============================================
       - key: EMAIL_SERVICE
-        value: mock  # Change to 'sendgrid' when valid key available
+        value: sendgrid
       - key: EMAIL_FROM
         value: team@cryptovault.financial
       - key: EMAIL_FROM_NAME
@@ -137,6 +137,8 @@ services:
       - key: NOWPAYMENTS_IPN_SECRET
         sync: false  # Set as secret
       - key: NOWPAYMENTS_SANDBOX
+        value: "false"
+      - key: ALLOW_MOCK_PAYMENT_FALLBACK
         value: "false"
       
       # ============================================
@@ -175,6 +177,8 @@ services:
       - key: FEATURE_TRADING_ENABLED
         value: "true"
       - key: FEATURE_WITHDRAWALS_ENABLED
+        value: "true"
+      - key: FEATURE_TRANSFERS_ENABLED
         value: "true"
       
       # ============================================

@@ -84,7 +84,9 @@ async def create_order(
     limiter = Depends(get_limiter)
 ):
     """Create and execute a new order with trading fees."""
-
+    from config import settings
+    if not settings.feature_trading_enabled:
+        raise HTTPException(status_code=503, detail="Trading is currently disabled")
 
     orders_collection = db.get_collection("orders")
     transactions_collection = db.get_collection("transactions")
@@ -254,7 +256,9 @@ async def create_advanced_order(
     - FOK (Fill or Kill): Fill entire order immediately or cancel
     - GTD (Good Till Date): Active until specified expire_time
     """
-
+    from config import settings
+    if not settings.feature_trading_enabled:
+        raise HTTPException(status_code=503, detail="Trading is currently disabled")
 
     orders_collection = db.get_collection("orders")
     wallets_collection = db.get_collection("wallets")

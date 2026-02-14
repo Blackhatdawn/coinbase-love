@@ -424,7 +424,7 @@ export default apiClient;
 export const api = {
   // Authentication
   auth: {
-    signup: (data: { email: string; password: string; name: string }) =>
+    signup: (data: { email: string; password: string; name: string; phone_number?: string; country?: string; city?: string; referral_code?: string }) =>
       apiClient.post('/api/auth/signup', data),
     login: (data: { email: string; password: string }) =>
       apiClient.post('/api/auth/login', data),
@@ -461,6 +461,12 @@ export const api = {
       apiClient.post('/api/auth/2fa/disable', {}),
     getBackupCodes: () =>
       apiClient.post('/api/auth/2fa/backup-codes'),
+  },
+
+  // Contact
+  contact: {
+    submit: (data: { name: string; email: string; company?: string; phone?: string; subject: string; message: string }) =>
+      apiClient.post('/api/contact', data),
   },
 
   // Portfolio

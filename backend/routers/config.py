@@ -57,7 +57,7 @@ async def get_public_config(request: Request) -> Dict[str, Any]:
         "wsBaseUrl": ws_base_url,
         "socketIoPath": settings.public_socket_io_path,
         "environment": settings.environment,
-        "version": "1.0.0",
+        "version": settings.app_version,
         "sentry": {
             "dsn": settings.public_sentry_dsn or "",
             "enabled": bool(settings.public_sentry_dsn),

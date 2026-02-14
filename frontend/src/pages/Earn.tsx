@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import DashboardCard from '@/components/dashboard/DashboardCard';
+import apiClient from '@/lib/apiClient';
 
 // Animation variants
 const containerVariants = {
@@ -93,36 +94,18 @@ const stakingProducts = [
   },
 ];
 
-// User's active stakes (mock data)
-const mockActiveStakes = [
-  {
-    id: '1',
-    product: 'USDT Savings',
-    token: 'USDT',
-    amount: 5000,
-    apy: 12.0,
-    rewards: 45.23,
-    startDate: '2025-07-15',
-    lockPeriod: 'Flexible',
-    status: 'active',
-  },
-  {
-    id: '2',
-    product: 'ETH 30-Day',
-    token: 'ETH',
-    amount: 2.5,
-    apy: 8.5,
-    rewards: 0.0178,
-    startDate: '2025-08-01',
-    lockPeriod: '30 days',
-    daysRemaining: 12,
-    status: 'active',
-  },
-];
+type ActiveStake = { id: string; product: string; token: string; amount: number; apy: number; rewards: number; startDate: string; lockPeriod: string; daysRemaining?: number; status: string; };
 
 const Earn = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'active'>('products');
   const [selectedType, setSelectedType] = useState<'all' | 'flexible' | 'locked'>('all');
+
+  const { data: positionsData } = useQuery({
+    queryKey: ['earn-positions'],
+    queryFn: async () => apiClient.get('/api/earn/positions'),
+  });
+
+  const activeStakes: ActiveStake[] = positionsData?.positions || [];
 
   // Filter products
   const filteredProducts = stakingProducts.filter(p =>
@@ -130,12 +113,12 @@ const Earn = () => {
   );
 
   // Calculate totals
-  const totalStaked = mockActiveStakes.reduce((sum, s) => {
+  const totalStaked = activeStakes.reduce((sum, s) => {
     const valueInUsd = s.token === 'ETH' ? s.amount * 3500 : s.amount;
     return sum + valueInUsd;
   }, 0);
 
-  const totalRewards = mockActiveStakes.reduce((sum, s) => {
+  const totalRewards = activeStakes.reduce((sum, s) => {
     const valueInUsd = s.token === 'ETH' ? s.rewards * 3500 : s.rewards;
     return sum + valueInUsd;
   }, 0);
@@ -208,7 +191,7 @@ const Earn = () => {
               <div>
                 <p className="text-sm text-gray-400">Avg. APY</p>
                 <p className="text-2xl font-bold text-white">
-                  {((mockActiveStakes.reduce((sum, s) => sum + s.apy, 0) / mockActiveStakes.length) || 0).toFixed(1)}%
+                  {((activeStakes.reduce((sum, s) => sum + (s.apy || 0), 0) / (activeStakes.length || 1)) || 0).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -223,7 +206,7 @@ const Earn = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Active Stakes</p>
-                <p className="text-2xl font-bold text-white">{mockActiveStakes.length}</p>
+                <p className="text-2xl font-bold text-white">{activeStakes.length}</p>
               </div>
             </div>
           </DashboardCard>
@@ -253,9 +236,9 @@ const Earn = () => {
           )}
         >
           My Stakes
-          {mockActiveStakes.length > 0 && (
+          {activeStakes.length > 0 && (
             <span className="px-1.5 py-0.5 text-[10px] bg-gold-500 text-black rounded-full font-bold">
-              {mockActiveStakes.length}
+              {activeStakes.length}
             </span>
           )}
         </button>
@@ -301,8 +284,8 @@ const Earn = () => {
       {/* Active Stakes Tab */}
       {activeTab === 'active' && (
         <div className="space-y-4">
-          {mockActiveStakes.length > 0 ? (
-            mockActiveStakes.map((stake) => (
+          {activeStakes.length > 0 ? (
+            activeStakes.map((stake) => (
               <ActiveStakeCard key={stake.id} stake={stake} />
             ))
           ) : (
@@ -438,7 +421,7 @@ const StakingProductCard = ({ product }: { product: typeof stakingProducts[0] })
 };
 
 // Active Stake Card Component
-const ActiveStakeCard = ({ stake }: { stake: typeof mockActiveStakes[0] }) => (
+const ActiveStakeCard = ({ stake }: { stake: ActiveStake }) => (
   <DashboardCard>
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
