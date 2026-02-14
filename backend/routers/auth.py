@@ -303,7 +303,7 @@ async def login(
         await db.get_collection("login_attempts").insert_one(login_attempt)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Skip email verification check when email service is mocked or in development mode
+    # Skip email verification check in non-production environments
     skip_verification = (
         settings.environment != 'production'
     )

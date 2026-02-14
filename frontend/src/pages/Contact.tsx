@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { resolveSupportEmail } from "@/lib/runtimeConfig";
+import { api } from "@/lib/apiClient";
+import { toast } from "sonner";
 
 const Contact = () => {
   const supportEmail = resolveSupportEmail();
@@ -25,18 +27,29 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    // Here you would typically send the form data to a backend service
-    setFormData({
-      name: "",
-      email: "",
-      company: "",
-      phone: "",
-      subject: "",
-      message: "",
-    });
+    try {
+      await api.contact.submit({
+        name: formData.name,
+        email: formData.email,
+        company: formData.company || undefined,
+        phone: formData.phone || undefined,
+        subject: formData.subject,
+        message: formData.message,
+      });
+      toast.success("Message sent! Our team will contact you soon.");
+      setFormData({
+        name: "",
+        email: "",
+        company: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to submit message. Please try again.");
+    }
   };
 
   return (

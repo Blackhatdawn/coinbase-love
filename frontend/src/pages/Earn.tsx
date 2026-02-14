@@ -191,7 +191,7 @@ const Earn = () => {
               <div>
                 <p className="text-sm text-gray-400">Avg. APY</p>
                 <p className="text-2xl font-bold text-white">
-                  {((mockActiveStakes.reduce((sum, s) => sum + s.apy, 0) / activeStakes.length) || 0).toFixed(1)}%
+                  {((activeStakes.reduce((sum, s) => sum + (s.apy || 0), 0) / (activeStakes.length || 1)) || 0).toFixed(1)}%
                 </p>
               </div>
             </div>

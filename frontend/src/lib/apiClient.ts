@@ -463,6 +463,12 @@ export const api = {
       apiClient.post('/api/auth/2fa/backup-codes'),
   },
 
+  // Contact
+  contact: {
+    submit: (data: { name: string; email: string; company?: string; phone?: string; subject: string; message: string }) =>
+      apiClient.post('/api/contact', data),
+  },
+
   // Portfolio
   portfolio: {
     get: () =>

@@ -178,6 +178,8 @@ services:
         value: "true"
       - key: FEATURE_WITHDRAWALS_ENABLED
         value: "true"
+      - key: FEATURE_TRANSFERS_ENABLED
+        value: "true"
       
       # ============================================
       # PUBLIC CONFIG (exposed to frontend)

@@ -259,6 +259,7 @@ class Settings(BaseSettings):
     feature_2fa_enabled: bool = Field(default=True, description="Enable 2FA endpoints")
     feature_deposits_enabled: bool = Field(default=True, description="Enable deposit endpoints")
     feature_withdrawals_enabled: bool = Field(default=True, description="Enable withdrawal endpoints")
+    feature_transfers_enabled: bool = Field(default=True, description="Enable transfer endpoints")
     feature_trading_enabled: bool = Field(default=True, description="Enable trading endpoints")
     feature_staking_enabled: bool = Field(default=False, description="Enable staking/earn endpoints")
 

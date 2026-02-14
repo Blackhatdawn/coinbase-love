@@ -851,7 +851,7 @@ async def create_p2p_transfer(
     Create a peer-to-peer transfer to another user.
     Transfers are instant and free within the platform.
     """
-    if not settings.feature_withdrawals_enabled:
+    if not settings.feature_transfers_enabled:
         raise HTTPException(status_code=503, detail="Transfers are currently disabled")
 
     # Validate amount

@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 
 from dependencies import get_current_user_id, get_db
+from config import settings
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
@@ -18,7 +19,7 @@ async def get_referral_summary(user_id: str = Depends(get_current_user_id), db=D
         raise HTTPException(status_code=404, detail="User not found")
 
     referral_code = user.get("referral_code") or f"CV{user_id[-6:].upper()}"
-    app_url = "https://www.cryptovault.financial"
+    app_url = settings.app_url.rstrip("/")
 
     total_referrals = await referrals.count_documents({"referrer_id": user_id})
     active_referrals = await referrals.count_documents({"referrer_id": user_id, "status": "qualified"})
