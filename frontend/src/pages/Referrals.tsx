@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveAppUrl } from '@/lib/runtimeConfig';
 import { cn } from '@/lib/utils';
+import apiClient from '@/lib/apiClient';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 
 // Animation variants
@@ -38,19 +39,23 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 };
 
-// Mock referral data
-const mockReferrals = [
-  { id: '1', email: 'j***@gmail.com', status: 'active', earned: 25.50, date: '2025-07-15' },
-  { id: '2', email: 'm***@yahoo.com', status: 'pending', earned: 0, date: '2025-08-01' },
-  { id: '3', email: 'a***@outlook.com', status: 'active', earned: 12.30, date: '2025-08-10' },
-];
-
 const Referrals = () => {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const referralCode = 'CV' + (user?.id?.slice(-6)?.toUpperCase() || 'VAULT');
-  const referralLink = `${resolveAppUrl()}/auth?ref=${referralCode}`;
+  const { data: summary } = useQuery({
+    queryKey: ['referral-summary'],
+    queryFn: async () => apiClient.get('/api/referrals/summary'),
+  });
+
+  const { data: referralsData } = useQuery({
+    queryKey: ['referrals-list'],
+    queryFn: async () => apiClient.get('/api/referrals'),
+  });
+
+  const referrals = referralsData?.referrals || [];
+  const referralCode = summary?.referralCode || ('CV' + (user?.id?.slice(-6)?.toUpperCase() || 'VAULT'));
+  const referralLink = summary?.referralLink || `${resolveAppUrl()}/auth?ref=${referralCode}`;
 
   const handleCopy = async (text: string, type: 'code' | 'link') => {
     await navigator.clipboard.writeText(text);
@@ -76,9 +81,9 @@ const Referrals = () => {
   };
 
   // Stats
-  const totalReferrals = mockReferrals.length;
-  const activeReferrals = mockReferrals.filter(r => r.status === 'active').length;
-  const totalEarned = mockReferrals.reduce((sum, r) => sum + r.earned, 0);
+  const totalReferrals = summary?.totalReferrals ?? referrals.length;
+  const activeReferrals = summary?.activeReferrals ?? referrals.filter(r => r.status === 'qualified' || r.status === 'active').length;
+  const totalEarned = summary?.totalEarned ?? referrals.reduce((sum: number, r: any) => sum + (r.earned || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -277,7 +282,7 @@ const Referrals = () => {
 
       {/* Referrals List */}
       <DashboardCard title="Your Referrals" icon={<Users className="h-5 w-5" />}>
-        {mockReferrals.length === 0 ? (
+        {referrals.length === 0 ? (
           <div className="text-center py-12">
             <div className="p-4 bg-white/5 rounded-full w-fit mx-auto mb-4">
               <Users className="h-8 w-8 text-gray-500" />
@@ -296,7 +301,7 @@ const Referrals = () => {
             </div>
             
             {/* Rows */}
-            {mockReferrals.map((referral) => (
+            {referrals.map((referral: any) => (
               <div
                 key={referral.id}
                 className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 py-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
@@ -305,7 +310,7 @@ const Referrals = () => {
                 <div>
                   <span className={cn(
                     'px-2 py-0.5 text-xs font-medium rounded-full',
-                    referral.status === 'active'
+                    referral.status === 'active' || referral.status === 'qualified'
                       ? 'bg-emerald-500/10 text-emerald-400'
                       : 'bg-yellow-500/10 text-yellow-400'
                   )}>

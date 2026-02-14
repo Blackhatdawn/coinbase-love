@@ -14,7 +14,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, name: string) => Promise<{ error?: string; verificationRequired?: boolean }>;
+  signUp: (payload: { email: string; password: string; name: string; phone_number?: string; country?: string; city?: string; referral_code?: string }) => Promise<{ error?: string; verificationRequired?: boolean }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -173,10 +173,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string): Promise<{ error?: string; verificationRequired?: boolean }> => {
+  const signUp = async (payload: { email: string; password: string; name: string; phone_number?: string; country?: string; city?: string; referral_code?: string }): Promise<{ error?: string; verificationRequired?: boolean }> => {
     try {
       console.log('[Auth] 📝 Signing up...');
-      const response = await api.auth.signup({ email, password, name });
+      const response = await api.auth.signup(payload);
 
       const userData: User = {
         id: response.user.id,

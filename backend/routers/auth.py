@@ -29,6 +29,7 @@ from auth import (
     decode_token, generate_backup_codes, generate_2fa_secret,
     generate_device_fingerprint, verify_2fa_code
 )
+from referral_service import ReferralService
 from dependencies import get_current_user_id, get_db
 from blacklist import blacklist_token
 
@@ -118,6 +119,8 @@ async def signup(
     portfolios_collection = db.get_collection("portfolios")
     wallets_collection = db.get_collection("wallets")
 
+    referral_service = ReferralService(db)
+
     existing_user = await users_collection.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(
@@ -140,7 +143,7 @@ async def signup(
     )
 
     # Auto-verify email when email service is mocked (for development/testing)
-    auto_verify = settings.email_service == 'mock'
+    auto_verify = settings.environment != 'production' and settings.email_service == 'mock'
     
     user = User(
         email=user_data.email,
@@ -173,6 +176,13 @@ async def signup(
         fraud_risk_level=fraud_data['risk_level']
     )
 
+    referral_code_input = referral_service.normalize_referral_code(user_data.referral_code or "")
+    referral_validation = None
+    if referral_code_input:
+        referral_validation = await referral_service.validate_referral_code(user.id, referral_code_input)
+        if not referral_validation.get("success"):
+            raise HTTPException(status_code=400, detail=referral_validation.get("error", "Invalid referral code"))
+
     await users_collection.insert_one(user.dict())
 
     from models import Portfolio, Wallet
@@ -181,6 +191,16 @@ async def signup(
     
     wallet = Wallet(user_id=user.id, balances={"USD": 0.0})
     await wallets_collection.insert_one(wallet.dict())
+
+    referral_result = None
+    if referral_code_input:
+        referral_result = await referral_service.apply_referral_code(
+            user.id,
+            referral_code_input,
+            validation=referral_validation,
+        )
+
+    generated_referral_code = await referral_service.get_or_create_referral_code(user.id)
 
     app_url = settings.app_url
     subject, html_content, text_content = email_service.get_verification_email(
@@ -224,7 +244,9 @@ async def signup(
         "message": "Account created!" if auto_verify else "Account created! Please check your email to verify your account.",
         "emailSent": email_sent,
         "verificationRequired": not auto_verify,  # Skip verification in mock mode
-        "kyc_status": user.kyc_status
+        "kyc_status": user.kyc_status,
+        "referralApplied": bool(referral_result and referral_result.get("success")),
+        "ownReferralCode": generated_referral_code
     }
 
 
@@ -283,8 +305,7 @@ async def login(
 
     # Skip email verification check when email service is mocked or in development mode
     skip_verification = (
-        settings.environment != 'production' or 
-        settings.email_service == 'mock'
+        settings.environment != 'production'
     )
     if not user.email_verified and not skip_verification:
         raise HTTPException(

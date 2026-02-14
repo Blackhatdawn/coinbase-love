@@ -190,9 +190,11 @@ const FAQ = () => {
 
               <div className="text-center mt-8 sm:mt-10">
                 <p className="text-muted-foreground text-xs sm:text-sm">
-                  {/* TODO: Implement full blog functionality */}
-                  More resources coming soon. Subscribe to our newsletter for updates.
+                  Read more in our full research and education hub on the Blog page.
                 </p>
+                <Button variant="outline" size="sm" asChild className="mt-3">
+                  <Link to="/blog">Open Blog</Link>
+                </Button>
               </div>
             </div>
           </div>
