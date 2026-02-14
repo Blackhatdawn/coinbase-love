@@ -177,6 +177,7 @@ async def signup(
     )
 
     referral_code_input = referral_service.normalize_referral_code(user_data.referral_code or "")
+    referral_validation = None
     if referral_code_input:
         referral_validation = await referral_service.validate_referral_code(user.id, referral_code_input)
         if not referral_validation.get("success"):
@@ -193,7 +194,11 @@ async def signup(
 
     referral_result = None
     if referral_code_input:
-        referral_result = await referral_service.apply_referral_code(user.id, referral_code_input)
+        referral_result = await referral_service.apply_referral_code(
+            user.id,
+            referral_code_input,
+            validation=referral_validation,
+        )
 
     generated_referral_code = await referral_service.get_or_create_referral_code(user.id)
 

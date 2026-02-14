@@ -92,7 +92,12 @@ class ReferralService:
             "referral_code": normalized_code,
         }
 
-    async def apply_referral_code(self, referee_id: str, referral_code: str) -> Dict[str, Any]:
+    async def apply_referral_code(
+        self,
+        referee_id: str,
+        referral_code: str,
+        validation: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
         Apply referral code when new user signs up
         
@@ -103,7 +108,8 @@ class ReferralService:
         users_col = self.db.get_collection("users")
         referrals_col = self.db.get_collection("referrals")
 
-        validation = await self.validate_referral_code(referee_id, referral_code)
+        if validation is None:
+            validation = await self.validate_referral_code(referee_id, referral_code)
         if not validation.get("success"):
             return validation
 
