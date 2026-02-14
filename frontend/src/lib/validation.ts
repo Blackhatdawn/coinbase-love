@@ -18,6 +18,17 @@ export const signUpSchema = z.object({
   name: z.string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must not exceed 100 characters'),
+  phone_number: z.string()
+    .min(7, 'Phone number must be at least 7 characters')
+    .max(20, 'Phone number is too long')
+    .optional()
+    .or(z.literal('')),
+  country: z.string().min(2, 'Country is required').max(60, 'Country is too long').optional().or(z.literal('')),
+  city: z.string().max(80, 'City is too long').optional().or(z.literal('')),
+  referral_code: z.string()
+    .regex(/^[A-Z0-9]{4,20}$/, 'Referral code must be 4-20 letters/numbers')
+    .optional()
+    .or(z.literal('')),
 });
 
 /**

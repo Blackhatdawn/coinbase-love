@@ -234,34 +234,42 @@ async def delete_notification(
 @router.websocket("/ws")
 async def websocket_notifications(
     websocket: WebSocket,
-    token: str = None
+    token: Optional[str] = None
 ):
     """
     WebSocket endpoint for real-time notifications.
-    
-    Connect with: ws(s)://<api-host>/api/notifications/ws?token=<access_token>
-    
+
+    Connect with:
+    - ws(s)://<api-host>/api/notifications/ws?token=<access_token>
+    - OR send Authorization: Bearer <access_token> header
+
     Messages will be in format:
     {
         "type": "notification|price_alert|trade|system",
         "data": { ... }
     }
     """
-    # Extract user_id from token (simplified - in production, verify JWT)
-    # For now, we'll require token as query parameter
-    if not token:
+    # Support token from query string first, then Authorization header fallback.
+    auth_header = websocket.headers.get("authorization", "")
+    header_token = auth_header.split(" ", 1)[1].strip() if auth_header.lower().startswith("bearer ") else None
+    raw_token = token or header_token
+
+    if not raw_token:
         await websocket.close(code=4001, reason="Token required")
         return
-    
-    # TODO: Properly decode JWT token to get user_id
-    # For now, using a simple approach (this should be improved with proper JWT verification)
+
     from auth import decode_token
-    
-    payload = decode_token(token)
+
+    payload = decode_token(raw_token)
     if not payload:
         await websocket.close(code=4001, reason="Invalid token")
         return
-    
+
+    token_type = payload.get("type")
+    if token_type not in (None, "access"):
+        await websocket.close(code=4001, reason="Invalid token type")
+        return
+
     user_id = payload.get("sub")
     if not user_id:
         await websocket.close(code=4001, reason="Invalid token payload")

@@ -1,15 +1,16 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, Loader2, Phone, MapPin, Gift, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/apiClient";
 import { signUpSchema, signInSchema, validateFormData } from "@/lib/validation";
 import OTPVerificationModal from "@/components/OTPVerificationModal";
 import RecommendedSetup from "@/components/RecommendedSetup";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ValidationError {
   field: string;
@@ -21,6 +22,12 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+  const [showReferralHelp, setShowReferralHelp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -33,13 +40,14 @@ const Auth = () => {
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   const validateForm = (): boolean => {
     const schema = isLogin ? signInSchema : signUpSchema;
     const formData = isLogin
       ? { email, password }
-      : { email, password, name };
+      : { email, password, name, phone_number: phoneNumber, country, city, referral_code: referralCode.toUpperCase() };
 
     const fieldErrors = validateFormData(schema, formData);
     const newErrors: ValidationError[] = Object.entries(fieldErrors).map(([field, message]) => ({
@@ -55,6 +63,15 @@ const Auth = () => {
     const error = errors.find(e => e.field === field);
     return error ? error.message : null;
   };
+
+  useEffect(() => {
+    const referralFromUrl = new URLSearchParams(location.search).get("ref");
+    if (referralFromUrl) {
+      setIsLogin(false);
+      setSignupStep(2);
+      setReferralCode(referralFromUrl.toUpperCase());
+    }
+  }, [location.search]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +102,11 @@ const Auth = () => {
       setEmail("");
       setPassword("");
       setName("");
+      setPhoneNumber("");
+      setCountry("");
+      setCity("");
+      setReferralCode("");
+      setSignupStep(1);
     } catch (error: any) {
       toast({
         title: "Verification failed",
@@ -131,7 +153,21 @@ const Auth = () => {
           navigate("/dashboard");
         }
       } else {
-        const result = await signUp(email, password, name);
+        if (signupStep === 1) {
+          setSignupStep(2);
+          setIsLoading(false);
+          return;
+        }
+
+        const result = await signUp({
+          email,
+          password,
+          name,
+          phone_number: phoneNumber || undefined,
+          country: country || undefined,
+          city: city || undefined,
+          referral_code: referralCode ? referralCode.toUpperCase() : undefined,
+        });
 
         if (result.error) {
           toast({
@@ -272,26 +308,70 @@ const Auth = () => {
 
             <form onSubmit={emailVerificationStep ? handleVerifyEmail : handleSubmit} className="space-y-4 sm:space-y-5">
               {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm sm:text-base">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={`pl-10 sm:pl-11 h-12 sm:h-14 text-base bg-muted/50 border-border/50 focus:border-primary ${
-                        getFieldError("name") ? "border-destructive" : ""
-                      }`}
-                      data-testid="signup-name-input"
-                    />
+                <>
+                  <div className="rounded-xl border border-border/60 p-3 flex items-center justify-between text-xs">
+                    <span className={signupStep === 1 ? "text-gold-400 font-semibold" : "text-muted-foreground"}>Step 1: Account</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    <span className={signupStep === 2 ? "text-gold-400 font-semibold" : "text-muted-foreground"}>Step 2: Personal + Referral</span>
                   </div>
-                  {getFieldError("name") && (
-                    <p className="text-xs text-destructive">{getFieldError("name")}</p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm sm:text-base">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className={`pl-10 sm:pl-11 h-12 sm:h-14 text-base bg-muted/50 border-border/50 focus:border-primary ${
+                          getFieldError("name") ? "border-destructive" : ""
+                        }`}
+                        data-testid="signup-name-input"
+                      />
+                    </div>
+                    {getFieldError("name") && (
+                      <p className="text-xs text-destructive">{getFieldError("name")}</p>
+                    )}
+                  </div>
+
+                  {signupStep === 2 && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber" className="text-sm sm:text-base">Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="phoneNumber" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="pl-10 h-12 sm:h-14" placeholder="+1 555 123 4567" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="country" className="text-sm sm:text-base">Country</Label>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="pl-10 h-12 sm:h-14" placeholder="United States" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="city" className="text-sm sm:text-base">City</Label>
+                          <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className="h-12 sm:h-14" placeholder="New York" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="referralCode" className="text-sm sm:text-base">Referral Code (Optional)</Label>
+                          <button type="button" onClick={() => setShowReferralHelp(true)} className="text-xs text-gold-400 hover:underline">Where do I find this?</button>
+                        </div>
+                        <div className="relative">
+                          <Gift className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="referralCode" value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} className={`pl-10 h-12 sm:h-14 ${getFieldError("referral_code") ? "border-destructive" : ""}`} placeholder="Enter valid code" />
+                        </div>
+                        {getFieldError("referral_code") && <p className="text-xs text-destructive">{getFieldError("referral_code")}</p>}
+                      </div>
+                    </>
                   )}
-                </div>
+                </>
               )}
 
               <div className="space-y-2">
@@ -372,7 +452,7 @@ const Auth = () => {
                     <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 animate-spin" />
                     Please wait...
                   </>
-                ) : isLogin ? "Sign In" : "Create Account"}
+                 ) : isLogin ? "Sign In" : signupStep === 1 ? "Continue" : "Create Account"}
               </Button>
             </form>
             
@@ -382,7 +462,7 @@ const Auth = () => {
                 {" "}
                 <button
                   type="button"
-                  onClick={() => setIsLogin(!isLogin)}
+                  onClick={() => { setIsLogin(!isLogin); setSignupStep(1); }}
                   className="text-gold-400 hover:text-gold-300 hover:underline font-medium min-h-[44px]"
                   data-testid="auth-toggle-mode"
                 >
@@ -400,6 +480,19 @@ const Auth = () => {
           </div>
         </div>
       </div>
+
+
+      <Dialog open={showReferralHelp} onOpenChange={setShowReferralHelp}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>About referral codes</DialogTitle>
+            <DialogDescription>
+              Ask your referrer for their unique CryptoVault code. Codes are 4-20 uppercase letters/numbers.
+              If valid, it links both referrer and referee for rewards tracking.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
       {/* OTP Verification Modal */}
       <OTPVerificationModal

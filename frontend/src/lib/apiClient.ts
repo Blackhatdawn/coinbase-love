@@ -424,7 +424,7 @@ export default apiClient;
 export const api = {
   // Authentication
   auth: {
-    signup: (data: { email: string; password: string; name: string }) =>
+    signup: (data: { email: string; password: string; name: string; phone_number?: string; country?: string; city?: string; referral_code?: string }) =>
       apiClient.post('/api/auth/signup', data),
     login: (data: { email: string; password: string }) =>
       apiClient.post('/api/auth/login', data),

@@ -7,8 +7,6 @@ import string
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from bson import ObjectId
-
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -37,7 +35,7 @@ class ReferralService:
         """Get existing or create new referral code for user"""
         users_col = self.db.get_collection("users")
         
-        user = await users_col.find_one({"_id": ObjectId(user_id)})
+        user = await users_col.find_one({"id": user_id})
         if not user:
             raise ValueError("User not found")
         
@@ -54,13 +52,46 @@ class ReferralService:
             if not existing:
                 # Save to user
                 await users_col.update_one(
-                    {"_id": ObjectId(user_id)},
+                    {"id": user_id},
                     {"$set": {"referral_code": code, "referral_code_created_at": datetime.utcnow()}}
                 )
                 return code
         
         raise Exception("Failed to generate unique referral code")
     
+    def normalize_referral_code(self, referral_code: str) -> str:
+        """Normalize referral code input for consistent lookups."""
+        return (referral_code or "").strip().upper()
+
+    async def validate_referral_code(self, referee_id: str, referral_code: str) -> Dict[str, Any]:
+        """Validate referral code and return referrer metadata without side effects."""
+        users_col = self.db.get_collection("users")
+        referrals_col = self.db.get_collection("referrals")
+
+        normalized_code = self.normalize_referral_code(referral_code)
+        if not normalized_code:
+            return {"success": False, "error": "Referral code is required"}
+
+        referrer = await users_col.find_one({"referral_code": normalized_code})
+        if not referrer:
+            return {"success": False, "error": "Invalid referral code"}
+
+        referrer_id = str(referrer.get("id") or referrer.get("_id"))
+
+        if referrer_id == referee_id:
+            return {"success": False, "error": "Cannot use your own referral code"}
+
+        existing = await referrals_col.find_one({"referee_id": referee_id})
+        if existing:
+            return {"success": False, "error": "User already has a referrer"}
+
+        return {
+            "success": True,
+            "referrer_id": referrer_id,
+            "referrer_name": referrer.get("name", "A friend"),
+            "referral_code": normalized_code,
+        }
+
     async def apply_referral_code(self, referee_id: str, referral_code: str) -> Dict[str, Any]:
         """
         Apply referral code when new user signs up
@@ -71,22 +102,13 @@ class ReferralService:
         """
         users_col = self.db.get_collection("users")
         referrals_col = self.db.get_collection("referrals")
-        
-        # Find referrer by code
-        referrer = await users_col.find_one({"referral_code": referral_code})
-        if not referrer:
-            return {"success": False, "error": "Invalid referral code"}
-        
-        referrer_id = str(referrer["_id"])
-        
-        # Prevent self-referral
-        if referrer_id == referee_id:
-            return {"success": False, "error": "Cannot use your own referral code"}
-        
-        # Check if referee was already referred
-        existing = await referrals_col.find_one({"referee_id": referee_id})
-        if existing:
-            return {"success": False, "error": "User already has a referrer"}
+
+        validation = await self.validate_referral_code(referee_id, referral_code)
+        if not validation.get("success"):
+            return validation
+
+        referrer_id = validation["referrer_id"]
+        referral_code = validation["referral_code"]
         
         # Create referral record
         referral_doc = {
@@ -105,7 +127,7 @@ class ReferralService:
         
         # Update referrer's stats
         await users_col.update_one(
-            {"_id": ObjectId(referrer_id)},
+            {"id": referrer_id},
             {
                 "$inc": {"total_referrals": 1},
                 "$push": {"referral_ids": referee_id}
@@ -114,7 +136,7 @@ class ReferralService:
         
         # Update referee's record
         await users_col.update_one(
-            {"_id": ObjectId(referee_id)},
+            {"id": referee_id},
             {"$set": {"referred_by": referrer_id, "referral_code_used": referral_code}}
         )
         
@@ -122,7 +144,7 @@ class ReferralService:
         
         return {
             "success": True,
-            "referrer_name": referrer.get("name", "A friend"),
+            "referrer_name": validation["referrer_name"],
             "message": f"Referral code applied! Trade ${self.MIN_TRADE_VOLUME}+ to unlock your bonus."
         }
     
@@ -189,7 +211,7 @@ class ReferralService:
             
             # Credit referee bonus
             await users_col.update_one(
-                {"_id": ObjectId(user_id)},
+                {"id": user_id},
                 {"$inc": {"balance": self.REFEREE_BONUS}}
             )
             
@@ -203,7 +225,7 @@ class ReferralService:
         
         # Credit referrer reward
         await users_col.update_one(
-            {"_id": ObjectId(referrer_id)},
+            {"id": referrer_id},
             {"$inc": {"referral_earnings": referrer_reward, "balance": referrer_reward}}
         )
         
@@ -227,7 +249,7 @@ class ReferralService:
         users_col = self.db.get_collection("users")
         referrals_col = self.db.get_collection("referrals")
         
-        user = await users_col.find_one({"_id": ObjectId(user_id)})
+        user = await users_col.find_one({"id": user_id})
         if not user:
             return {"error": "User not found"}
         
@@ -255,7 +277,7 @@ class ReferralService:
         
         recent_referrals = []
         async for ref in recent_cursor:
-            referee = await users_col.find_one({"_id": ObjectId(ref["referee_id"])})
+            referee = await users_col.find_one({"id": ref["referee_id"]})
             recent_referrals.append({
                 "referee_name": referee.get("name", "Anonymous")[:2] + "***" if referee else "Unknown",
                 "status": ref["status"],

@@ -41,6 +41,9 @@ class User(BaseModel):
     city: Optional[str] = None
     postal_code: Optional[str] = None
     occupation: Optional[str] = None
+    referral_code: Optional[str] = None
+    referred_by: Optional[str] = None
+    referral_code_used: Optional[str] = None
     
     # KYC Documents (GridFS file IDs)
     kyc_docs: List[dict] = Field(default_factory=list)  # [{"type": "id_front", "file_id": "..."}]
@@ -69,6 +72,7 @@ class UserCreate(BaseModel):
     city: Optional[str] = None
     postal_code: Optional[str] = None
     occupation: Optional[str] = None
+    referral_code: Optional[str] = None
     
     # Frontend device fingerprint data
     device_fingerprint: Optional[str] = None
@@ -323,4 +327,3 @@ class Session(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime
     last_activity: datetime = Field(default_factory=datetime.utcnow)
-
