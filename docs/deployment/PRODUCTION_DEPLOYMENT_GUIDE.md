@@ -97,10 +97,14 @@ vercel --prod
 # 1. Go to vercel.com
 # 2. Import GitHub repo
 # 3. Select "Vite" framework
-# 4. Set build command: cd frontend && pnpm install && pnpm run build:prod
-# 5. Set output directory: frontend/dist
-# 6. Deploy
+# 4. Root Directory: frontend
+# 5. Set Install Command: pnpm install --frozen-lockfile
+# 6. Set Build Command: pnpm run build:prod
+# 7. Set Output Directory: dist
+# 8. Deploy
 ```
+
+> ⚠️ Keep a single source of truth for build settings: if `vercel.json` defines install/build/output, clear those fields in the Vercel dashboard to avoid conflicting overrides.
 
 **Verify Frontend Deployment:**
 1. Visit `https://coinbase-love.vercel.app`
