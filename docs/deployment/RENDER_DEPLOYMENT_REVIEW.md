@@ -71,7 +71,7 @@ The `render.yaml` file is missing several environment variables that exist in yo
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Start Command | ✅ | `uvicorn server:app --host 0.0.0.0 --port $PORT` |
+| Start Command | ✅ | `python start_server.py` |
 | Health Check | ✅ | `/api/health` endpoint configured |
 | Python Runtime | ✅ | Python 3.11 compatible |
 | MongoDB URL | ✅ | Atlas connection string configured |

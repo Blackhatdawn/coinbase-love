@@ -27,6 +27,7 @@ from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, tra
 
 # Services
 from services.websocket_feed import price_feed
+from services.telegram_bot import telegram_bot
 from services import price_stream_service
 from coincap_service import coincap_service
 
@@ -423,6 +424,23 @@ async def lifespan(app: FastAPI):
 
         await price_stream_service.start()
         await price_feed.start()
+
+        telegram_status = await telegram_bot.get_health_status()
+        if telegram_status.get("enabled") and telegram_status.get("api_reachable"):
+            logger.info(
+                "✅ Telegram bot connectivity check passed (@%s)",
+                telegram_status.get("bot_username") or "unknown"
+            )
+            await telegram_bot.start_command_polling()
+        elif telegram_status.get("feature_enabled"):
+            logger.warning(
+                "⚠️ Telegram enabled but not fully operational "
+                "(configured_admin_count=%s, api_reachable=%s)",
+                telegram_status.get("configured_admin_count"),
+                telegram_status.get("api_reachable")
+            )
+        else:
+            logger.info("ℹ️ Telegram notifications disabled via configuration")
         
         # Initialize default admin account if none exists
         try:
@@ -447,6 +465,7 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Shutting down CryptoVault API Server")
     logger.info("="*70)
 
+    await telegram_bot.stop_command_polling()
     await price_stream_service.stop()
     await price_feed.stop()
 

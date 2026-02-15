@@ -129,9 +129,15 @@ const mergeConfig = (base: RuntimeConfig, incoming: Partial<RuntimeConfig>): Run
   return merged;
 };
 
-const buildConfigUrl = (): string => {
-  const baseUrl = getFallbackApiBaseUrl();
-  return `${baseUrl}${CONFIG_ENDPOINT}`;
+const getCandidateConfigUrls = (): string[] => {
+  const fallbackApiBase = getFallbackApiBaseUrl();
+  const candidates = [CONFIG_ENDPOINT];
+
+  if (fallbackApiBase) {
+    candidates.push(`${fallbackApiBase}${CONFIG_ENDPOINT}`);
+  }
+
+  return Array.from(new Set(candidates));
 };
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
@@ -148,21 +154,31 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
   }, CONFIG_FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(buildConfigUrl(), {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      credentials: 'include',
-      signal: controller.signal,
-    });
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      throw new Error(`Config request failed (${response.status})`);
+    for (const url of getCandidateConfigUrls()) {
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          credentials: 'include',
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Config request failed (${response.status}) at ${url}`);
+        }
+
+        const data = (await response.json()) as Partial<RuntimeConfig>;
+        runtimeConfig = mergeConfig(fallback, data);
+        setRuntimeConfigLoadState('ready');
+        return runtimeConfig;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
     }
 
-    const data = (await response.json()) as Partial<RuntimeConfig>;
-    runtimeConfig = mergeConfig(fallback, data);
-    setRuntimeConfigLoadState('ready');
-    return runtimeConfig;
+    throw lastError ?? new Error('Runtime config fetch failed');
   } catch (error) {
     runtimeConfig = mergeConfig(fallback, {});
     setRuntimeConfigLoadState('degraded');

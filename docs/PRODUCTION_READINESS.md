@@ -206,7 +206,7 @@
 2. Connect GitHub repository
 3. Configure service:
    - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn server:app --host 0.0.0.0 --port $PORT`
+   - Start Command: `python start_server.py`
 4. Set environment variables (see `.env.example`)
 5. Configure health check:
    - Path: `/health`

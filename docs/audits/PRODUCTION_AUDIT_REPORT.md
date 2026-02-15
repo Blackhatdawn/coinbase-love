@@ -149,7 +149,7 @@ git push origin main
 **Render Dashboard Settings:**
 - Environment: Python
 - Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn server:app --host 0.0.0.0 --port $PORT --workers 4`
+- Start Command: `python start_server.py`
 - Health Check: `/api/health`
 
 ---

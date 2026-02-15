@@ -211,7 +211,7 @@ main branch → auto-deploy to production
 5. **Bundle Analysis** - `pnpm run build:analyze`
 
 ### Backend Optimizations
-1. **Uvicorn** - uvloop, h11 HTTP, 4 workers
+1. **Uvicorn wrapper** (`start_server.py`) with asyncio default, h11 HTTP, configurable workers
 2. **Redis Caching** - Upstash for rate limiting and data caching
 3. **Connection Pooling** - MongoDB with max 10 connections
 4. **Rate Limiting** - 60 requests/minute per IP
