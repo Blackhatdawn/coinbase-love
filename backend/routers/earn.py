@@ -80,6 +80,37 @@ def _days_remaining(stake: dict) -> Optional[int]:
     return max(int(lock_days) - elapsed, 0)
 
 
+class CreateStakeRequest(BaseModel):
+    product_id: str = Field(..., description="Earn product ID")
+    amount: float = Field(..., gt=0, description="Stake amount in token units")
+
+
+class CloseStakeRequest(BaseModel):
+    stake_id: str = Field(..., description="Stake ID")
+
+
+def _ensure_earn_enabled() -> None:
+    if not settings.feature_staking_enabled:
+        raise HTTPException(status_code=503, detail="Earn/staking is currently disabled")
+
+
+def _find_product(product_id: str) -> Optional[dict]:
+    return next((p for p in PRODUCTS if p["id"] == product_id), None)
+
+
+def _calculate_rewards(stake: dict) -> float:
+    created_at = stake.get("created_at") or datetime.utcnow()
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at)
+
+    elapsed_seconds = max((datetime.utcnow() - created_at).total_seconds(), 0)
+    elapsed_days = elapsed_seconds / 86400
+    apy = float(stake.get("apy", 0))
+    principal = float(stake.get("amount", 0))
+
+    return round(principal * (apy / 100) * (elapsed_days / 365), 8)
+
+
 @router.get("/products")
 async def get_earn_products():
     _ensure_earn_enabled()

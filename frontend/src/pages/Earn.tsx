@@ -116,6 +116,22 @@ const Earn = () => {
     redeemMutation.mutate({ stake_id: stakeId });
   };
 
+  const handleStake = (product: StakingProduct) => {
+    const raw = window.prompt(`Enter amount to stake (minimum ${product.minAmount} ${product.token})`);
+    if (!raw) return;
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount.');
+      return;
+    }
+
+    stakeMutation.mutate({ product_id: product.id, amount });
+  };
+
+  const handleRedeem = (stakeId: string) => {
+    redeemMutation.mutate({ stake_id: stakeId });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
