@@ -19,6 +19,66 @@ PRODUCTS = [
     {"id": "sol-60d", "token": "SOL", "name": "Solana 60-Day", "type": "locked", "apy": 15.2, "minAmount": 1, "lockPeriod": "60 days", "tvl": 45000000, "icon": "S", "color": "purple", "new": True, "lockDays": 60},
 ]
 
+# Reference USD conversion rates used for stake funding fallback.
+# This keeps Earn usable in environments where wallet deposits are USD-denominated.
+TOKEN_USD_PRICES = {
+    "BTC": 65000.0,
+    "ETH": 3500.0,
+    "USDT": 1.0,
+    "SOL": 150.0,
+}
+
+
+class CreateStakeRequest(BaseModel):
+    product_id: str = Field(..., description="Earn product ID")
+    amount: float = Field(..., gt=0, description="Stake amount in token units")
+
+
+class CloseStakeRequest(BaseModel):
+    stake_id: str = Field(..., description="Stake ID")
+
+
+def _ensure_earn_enabled() -> None:
+    if not settings.feature_staking_enabled:
+        raise HTTPException(status_code=503, detail="Earn/staking is currently disabled")
+
+
+def _find_product(product_id: str) -> Optional[dict]:
+    return next((p for p in PRODUCTS if p["id"] == product_id), None)
+
+
+def _token_usd_price(token: str) -> float:
+    return float(TOKEN_USD_PRICES.get(token.upper(), 1.0))
+
+
+def _parse_dt(value) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        return datetime.fromisoformat(value.replace("Z", "+00:00").replace("+00:00", ""))
+    return datetime.utcnow()
+
+
+def _calculate_rewards(stake: dict) -> float:
+    created_at = _parse_dt(stake.get("created_at"))
+
+    elapsed_seconds = max((datetime.utcnow() - created_at).total_seconds(), 0)
+    elapsed_days = elapsed_seconds / 86400
+    apy = float(stake.get("apy", 0))
+    principal = float(stake.get("amount", 0))
+
+    return round(principal * (apy / 100) * (elapsed_days / 365), 8)
+
+
+def _days_remaining(stake: dict) -> Optional[int]:
+    created_at = _parse_dt(stake.get("created_at"))
+    lock_days = stake.get("lock_days")
+    if not lock_days:
+        return None
+
+    elapsed = max((datetime.utcnow() - created_at).days, 0)
+    return max(int(lock_days) - elapsed, 0)
+
 
 class CreateStakeRequest(BaseModel):
     product_id: str = Field(..., description="Earn product ID")
@@ -75,7 +135,7 @@ async def get_earn_positions(user_id: str = Depends(get_current_user_id), db=Dep
             "rewards": rewards,
             "startDate": (position.get("created_at") or datetime.utcnow()).isoformat(),
             "lockPeriod": position.get("lock_period", "Flexible"),
-            "daysRemaining": position.get("days_remaining"),
+            "daysRemaining": _days_remaining(position),
             "status": "active",
             "productId": position.get("product_id"),
         })
@@ -98,12 +158,24 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
     token = str(product["token"]).upper()
     wallets = db.get_collection("wallets")
     wallet = await wallets.find_one({"user_id": user_id})
-    balance = float((wallet or {}).get("balances", {}).get(token, 0))
+    token_balance = float((wallet or {}).get("balances", {}).get(token, 0))
+    usd_balance = float((wallet or {}).get("balances", {}).get("USD", 0))
 
-    if balance < payload.amount:
-        raise HTTPException(status_code=400, detail=f"Insufficient {token} balance")
+    usd_required = round(payload.amount * _token_usd_price(token), 8)
+    funding_currency = token
+    funding_amount = payload.amount
 
-    days_remaining = product.get("lockDays") if product.get("type") == "locked" else None
+    if token_balance >= payload.amount:
+        wallet_inc = {f"balances.{token}": -payload.amount}
+    elif usd_balance >= usd_required:
+        # Fallback to USD funding so users with fiat deposits can still use Earn products.
+        funding_currency = "USD"
+        funding_amount = usd_required
+        wallet_inc = {"balances.USD": -usd_required}
+    else:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Requires {payload.amount} {token} or ${usd_required} USD")
+
+    lock_days = product.get("lockDays") if product.get("type") == "locked" else None
 
     stake_doc = {
         "id": str(uuid.uuid4()),
@@ -114,7 +186,9 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
         "amount": payload.amount,
         "apy": product["apy"],
         "lock_period": product["lockPeriod"],
-        "days_remaining": days_remaining,
+        "lock_days": lock_days,
+        "funding_currency": funding_currency,
+        "funding_amount": funding_amount,
         "status": "active",
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
@@ -126,7 +200,7 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
     await wallets.update_one(
         {"user_id": user_id},
         {
-            "$inc": {f"balances.{token}": -payload.amount},
+            "$inc": wallet_inc,
             "$set": {"updated_at": datetime.utcnow()},
         },
         upsert=True,
@@ -137,11 +211,11 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "type": "stake_create",
-        "amount": payload.amount,
-        "currency": token,
+        "amount": funding_amount,
+        "currency": funding_currency,
         "status": "completed",
         "reference": stake_doc["id"],
-        "description": f"Staked into {product['name']}",
+        "description": f"Staked into {product['name']} ({payload.amount} {token})",
         "created_at": datetime.utcnow(),
     })
 
@@ -162,11 +236,16 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
     principal = float(stake.get("amount", 0))
     total_credit = principal + rewards
 
-    if stake.get("days_remaining"):
-        created_at = stake.get("created_at") or datetime.utcnow()
+    lock_days = stake.get("lock_days")
+    if lock_days:
+        created_at = _parse_dt(stake.get("created_at"))
         days_elapsed = (datetime.utcnow() - created_at).days
-        if days_elapsed < int(stake["days_remaining"]):
+        if days_elapsed < int(lock_days):
             raise HTTPException(status_code=400, detail="This locked stake is not yet redeemable")
+
+    credit_currency = str(stake.get("funding_currency") or token).upper()
+    if credit_currency == "USD":
+        total_credit = round(total_credit * _token_usd_price(token), 8)
 
     await stakes.update_one(
         {"id": payload.stake_id},
@@ -184,7 +263,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
     await wallets.update_one(
         {"user_id": user_id},
         {
-            "$inc": {f"balances.{token}": total_credit},
+            "$inc": {f"balances.{credit_currency}": total_credit},
             "$set": {"updated_at": datetime.utcnow()},
         },
         upsert=True,
@@ -196,7 +275,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
         "user_id": user_id,
         "type": "stake_redeem",
         "amount": total_credit,
-        "currency": token,
+        "currency": credit_currency,
         "status": "completed",
         "reference": payload.stake_id,
         "description": f"Redeemed stake principal + rewards ({rewards} {token})",
@@ -210,6 +289,6 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
             "principal": principal,
             "rewards": rewards,
             "total": total_credit,
-            "token": token,
+            "token": credit_currency,
         },
     }

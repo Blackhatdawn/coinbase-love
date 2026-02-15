@@ -1,22 +1,13 @@
 /**
  * Earn Page - Staking and Passive Income
- * Premium Bybit-style earn/staking interface
  */
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  TrendingUp,
-  Lock,
-  Percent,
-  Clock,
-  Shield,
-  Info,
-  ChevronRight,
-  Sparkles
-} from 'lucide-react';
+import { TrendingUp, Lock, Percent, Clock, Shield, Info, ChevronRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import { api } from '@/lib/apiClient';
@@ -24,15 +15,12 @@ import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 type StakingProduct = {
@@ -68,23 +56,18 @@ type ActiveStake = {
 const Earn = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'active'>('products');
   const [selectedType, setSelectedType] = useState<'all' | 'flexible' | 'locked'>('all');
+  const [stakeAmounts, setStakeAmounts] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
-  const { data: productsData } = useQuery({
-    queryKey: ['earn-products'],
-    queryFn: api.earn.getProducts,
-  });
-
-  const { data: positionsData } = useQuery({
-    queryKey: ['earn-positions'],
-    queryFn: api.earn.getPositions,
-  });
+  const { data: productsData } = useQuery({ queryKey: ['earn-products'], queryFn: api.earn.getProducts });
+  const { data: positionsData } = useQuery({ queryKey: ['earn-positions'], queryFn: api.earn.getPositions });
 
   const stakeMutation = useMutation({
     mutationFn: api.earn.stake,
     onSuccess: () => {
       toast.success('Stake created successfully.');
       queryClient.invalidateQueries({ queryKey: ['earn-positions'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
     },
     onError: (error: any) => toast.error(error?.message || 'Failed to create stake'),
   });
@@ -94,6 +77,7 @@ const Earn = () => {
     onSuccess: () => {
       toast.success('Stake redeemed successfully.');
       queryClient.invalidateQueries({ queryKey: ['earn-positions'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
     },
     onError: (error: any) => toast.error(error?.message || 'Failed to redeem stake'),
   });
@@ -101,17 +85,36 @@ const Earn = () => {
   const stakingProducts: StakingProduct[] = productsData?.products || [];
   const activeStakes: ActiveStake[] = positionsData?.positions || [];
 
-  const filteredProducts = stakingProducts.filter(p => selectedType === 'all' ? true : p.type === selectedType);
+  const filteredProducts = stakingProducts.filter((p) => (selectedType === 'all' ? true : p.type === selectedType));
 
-  const totalStaked = activeStakes.reduce((sum, s) => {
-    const valueInUsd = s.token === 'ETH' ? s.amount * 3500 : s.amount;
-    return sum + valueInUsd;
-  }, 0);
+  const totalStaked = activeStakes.reduce((sum, s) => sum + s.amount, 0);
+  const totalRewards = activeStakes.reduce((sum, s) => sum + s.rewards, 0);
 
-  const totalRewards = activeStakes.reduce((sum, s) => {
-    const valueInUsd = s.token === 'ETH' ? s.rewards * 3500 : s.rewards;
-    return sum + valueInUsd;
-  }, 0);
+  const handleStake = (product: StakingProduct) => {
+    const raw = stakeAmounts[product.id] || '';
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount.');
+      return;
+    }
+    if (amount < product.minAmount) {
+      toast.error(`Minimum stake is ${product.minAmount} ${product.token}.`);
+      return;
+    }
+
+    stakeMutation.mutate(
+      { product_id: product.id, amount },
+      {
+        onSuccess: () => {
+          setStakeAmounts((prev) => ({ ...prev, [product.id]: '' }));
+        },
+      },
+    );
+  };
+
+  const handleRedeem = (stakeId: string) => {
+    redeemMutation.mutate({ stake_id: stakeId });
+  };
 
   const handleStake = (product: StakingProduct) => {
     const raw = window.prompt(`Enter amount to stake (minimum ${product.minAmount} ${product.token})`);
@@ -147,8 +150,8 @@ const Earn = () => {
       </div>
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-gold-500/10 rounded-xl"><Lock className="h-6 w-6 text-gold-400" /></div><div><p className="text-sm text-gray-400">Total Staked</p><p className="text-2xl font-bold text-white">${totalStaked.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p></div></div></DashboardCard></motion.div>
-        <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-emerald-500/10 rounded-xl"><TrendingUp className="h-6 w-6 text-emerald-400" /></div><div><p className="text-sm text-gray-400">Total Rewards</p><p className="text-2xl font-bold text-emerald-400">+${totalRewards.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p></div></div></DashboardCard></motion.div>
+        <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-gold-500/10 rounded-xl"><Lock className="h-6 w-6 text-gold-400" /></div><div><p className="text-sm text-gray-400">Total Staked</p><p className="text-2xl font-bold text-white">{totalStaked.toLocaleString(undefined, { maximumFractionDigits: 4 })}</p></div></div></DashboardCard></motion.div>
+        <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-emerald-500/10 rounded-xl"><TrendingUp className="h-6 w-6 text-emerald-400" /></div><div><p className="text-sm text-gray-400">Total Rewards</p><p className="text-2xl font-bold text-emerald-400">+{totalRewards.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p></div></div></DashboardCard></motion.div>
         <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-violet-500/10 rounded-xl"><Percent className="h-6 w-6 text-violet-400" /></div><div><p className="text-sm text-gray-400">Avg. APY</p><p className="text-2xl font-bold text-white">{((activeStakes.reduce((sum, s) => sum + (s.apy || 0), 0) / (activeStakes.length || 1)) || 0).toFixed(1)}%</p></div></div></DashboardCard></motion.div>
         <motion.div variants={itemVariants}><DashboardCard className="h-full"><div className="flex items-center gap-3"><div className="p-3 bg-blue-500/10 rounded-xl"><Clock className="h-6 w-6 text-blue-400" /></div><div><p className="text-sm text-gray-400">Active Stakes</p><p className="text-2xl font-bold text-white">{activeStakes.length}</p></div></div></DashboardCard></motion.div>
       </motion.div>
@@ -164,7 +167,13 @@ const Earn = () => {
           <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredProducts.map((product) => (
               <motion.div key={product.id} variants={itemVariants}>
-                <StakingProductCard product={product} onStake={handleStake} loading={stakeMutation.isPending} />
+                <StakingProductCard
+                  product={product}
+                  amount={stakeAmounts[product.id] || ''}
+                  onAmountChange={(value) => setStakeAmounts((prev) => ({ ...prev, [product.id]: value }))}
+                  onStake={handleStake}
+                  loading={stakeMutation.isPending}
+                />
               </motion.div>
             ))}
           </motion.div>
@@ -182,15 +191,27 @@ const Earn = () => {
       <DashboardCard title="How Earn Works" icon={<Info className="h-5 w-5" />}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <HowItWorksStep step={1} title="Choose a Product" description="Select from flexible or locked staking options based on your preference" />
-          <HowItWorksStep step={2} title="Stake Your Crypto" description="Deposit your assets and start earning rewards immediately" />
-          <HowItWorksStep step={3} title="Earn Rewards" description="Receive daily rewards directly to your wallet balance" />
+          <HowItWorksStep step={2} title="Stake Your Crypto" description="Stake from token balance or USD equivalent (auto-converted)" />
+          <HowItWorksStep step={3} title="Earn Rewards" description="Receive principal and accrued rewards on redemption" />
         </div>
       </DashboardCard>
     </div>
   );
 };
 
-const StakingProductCard = ({ product, onStake, loading }: { product: StakingProduct; onStake: (product: StakingProduct) => void; loading: boolean }) => {
+const StakingProductCard = ({
+  product,
+  amount,
+  onAmountChange,
+  onStake,
+  loading,
+}: {
+  product: StakingProduct;
+  amount: string;
+  onAmountChange: (value: string) => void;
+  onStake: (product: StakingProduct) => void;
+  loading: boolean;
+}) => {
   const colorClasses = {
     orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/20',
     violet: 'from-violet-500/20 to-violet-600/20 border-violet-500/20',
@@ -211,7 +232,17 @@ const StakingProductCard = ({ product, onStake, loading }: { product: StakingPro
       <div className="flex items-center gap-3 mb-4"><div className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold', iconColors[product.color as keyof typeof iconColors] || iconColors.orange)}>{product.icon}</div><div><h3 className="font-semibold text-white">{product.name}</h3><p className="text-xs text-gray-400 capitalize">{product.type} • {product.lockPeriod}</p></div></div>
       <div className="mb-4"><p className="text-xs text-gray-400 mb-1">Annual Percentage Yield</p><p className="text-3xl font-bold text-white">{product.apy}%<span className="text-sm font-normal text-gray-400 ml-1">APY</span></p></div>
       <div className="flex items-center justify-between text-sm mb-4 pb-4 border-b border-white/5"><div><p className="text-gray-500">Min. Stake</p><p className="text-white font-medium">{product.minAmount} {product.token}</p></div><div className="text-right"><p className="text-gray-500">TVL</p><p className="text-white font-medium">${(product.tvl / 1000000).toFixed(0)}M</p></div></div>
-      <Button className="w-full bg-white/10 hover:bg-white/20 text-white" onClick={() => onStake(product)} disabled={loading}>{loading ? 'Submitting...' : 'Stake Now'}<ChevronRight className="h-4 w-4 ml-1" /></Button>
+      <div className="space-y-2">
+        <Input
+          type="number"
+          min={product.minAmount}
+          step="any"
+          value={amount}
+          onChange={(e) => onAmountChange(e.target.value)}
+          placeholder={`Amount (${product.token})`}
+        />
+        <Button className="w-full bg-white/10 hover:bg-white/20 text-white" onClick={() => onStake(product)} disabled={loading}>{loading ? 'Submitting...' : 'Stake Now'}<ChevronRight className="h-4 w-4 ml-1" /></Button>
+      </div>
     </motion.div>
   );
 };
@@ -230,8 +261,8 @@ const ActiveStakeCard = ({ stake, onRedeem, loading }: { stake: ActiveStake; onR
       <div className="text-right">
         <p className="text-sm text-gray-400">Rewards Earned</p>
         <p className="text-lg font-semibold text-emerald-400">+{stake.rewards} {stake.token}</p>
-        {stake.daysRemaining && (<p className="text-xs text-gray-500">{stake.daysRemaining} days remaining</p>)}
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => onRedeem(stake.id)} disabled={loading}>Redeem</Button>
+        {stake.daysRemaining !== undefined && (<p className="text-xs text-gray-500">{stake.daysRemaining} days remaining</p>)}
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => onRedeem(stake.id)} disabled={loading || (stake.daysRemaining ?? 0) > 0}>Redeem</Button>
       </div>
     </div>
   </DashboardCard>
