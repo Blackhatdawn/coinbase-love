@@ -549,6 +549,19 @@ export const api = {
       apiClient.get(`/api/wallet/transfers?skip=${skip}&limit=${limit}`),
   },
 
+
+
+  // Earn / staking
+  earn: {
+    getProducts: () =>
+      apiClient.get('/api/earn/products'),
+    getPositions: () =>
+      apiClient.get('/api/earn/positions'),
+    stake: (data: { product_id: string; amount: number }) =>
+      apiClient.post('/api/earn/stake', data),
+    redeem: (data: { stake_id: string }) =>
+      apiClient.post('/api/earn/redeem', data),
+  },
   // Price alerts
   alerts: {
     getAll: () =>
