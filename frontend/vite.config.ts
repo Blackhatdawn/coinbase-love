@@ -73,6 +73,11 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('ethers')) {
               return 'vendor-web3';
             }
+
+            // Firebase SDK - isolate auth/app bundles
+            if (id.includes('/firebase/') || id.includes('@firebase')) {
+              return 'vendor-firebase';
+            }
             
             // UI Components - shared
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
