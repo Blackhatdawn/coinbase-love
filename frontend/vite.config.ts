@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -64,21 +64,58 @@ export default defineConfig(({ mode }) => ({
         manualChunks: (id) => {
           // Node modules chunking
           if (id.includes('node_modules')) {
-            // Critical vendor - loaded immediately
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            
             // Monitoring & Analytics - separate chunk
             if (id.includes('@sentry') || id.includes('@vercel/analytics')) {
               return 'vendor-monitoring';
             }
             
             // Web3/Crypto - heavy, lazy loaded
-            if (id.includes('ethers')) {
+            if (
+              id.includes('ethers')
+              || id.includes('@noble/')
+              || id.includes('@adraffy/ens-normalize')
+            ) {
               return 'vendor-web3';
             }
+
+            // Firebase SDK - isolate auth/app bundles
+            if (id.includes('/firebase/') || id.includes('@firebase')) {
+              return 'vendor-firebase';
+            }
             
+            // Routing stack
+            if (id.includes('react-router') || id.includes('@remix-run/router') || id.includes('history')) {
+              return 'vendor-routing';
+            }
+
+            // Icon set (large package)
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+
+            // Date and validation utilities
+            if (id.includes('date-fns')) {
+              return 'vendor-utils';
+            }
+            if (id.includes('/zod/')) {
+              return 'vendor-validation';
+            }
+
+            // Drag and drop toolkit
+            if (id.includes('@dnd-kit')) {
+              return 'vendor-dnd';
+            }
+
+            // Styling helpers
+            if (id.includes('tailwind-merge') || id.includes('class-variance-authority') || id.includes('/clsx/')) {
+              return 'vendor-styling';
+            }
+
+            // Floating UI positioning engine
+            if (id.includes('@floating-ui')) {
+              return 'vendor-floating';
+            }
+
             // UI Components - shared
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
               return 'vendor-ui';
@@ -101,12 +138,12 @@ export default defineConfig(({ mode }) => ({
             }
             
             // Animation
-            if (id.includes('framer-motion')) {
+            if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) {
               return 'vendor-motion';
             }
             
             // Socket.IO
-            if (id.includes('socket.io')) {
+            if (/node_modules\/socket\.io-client\//.test(id)) {
               return 'vendor-socket';
             }
             
@@ -245,8 +282,6 @@ export default defineConfig(({ mode }) => ({
       // Use SWC for faster builds
       jsxImportSource: undefined,
     }),
-    // Split vendor chunks automatically
-    splitVendorChunkPlugin(),
     // Bundle analyzer - run with `npm run analyze`
     mode === 'analyze' && visualizer({
       open: true,
