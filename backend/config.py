@@ -278,6 +278,10 @@ class Settings(BaseSettings):
     # ============================================
     # TELEGRAM BOT (Free KYC Notifications)
     # ============================================
+    telegram_enabled: bool = Field(
+        default=True,
+        description="Enable Telegram bot notifications and command polling"
+    )
     telegram_bot_token: Optional[str] = Field(
         default=None,
         description="Telegram bot token for admin notifications (get from @BotFather)"
