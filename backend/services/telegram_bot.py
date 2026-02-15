@@ -18,32 +18,34 @@ class TelegramBotService:
     """Telegram bot for admin notifications and command handling"""
     
     def __init__(self):
-        # Get from environment variables
-        self.bot_token = settings.__dict__.get('telegram_bot_token', '')
-        admin_chat_id_str = settings.__dict__.get('admin_telegram_chat_id', '')
-        
+        # Get from validated settings
+        self.feature_enabled = bool(settings.telegram_enabled)
+        self.bot_token = (settings.telegram_bot_token or '').strip()
+        admin_chat_id_str = (settings.admin_telegram_chat_id or '').strip()
+
         # Support multiple chat IDs (comma-separated)
-        if admin_chat_id_str:
-            self.admin_chat_ids = [cid.strip() for cid in admin_chat_id_str.split(',') if cid.strip()]
-        else:
-            self.admin_chat_ids = []
-        
+        self.admin_chat_ids = [cid.strip() for cid in admin_chat_id_str.split(',') if cid.strip()] if admin_chat_id_str else []
+
         # Check if configured
-        self.enabled = bool(self.bot_token and self.admin_chat_ids)
-        
-        if not self.enabled:
-            logger.warning("⚠️ Telegram bot not configured - admin notifications disabled")
+        self.enabled = self.feature_enabled and bool(self.bot_token and self.admin_chat_ids)
+
+        if not self.feature_enabled:
+            logger.warning("⚠️ Telegram explicitly disabled via TELEGRAM_ENABLED=false")
+        elif not self.bot_token or not self.admin_chat_ids:
+            logger.warning("⚠️ Telegram bot partially configured - notifications disabled")
             logger.info("   Set TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_CHAT_ID to enable")
         else:
             logger.info(f"✅ Telegram bot service initialized ({len(self.admin_chat_ids)} admin(s))")
-        
-        self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
+
+        self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
+        self._polling_task: Optional[asyncio.Task] = None
+        self._last_update_id: Optional[int] = None
     
     async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
         """Send message to all admin chats"""
         if not self.enabled:
-            logger.info(f"[MOCK] Telegram: {text[:100]}...")
-            return True
+            logger.info("Telegram notification skipped (bot disabled or not fully configured)")
+            return False
         
         success_count = 0
         
@@ -370,6 +372,101 @@ Check logs and take action if needed.
         
         return await self.send_message(message)
     
+
+    async def get_health_status(self) -> Dict[str, Any]:
+        """Validate Telegram connectivity and return service health metadata."""
+        status: Dict[str, Any] = {
+            "feature_enabled": self.feature_enabled,
+            "enabled": self.enabled,
+            "configured_admin_count": len(self.admin_chat_ids),
+            "api_reachable": False,
+            "bot_username": None,
+        }
+
+        if not self.enabled:
+            return status
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(f"{self.base_url}/getMe")
+            if response.status_code != 200:
+                logger.error("❌ Telegram getMe failed: %s - %s", response.status_code, response.text)
+                return status
+
+            payload = response.json()
+            if payload.get("ok") and payload.get("result"):
+                status["api_reachable"] = True
+                status["bot_username"] = payload["result"].get("username")
+            else:
+                logger.error("❌ Telegram getMe unexpected payload: %s", payload)
+        except Exception as exc:
+            logger.error("❌ Telegram connectivity check failed: %s", exc)
+
+        return status
+
+
+    async def start_command_polling(self) -> None:
+        """Start Telegram command polling loop if bot is enabled."""
+        if not self.enabled:
+            logger.info("Telegram command polling not started (bot disabled or not fully configured)")
+            return
+        if self._polling_task and not self._polling_task.done():
+            return
+
+        self._polling_task = asyncio.create_task(self._poll_commands_loop())
+        logger.info("✅ Telegram command polling started")
+
+    async def stop_command_polling(self) -> None:
+        """Stop Telegram command polling loop gracefully."""
+        if not self._polling_task:
+            return
+
+        self._polling_task.cancel()
+        try:
+            await self._polling_task
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._polling_task = None
+
+    async def _poll_commands_loop(self) -> None:
+        """Poll Telegram updates and execute supported admin commands."""
+        import dependencies
+
+        while True:
+            try:
+                updates = await self.get_updates(offset=self._last_update_id)
+                for update in updates.get("result", []):
+                    update_id = update.get("update_id")
+                    if isinstance(update_id, int):
+                        self._last_update_id = update_id + 1
+
+                    message = update.get("message") or {}
+                    text = (message.get("text") or "").strip()
+                    if not text.startswith("/"):
+                        continue
+
+                    chat_id = str((message.get("chat") or {}).get("id", "")).strip()
+                    if chat_id not in self.admin_chat_ids:
+                        logger.warning("⚠️ Ignoring Telegram command from unauthorized chat_id=%s", chat_id)
+                        continue
+
+                    pieces = text.split()
+                    command, args = pieces[0], pieces[1:]
+                    result_text = await self.handle_command(command, args, dependencies)
+
+                    await self.send_message(
+                        f"<b>Command:</b> <code>{command}</code>\n"
+                        f"<b>Result:</b> {result_text}"
+                    )
+            except asyncio.CancelledError:
+                logger.info("Telegram command polling stopped")
+                raise
+            except Exception as exc:
+                logger.error("Telegram command polling loop error: %s", exc)
+
+            await asyncio.sleep(2)
+
     async def get_updates(self, offset: Optional[int] = None) -> Dict[str, Any]:
         """Get bot updates (for command polling)"""
         if not self.enabled:

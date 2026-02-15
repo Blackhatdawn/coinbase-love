@@ -32,10 +32,9 @@ def _detect_loop() -> str:
             return "asyncio"
         return forced_loop
 
-    # uvloop can be unavailable on bleeding-edge runtimes.
-    if importlib.util.find_spec("uvloop") is None:
-        return "asyncio"
-    return "uvloop"
+    # Default to asyncio for predictable cross-platform production behavior.
+    # uvloop is only used when explicitly requested via UVICORN_LOOP=uvloop.
+    return "asyncio"
 
 
 def main() -> None:
