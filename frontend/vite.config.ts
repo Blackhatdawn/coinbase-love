@@ -70,7 +70,11 @@ export default defineConfig(({ mode }) => ({
             }
             
             // Web3/Crypto - heavy, lazy loaded
-            if (id.includes('ethers')) {
+            if (
+              id.includes('ethers')
+              || id.includes('@noble/')
+              || id.includes('@adraffy/ens-normalize')
+            ) {
               return 'vendor-web3';
             }
 
@@ -79,6 +83,34 @@ export default defineConfig(({ mode }) => ({
               return 'vendor-firebase';
             }
             
+            // Routing stack
+            if (id.includes('react-router') || id.includes('@remix-run/router') || id.includes('history')) {
+              return 'vendor-routing';
+            }
+
+            // Icon set (large package)
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+
+            // Date and validation utilities
+            if (id.includes('date-fns')) {
+              return 'vendor-utils';
+            }
+            if (id.includes('/zod/')) {
+              return 'vendor-validation';
+            }
+
+            // Drag and drop toolkit
+            if (id.includes('@dnd-kit')) {
+              return 'vendor-dnd';
+            }
+
+            // Styling helpers
+            if (id.includes('tailwind-merge') || id.includes('class-variance-authority') || id.includes('/clsx/')) {
+              return 'vendor-styling';
+            }
+
             // UI Components - shared
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
               return 'vendor-ui';
@@ -101,7 +133,7 @@ export default defineConfig(({ mode }) => ({
             }
             
             // Animation
-            if (id.includes('framer-motion')) {
+            if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) {
               return 'vendor-motion';
             }
             
