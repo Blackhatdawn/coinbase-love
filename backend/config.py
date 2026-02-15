@@ -372,11 +372,12 @@ class Settings(BaseSettings):
 
     @validator("environment")
     def validate_environment(cls, v):
-        """Ensure environment is one of valid values."""
+        """Ensure environment is one of valid values (case-insensitive)."""
         valid_envs = ["development", "staging", "production"]
-        if v not in valid_envs:
+        value = str(v).strip().lower()
+        if value not in valid_envs:
             raise ValueError(f"Environment must be one of {valid_envs}, got {v}")
-        return v.lower()
+        return value
 
     @validator("log_level")
     def validate_log_level(cls, v):
@@ -420,10 +421,14 @@ class Settings(BaseSettings):
         return self.environment == "staging"
 
     def get_cors_origins_list(self) -> List[str]:
-        """Get CORS origins as a list."""
+        """Get CORS origins as a normalized, de-duplicated list."""
         if isinstance(self.cors_origins, str):
-            return [origin.strip() for origin in self.cors_origins.split(",")]
-        return self.cors_origins
+            origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        else:
+            origins = [origin.strip() for origin in self.cors_origins if isinstance(origin, str) and origin.strip()]
+
+        # Preserve order while removing duplicates
+        return list(dict.fromkeys(origins))
 
     def get_socketio_cors_origins(self) -> List[str]:
         """Get Socket.IO CORS origins with app URL and deployment URLs."""
