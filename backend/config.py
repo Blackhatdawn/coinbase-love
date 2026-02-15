@@ -99,6 +99,10 @@ class Settings(BaseSettings):
         description="Environment: development, staging, production"
     )
     debug: bool = Field(default=False, description="Enable debug mode")
+    full_production_configuration: bool = Field(
+        default=False,
+        description="When true in production, enforce strict checks for all integration-critical env vars"
+    )
     app_url: str = Field(
         default="https://www.cryptovault.financial",
         description="Frontend application URL"
@@ -549,10 +553,10 @@ settings = get_settings()
 def validate_startup_environment() -> dict:
     """
     Validate all critical environment variables on startup.
-    
+
     This function should be called in your FastAPI startup event.
     Raises ValueError if critical configuration is missing in production.
-    
+
     Returns:
         Dictionary with validation results
     """
@@ -568,14 +572,65 @@ def validate_startup_environment() -> dict:
             if settings.is_production:
                 missing_vars.append(var_name)
 
-    if missing_vars:
+    strict_missing_vars = []
+
+    if settings.is_production and settings.full_production_configuration:
+        # Frontend/backend sync guardrails
+        strict_required = {
+            "app_url": settings.app_url,
+            "public_api_url": settings.public_api_url,
+            "public_ws_url": settings.public_ws_url,
+            "public_socket_io_path": settings.public_socket_io_path,
+            "cors_origins": settings.get_cors_origins_list(),
+        }
+
+        if settings.email_service == "sendgrid":
+            strict_required["sendgrid_api_key"] = settings.sendgrid_api_key
+
+        if not settings.allow_mock_payment_fallback:
+            strict_required["nowpayments_api_key"] = settings.nowpayments_api_key
+            strict_required["nowpayments_ipn_secret"] = settings.nowpayments_ipn_secret
+
+        if not settings.use_mock_prices:
+            strict_required["coincap_api_key"] = settings.coincap_api_key
+
+        if settings.use_redis:
+            has_upstash = bool(settings.upstash_redis_rest_url and settings.upstash_redis_rest_token)
+            has_redis = bool(settings.redis_url)
+            if not (has_upstash or has_redis):
+                strict_missing_vars.append("upstash_redis_rest_url/upstash_redis_rest_token OR redis_url")
+
+        if settings.telegram_enabled:
+            strict_required["telegram_bot_token"] = settings.telegram_bot_token
+            strict_required["admin_telegram_chat_id"] = settings.admin_telegram_chat_id
+
+        for var_name, var_value in strict_required.items():
+            is_empty_list = isinstance(var_value, list) and len(var_value) == 0
+            if not var_value or is_empty_list:
+                strict_missing_vars.append(var_name)
+
+        cors_origins = settings.get_cors_origins_list()
+        app_origin = settings.app_url.rstrip("/") if settings.app_url else ""
+        if app_origin and app_origin not in cors_origins:
+            strict_missing_vars.append("cors_origins must include APP_URL origin")
+
+        if settings.public_api_url and not str(settings.public_api_url).startswith(("https://", "http://")):
+            strict_missing_vars.append("public_api_url must be http(s) URL")
+        if settings.public_ws_url and not str(settings.public_ws_url).startswith(("wss://", "ws://")):
+            strict_missing_vars.append("public_ws_url must be ws(s) URL")
+
+        if settings.public_socket_io_path and not str(settings.public_socket_io_path).startswith("/"):
+            strict_missing_vars.append("public_socket_io_path must start with '/'")
+
+    if missing_vars or strict_missing_vars:
+        combined = missing_vars + strict_missing_vars
         error_msg = (
-            f"❌ STARTUP FAILED: Critical environment variables not configured:\n"
-            f"   {', '.join(missing_vars)}\n\n"
-            f"   Please set these in your environment or .env file:\n"
+            "❌ STARTUP FAILED: Critical environment variables not configured:\\n"
+            f"   {', '.join(combined)}\\n\\n"
+            "   Please set these in your environment or .env file:\\n"
         )
-        for var in missing_vars:
-            error_msg += f"   - {var.upper()}\n"
+        for var in combined:
+            error_msg += f"   - {str(var).upper()}\\n"
         raise ValueError(error_msg)
 
     # Log successful validation
@@ -587,14 +642,16 @@ def validate_startup_environment() -> dict:
     print(f"   Redis: {'Enabled (Upstash)' if settings.upstash_redis_rest_url else 'Enabled (Standard)' if settings.redis_url else 'Disabled'}")
     print(f"   Email Service: {settings.email_service}")
     print(f"   CORS Origins: {', '.join(settings.get_cors_origins_list())}")
+    print(f"   Strict Production Mode: {'Enabled' if settings.full_production_configuration else 'Disabled'}")
     if settings.is_sentry_available():
         print(f"   Sentry: Enabled")
-    
+
     return {
         "status": "success",
         "environment": settings.environment,
         "app_name": settings.app_name,
-        "database": settings.db_name
+        "database": settings.db_name,
+        "strict_mode": settings.full_production_configuration,
     }
 
 
