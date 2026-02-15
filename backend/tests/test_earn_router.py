@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 from routers import earn
 
 
+async def _fake_token_price(_token: str) -> float:
+    return 3500.0
+
+
 class FakeCursor:
     def __init__(self, docs):
         self.docs = list(docs)
@@ -85,6 +89,7 @@ class FakeDB:
 @pytest.mark.anyio
 async def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeypatch):
     monkeypatch.setattr(earn.settings, 'feature_staking_enabled', True)
+    monkeypatch.setattr(earn, '_token_usd_price', _fake_token_price)
 
     wallets = FakeCollection(docs=[{'user_id': 'u1', 'balances': {'USD': 1000.0}}])
     stakes = FakeCollection()
@@ -104,6 +109,7 @@ async def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeyp
 @pytest.mark.anyio
 async def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
     monkeypatch.setattr(earn.settings, 'feature_staking_enabled', True)
+    monkeypatch.setattr(earn, '_token_usd_price', _fake_token_price)
 
     created = datetime.utcnow() - timedelta(days=40)
     stake_doc = {

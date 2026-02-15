@@ -1,7 +1,8 @@
 """Earn endpoints for staking products and positions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +10,9 @@ from pydantic import BaseModel, Field
 
 from dependencies import get_current_user_id, get_db
 from config import settings
+from coincap_service import coincap_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/earn", tags=["earn"])
 
 PRODUCTS = [
@@ -19,9 +22,16 @@ PRODUCTS = [
     {"id": "sol-60d", "token": "SOL", "name": "Solana 60-Day", "type": "locked", "apy": 15.2, "minAmount": 1, "lockPeriod": "60 days", "tvl": 45000000, "icon": "S", "color": "purple", "new": True, "lockDays": 60},
 ]
 
-# Reference USD conversion rates used for stake funding fallback.
-# This keeps Earn usable in environments where wallet deposits are USD-denominated.
-TOKEN_USD_PRICES = {
+# Coin ID map for runtime price conversion.
+TOKEN_TO_COIN_ID = {
+    "BTC": "bitcoin",
+    "ETH": "ethereum",
+    "USDT": "tether",
+    "SOL": "solana",
+}
+
+# Conservative emergency fallback only if live price lookup fails.
+FALLBACK_USD_PRICES = {
     "BTC": 65000.0,
     "ETH": 3500.0,
     "USDT": 1.0,
@@ -47,16 +57,42 @@ def _find_product(product_id: str) -> Optional[dict]:
     return next((p for p in PRODUCTS if p["id"] == product_id), None)
 
 
-def _token_usd_price(token: str) -> float:
-    return float(TOKEN_USD_PRICES.get(token.upper(), 1.0))
+async def _token_usd_price(token: str) -> float:
+    normalized = token.upper()
+    if normalized == "USD":
+        return 1.0
+
+    coin_id = TOKEN_TO_COIN_ID.get(normalized)
+    if not coin_id:
+        raise HTTPException(status_code=400, detail=f"Unsupported token for pricing: {token}")
+
+    try:
+        prices = await coincap_service.get_prices([coin_id])
+        for item in prices:
+            if item.get("symbol", "").upper() == normalized:
+                price = float(item.get("price") or 0)
+                if price > 0:
+                    return price
+    except Exception as exc:
+        logger.warning(f"Failed to load live {normalized} price, using fallback: {exc}")
+
+    fallback = FALLBACK_USD_PRICES.get(normalized)
+    if fallback is None:
+        raise HTTPException(status_code=503, detail=f"Unable to price token: {token}")
+    return float(fallback)
 
 
 def _parse_dt(value) -> datetime:
     if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        return datetime.fromisoformat(value.replace("Z", "+00:00").replace("+00:00", ""))
-    return datetime.utcnow()
+        dt = value
+    elif isinstance(value, str):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    else:
+        dt = datetime.utcnow()
+
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 
 def _calculate_rewards(stake: dict) -> float:
@@ -78,37 +114,6 @@ def _days_remaining(stake: dict) -> Optional[int]:
 
     elapsed = max((datetime.utcnow() - created_at).days, 0)
     return max(int(lock_days) - elapsed, 0)
-
-
-class CreateStakeRequest(BaseModel):
-    product_id: str = Field(..., description="Earn product ID")
-    amount: float = Field(..., gt=0, description="Stake amount in token units")
-
-
-class CloseStakeRequest(BaseModel):
-    stake_id: str = Field(..., description="Stake ID")
-
-
-def _ensure_earn_enabled() -> None:
-    if not settings.feature_staking_enabled:
-        raise HTTPException(status_code=503, detail="Earn/staking is currently disabled")
-
-
-def _find_product(product_id: str) -> Optional[dict]:
-    return next((p for p in PRODUCTS if p["id"] == product_id), None)
-
-
-def _calculate_rewards(stake: dict) -> float:
-    created_at = stake.get("created_at") or datetime.utcnow()
-    if isinstance(created_at, str):
-        created_at = datetime.fromisoformat(created_at)
-
-    elapsed_seconds = max((datetime.utcnow() - created_at).total_seconds(), 0)
-    elapsed_days = elapsed_seconds / 86400
-    apy = float(stake.get("apy", 0))
-    principal = float(stake.get("amount", 0))
-
-    return round(principal * (apy / 100) * (elapsed_days / 365), 8)
 
 
 @router.get("/products")
@@ -133,7 +138,7 @@ async def get_earn_positions(user_id: str = Depends(get_current_user_id), db=Dep
             "amount": float(position.get("amount", 0)),
             "apy": float(position.get("apy", 0)),
             "rewards": rewards,
-            "startDate": (position.get("created_at") or datetime.utcnow()).isoformat(),
+            "startDate": _parse_dt(position.get("created_at")).isoformat(),
             "lockPeriod": position.get("lock_period", "Flexible"),
             "daysRemaining": _days_remaining(position),
             "status": "active",
@@ -161,7 +166,8 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
     token_balance = float((wallet or {}).get("balances", {}).get(token, 0))
     usd_balance = float((wallet or {}).get("balances", {}).get("USD", 0))
 
-    usd_required = round(payload.amount * _token_usd_price(token), 8)
+    token_price = await _token_usd_price(token)
+    usd_required = round(payload.amount * token_price, 8)
     funding_currency = token
     funding_amount = payload.amount
 
@@ -245,7 +251,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
 
     credit_currency = str(stake.get("funding_currency") or token).upper()
     if credit_currency == "USD":
-        total_credit = round(total_credit * _token_usd_price(token), 8)
+        total_credit = round(total_credit * (await _token_usd_price(token)), 8)
 
     await stakes.update_one(
         {"id": payload.stake_id},
