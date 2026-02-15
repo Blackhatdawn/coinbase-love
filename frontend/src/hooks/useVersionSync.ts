@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { resolveApiBaseUrl } from '@/lib/runtimeConfig';
 
 const APP_VERSION = '1.0.0';
 
@@ -52,7 +53,7 @@ export function useVersionSync(): UseVersionSyncResult {
       setError(null);
 
       // Get API base URL
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const apiUrl = resolveApiBaseUrl();
       
       // Check version endpoint
       const response = await fetch(`${apiUrl}/api/version/check?client_version=${APP_VERSION}`, {

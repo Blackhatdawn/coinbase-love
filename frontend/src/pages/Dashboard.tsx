@@ -403,7 +403,7 @@ const renderWidget = (widgetId: string, props: any) => {
         </DashboardCard>
       );
 
-    case 'market':
+    case 'market': {
       // Sort by 24h change for top movers
       const sortedCrypto = [...(cryptoData || [])].sort((a, b) => Math.abs(b.change_24h || 0) - Math.abs(a.change_24h || 0));
       const topGainers = sortedCrypto.filter(c => (c.change_24h || 0) > 0).slice(0, 3);
@@ -514,6 +514,7 @@ const renderWidget = (widgetId: string, props: any) => {
           )}
         </DashboardCard>
       );
+    }
 
     case 'security':
       return (
@@ -543,7 +544,7 @@ const renderWidget = (widgetId: string, props: any) => {
         </DashboardCard>
       );
 
-    case 'holdings':
+    case 'holdings': {
       // Create a map for quick crypto data lookup
       const holdingsCryptoMap = (cryptoData || []).reduce((acc: Record<string, any>, crypto: any) => {
         acc[crypto.symbol?.toLowerCase()] = crypto;
@@ -607,6 +608,7 @@ const renderWidget = (widgetId: string, props: any) => {
           )}
         </DashboardCard>
       );
+    }
 
     case 'earn':
       return (
