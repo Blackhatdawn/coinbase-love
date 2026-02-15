@@ -157,7 +157,7 @@ function calculateQuality(pool: PooledConnection): ConnectionQuality {
 function getDefaultUrl(): string {
   const wsBaseUrl = resolveWsBaseUrl();
   // Use the new v2 enterprise endpoint
-  return wsBaseUrl ? `${wsBaseUrl}/api/v1/v2/ws/prices` : 'ws://localhost:8001/api/v1/v2/ws/prices';
+  return wsBaseUrl ? `${wsBaseUrl}/ws/prices` : 'ws://localhost:8001/ws/prices';
 }
 
 // ============================================
@@ -273,12 +273,13 @@ export function usePriceWebSocketV2(options: UsePriceWebSocketOptions = {}) {
           sendPing();
           break;
         
-        case 'error':
+        case 'error': {
           const errorMsg = data.message || 'Unknown error';
           log('❌ Error:', errorMsg);
           onError?.(errorMsg);
           updateStatus({ error: errorMsg });
           break;
+        }
         
         case 'subscribed':
           log('✅ Subscribed to channels:', data.channels);
