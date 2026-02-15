@@ -111,6 +111,11 @@ export default defineConfig(({ mode }) => ({
               return 'vendor-styling';
             }
 
+            // Floating UI positioning engine
+            if (id.includes('@floating-ui')) {
+              return 'vendor-floating';
+            }
+
             // UI Components - shared
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('sonner')) {
               return 'vendor-ui';

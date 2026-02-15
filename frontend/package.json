@@ -16,7 +16,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "check:bundle-budget": "node scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
