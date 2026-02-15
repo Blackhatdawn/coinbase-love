@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -64,11 +64,6 @@ export default defineConfig(({ mode }) => ({
         manualChunks: (id) => {
           // Node modules chunking
           if (id.includes('node_modules')) {
-            // Critical vendor - loaded immediately
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            
             // Monitoring & Analytics - separate chunk
             if (id.includes('@sentry') || id.includes('@vercel/analytics')) {
               return 'vendor-monitoring';
@@ -106,7 +101,7 @@ export default defineConfig(({ mode }) => ({
             }
             
             // Socket.IO
-            if (id.includes('socket.io')) {
+            if (/node_modules\/socket\.io-client\//.test(id)) {
               return 'vendor-socket';
             }
             
@@ -245,8 +240,6 @@ export default defineConfig(({ mode }) => ({
       // Use SWC for faster builds
       jsxImportSource: undefined,
     }),
-    // Split vendor chunks automatically
-    splitVendorChunkPlugin(),
     // Bundle analyzer - run with `npm run analyze`
     mode === 'analyze' && visualizer({
       open: true,
