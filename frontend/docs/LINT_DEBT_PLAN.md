@@ -2,7 +2,7 @@
 
 ## Baseline (current)
 - Command: `pnpm lint`
-- Snapshot: **152 issues** (5 errors, 147 warnings)
+- Snapshot: **147 issues** (0 errors, 147 warnings)
 - Primary categories:
   - `@typescript-eslint/no-explicit-any`
   - `react-hooks/exhaustive-deps`

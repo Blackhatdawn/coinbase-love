@@ -273,12 +273,13 @@ export function usePriceWebSocketV2(options: UsePriceWebSocketOptions = {}) {
           sendPing();
           break;
         
-        case 'error':
+        case 'error': {
           const errorMsg = data.message || 'Unknown error';
           log('❌ Error:', errorMsg);
           onError?.(errorMsg);
           updateStatus({ error: errorMsg });
           break;
+        }
         
         case 'subscribed':
           log('✅ Subscribed to channels:', data.channels);
