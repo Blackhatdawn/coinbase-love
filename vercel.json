@@ -3,7 +3,6 @@
   "version": 2,
   "name": "cryptovault",
   "framework": "vite",
-  "packageManager": "pnpm",
   "buildCommand": "pnpm run build:prod",
   "outputDirectory": "dist",
   "installCommand": "pnpm install --frozen-lockfile",
