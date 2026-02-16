@@ -274,8 +274,10 @@ EMAIL_SERVICE=sendgrid    # sendgrid | smtp | mock
 SENDGRID_API_KEY=         # Required when EMAIL_SERVICE=sendgrid
 SMTP_HOST=                # Required when EMAIL_SERVICE=smtp
 SMTP_PORT=587
-SMTP_USERNAME=
-SMTP_PASSWORD=
+SMTP_USERNAME=            # Optional for relay hosts that require auth
+SMTP_PASSWORD=            # Optional if SMTP auth is not required
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
 UPSTASH_REDIS_REST_URL=  # Redis cache
 SENTRY_DSN=              # Error tracking
 ```

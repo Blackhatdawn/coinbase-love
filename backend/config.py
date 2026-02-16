@@ -410,6 +410,33 @@ class Settings(BaseSettings):
             raise ValueError(f"Email service must be one of {valid_services}, got {v}")
         return value
 
+    @validator("smtp_port")
+    def validate_smtp_port(cls, v):
+        """Ensure SMTP port is within valid TCP range."""
+        port = int(v)
+        if not (1 <= port <= 65535):
+            raise ValueError(f"SMTP port must be between 1 and 65535, got {v}")
+        return port
+
+    @validator("smtp_password")
+    def validate_smtp_credentials_pair(cls, v, values):
+        """Ensure SMTP username/password are configured as a pair when auth is used."""
+        username = values.get("smtp_username")
+        has_username = bool(username)
+        has_password = bool(v)
+
+        if has_username != has_password:
+            raise ValueError("smtp_username and smtp_password must be provided together")
+        return v
+
+    @validator("smtp_use_ssl")
+    def validate_smtp_tls_mode(cls, v, values):
+        """Prevent conflicting SMTP TLS configuration."""
+        smtp_use_tls = bool(values.get("smtp_use_tls", True))
+        if smtp_use_tls and bool(v):
+            raise ValueError("smtp_use_tls and smtp_use_ssl cannot both be true")
+        return v
+
     @validator("app_url", "public_api_url", "public_ws_url", pre=True)
     def normalize_urls(cls, v):
         """Normalize URLs by removing trailing slashes."""
@@ -604,8 +631,6 @@ def validate_startup_environment() -> dict:
         elif settings.email_service == "smtp":
             strict_required["smtp_host"] = settings.smtp_host
             strict_required["smtp_port"] = settings.smtp_port
-            strict_required["smtp_username"] = settings.smtp_username
-            strict_required["smtp_password"] = settings.smtp_password
 
         if not settings.allow_mock_payment_fallback:
             strict_required["nowpayments_api_key"] = settings.nowpayments_api_key

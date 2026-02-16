@@ -1,7 +1,8 @@
 """
-CryptoVault Enterprise Email Service with SendGrid Integration
+CryptoVault Enterprise Email Service with SendGrid + SMTP Integration
 Enterprise-grade email system with:
 - SendGrid integration for production email delivery
+- SMTP integration for standard relay-based delivery
 - Retry logic with exponential backoff
 - Rate limiting awareness
 - SOC 2 compliance logging
@@ -100,14 +101,13 @@ class EmailService:
                 logger.info("📧 Email service running in mock mode")
 
         elif configured_service == 'smtp':
-            if self.smtp_host and self.smtp_username and self.smtp_password:
+            if self.smtp_host:
                 self.mode = 'smtp'
                 logger.info("✅ Email service initialized with SMTP")
             else:
                 self.mode = 'mock'
                 logger.warning(
-                    "⚠️ SMTP is selected but SMTP credentials are incomplete "
-                    "(SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD) - falling back to mock email mode"
+                    "⚠️ SMTP is selected but SMTP_HOST is missing - falling back to mock email mode"
                 )
                 logger.info("📧 Email service running in mock mode")
 
@@ -363,7 +363,7 @@ CryptoVault Financial, Inc.
         retry: bool = True
     ) -> bool:
         """
-        Send email via SendGrid or mock with retry logic.
+        Send email via SendGrid, SMTP, or mock with retry logic.
         
         Args:
             to_email: Recipient email address
@@ -471,9 +471,9 @@ CryptoVault Financial, Inc.
                 message,
                 hostname=self.smtp_host,
                 port=self.smtp_port,
-                username=self.smtp_username,
-                password=self.smtp_password,
-                start_tls=self.smtp_use_tls,
+                username=self.smtp_username if self.smtp_username else None,
+                password=self.smtp_password if self.smtp_password else None,
+                start_tls=False if self.smtp_use_ssl else self.smtp_use_tls,
                 use_tls=self.smtp_use_ssl,
                 timeout=20,
             )
