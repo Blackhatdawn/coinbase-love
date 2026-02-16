@@ -206,7 +206,7 @@ class Settings(BaseSettings):
     # ============================================
     # EMAIL CONFIGURATION
     # ============================================
-    email_service: str = Field(default="sendgrid", description="Email service provider")
+    email_service: str = Field(default="sendgrid", description="Email service provider (sendgrid, smtp, mock)")
     sendgrid_api_key: Optional[SecretStr] = Field(
         default=None,
         description="SendGrid API key"
@@ -223,6 +223,12 @@ class Settings(BaseSettings):
         default="https://cryptovault.financial/verify",
         description="Email verification URL"
     )
+    smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_username: Optional[str] = Field(default=None, description="SMTP username")
+    smtp_password: Optional[SecretStr] = Field(default=None, description="SMTP password")
+    smtp_use_tls: bool = Field(default=True, description="Use STARTTLS for SMTP connections")
+    smtp_use_ssl: bool = Field(default=False, description="Use implicit SSL/TLS for SMTP connections")
 
     # ============================================
     # EXTERNAL CRYPTO SERVICES
@@ -394,6 +400,64 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of {valid_levels}, got {v}")
         return v.upper()
+
+    @validator("email_service")
+    def validate_email_service(cls, v):
+        """Ensure email service provider is valid."""
+        value = str(v).strip().lower()
+        valid_services = ["sendgrid", "smtp", "mock"]
+        if value not in valid_services:
+            raise ValueError(f"Email service must be one of {valid_services}, got {v}")
+        return value
+
+    @validator("smtp_host", "smtp_username", pre=True)
+    def normalize_optional_smtp_strings(cls, v):
+        """Convert blank SMTP text fields to None for predictable validation."""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @validator("smtp_password", pre=True)
+    def normalize_optional_smtp_password(cls, v):
+        """Convert blank SMTP password values to None."""
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+
+        get_secret_value = getattr(v, "get_secret_value", None)
+        if callable(get_secret_value):
+            raw = get_secret_value()
+            if isinstance(raw, str) and not raw.strip():
+                return None
+        return v
+
+    @validator("smtp_port")
+    def validate_smtp_port(cls, v):
+        """Ensure SMTP port is within valid TCP range."""
+        port = int(v)
+        if not (1 <= port <= 65535):
+            raise ValueError(f"SMTP port must be between 1 and 65535, got {v}")
+        return port
+
+    @validator("smtp_password")
+    def validate_smtp_credentials_pair(cls, v, values):
+        """Ensure SMTP username/password are configured as a pair when auth is used."""
+        username = values.get("smtp_username")
+        has_username = bool(username)
+        has_password = bool(v)
+
+        if has_username != has_password:
+            raise ValueError("smtp_username and smtp_password must be provided together")
+        return v
+
+    @validator("smtp_use_ssl")
+    def validate_smtp_tls_mode(cls, v, values):
+        """Prevent conflicting SMTP TLS configuration."""
+        smtp_use_tls = bool(values.get("smtp_use_tls", True))
+        if smtp_use_tls and bool(v):
+            raise ValueError("smtp_use_tls and smtp_use_ssl cannot both be true")
+        return v
 
     @validator("app_url", "public_api_url", "public_ws_url", pre=True)
     def normalize_urls(cls, v):
@@ -586,6 +650,9 @@ def validate_startup_environment() -> dict:
 
         if settings.email_service == "sendgrid":
             strict_required["sendgrid_api_key"] = settings.sendgrid_api_key
+        elif settings.email_service == "smtp":
+            strict_required["smtp_host"] = settings.smtp_host
+            strict_required["smtp_port"] = settings.smtp_port
 
         if not settings.allow_mock_payment_fallback:
             strict_required["nowpayments_api_key"] = settings.nowpayments_api_key

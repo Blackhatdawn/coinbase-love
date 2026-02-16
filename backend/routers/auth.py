@@ -308,9 +308,14 @@ async def login(
         settings.environment != 'production'
     )
     if not user.email_verified and not skip_verification:
-        raise HTTPException(
-            status_code=401,
-            detail="Email not verified. Please check your email and verify your account."
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Email verification required before login.",
+                "code": "EMAIL_NOT_VERIFIED",
+                "verificationRequired": True,
+                "nextAction": "verify_email"
+            }
         )
 
     await users_collection.update_one(
