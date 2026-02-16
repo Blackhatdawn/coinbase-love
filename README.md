@@ -1,8 +1,8 @@
 # 🏦 CryptoVault - Institutional-Grade Crypto Platform
 
-> **Production-Ready** | Secure, scalable cryptocurrency trading and custody platform with advanced features
+> **Production Candidate** | Secure, scalable cryptocurrency trading and custody platform with advanced features
 
-[![Status](https://img.shields.io/badge/status-production--ready-success)](/)
+[![Status](https://img.shields.io/badge/status-production--candidate-yellow)](/)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](/)
 [![License](https://img.shields.io/badge/license-MIT-green)](/)
 
@@ -102,6 +102,13 @@ npm run dev
 | [🔧 Network Error Fix](NETWORK_ERROR_FIX.md) | Connection troubleshooting |
 | [💚 Health Check Fix](HEALTH_CHECK_FIX_SUMMARY.md) | Health check details |
 | [📦 Deployment Guide](DEPLOYMENT_GUIDE.md) | Production deployment |
+| [✅ Production Readiness](docs/PRODUCTION_READINESS.md) | Source-of-truth go-live checklist and open gaps |
+
+## 🚦 Release Status
+
+This repository has a production-capable architecture, but **go-live must be gated by checklist completion** in `docs/PRODUCTION_READINESS.md` and `docs/deployment/PRODUCTION_DEPLOYMENT_GUIDE.md`.
+
+The project should only be labeled "Production Ready" when those checklists are complete for the target environment.
 
 ## 🏗️ Architecture
 
@@ -420,6 +427,6 @@ Special thanks to all contributors and the open-source community!
 
 ---
 
-**Status**: ✅ Production Ready | **Version**: 1.0.0 | **Last Updated**: January 2026
+**Status**: 🟡 Production Candidate (checklist-gated) | **Version**: 1.0.0 | **Last Updated**: February 2026
 
 Made with ❤️ by the CryptoVault team

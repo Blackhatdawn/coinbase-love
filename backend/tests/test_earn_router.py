@@ -1,5 +1,91 @@
-import pytest
+import asyncio
 from datetime import datetime, timedelta
+import sys
+import types
+
+import pytest
+
+try:
+    import fastapi  # noqa: F401
+except ModuleNotFoundError:
+    fastapi_stub = types.ModuleType("fastapi")
+
+    class HTTPException(Exception):
+        def __init__(self, status_code: int, detail: str):
+            self.status_code = status_code
+            self.detail = detail
+            super().__init__(detail)
+
+    class APIRouter:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get(self, *args, **kwargs):
+            def deco(fn):
+                return fn
+            return deco
+
+        def post(self, *args, **kwargs):
+            def deco(fn):
+                return fn
+            return deco
+
+    def Depends(dep):
+        return dep
+
+    fastapi_stub.APIRouter = APIRouter
+    fastapi_stub.Depends = Depends
+    fastapi_stub.HTTPException = HTTPException
+    sys.modules["fastapi"] = fastapi_stub
+
+try:
+    import pydantic  # noqa: F401
+except ModuleNotFoundError:
+    pydantic_stub = types.ModuleType("pydantic")
+
+    class BaseModel:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    def Field(default=..., **kwargs):
+        return default
+
+    pydantic_stub.BaseModel = BaseModel
+    pydantic_stub.Field = Field
+    sys.modules["pydantic"] = pydantic_stub
+
+
+deps_stub = types.ModuleType("dependencies")
+
+def _noop_dep(*args, **kwargs):
+    return None
+
+
+deps_stub.get_current_user_id = _noop_dep
+deps_stub.get_db = _noop_dep
+sys.modules["dependencies"] = deps_stub
+
+config_stub = types.ModuleType("config")
+
+
+class _Settings:
+    feature_staking_enabled = True
+
+
+config_stub.settings = _Settings()
+sys.modules["config"] = config_stub
+
+coincap_stub = types.ModuleType("coincap_service")
+
+
+class _CoincapService:
+    async def get_prices(self, *_args, **_kwargs):
+        return []
+
+
+coincap_stub.coincap_service = _CoincapService()
+sys.modules["coincap_service"] = coincap_stub
 
 from routers import earn
 
@@ -86,8 +172,7 @@ class FakeDB:
         return self.collections[name]
 
 
-@pytest.mark.anyio
-async def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeypatch):
+def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeypatch):
     monkeypatch.setattr(earn.settings, 'feature_staking_enabled', True)
     monkeypatch.setattr(earn, '_token_usd_price', _fake_token_price)
 
@@ -98,16 +183,15 @@ async def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeyp
     db = FakeDB({'wallets': wallets, 'stakes': stakes, 'transactions': transactions})
 
     payload = earn.CreateStakeRequest(product_id='eth-30d', amount=0.1)
-    result = await earn.create_stake(payload=payload, user_id='u1', db=db)
+    result = asyncio.run(earn.create_stake(payload=payload, user_id='u1', db=db))
 
     assert result['success'] is True
-    wallet = await wallets.find_one({'user_id': 'u1'})
+    wallet = asyncio.run(wallets.find_one({'user_id': 'u1'}))
     assert wallet['balances']['USD'] == pytest.approx(650.0)
     assert stakes.docs[0]['funding_currency'] == 'USD'
 
 
-@pytest.mark.anyio
-async def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
+def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
     monkeypatch.setattr(earn.settings, 'feature_staking_enabled', True)
     monkeypatch.setattr(earn, '_token_usd_price', _fake_token_price)
 
@@ -129,16 +213,15 @@ async def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
     transactions = FakeCollection()
     db = FakeDB({'wallets': wallets, 'stakes': stakes, 'transactions': transactions})
 
-    result = await earn.redeem_stake(payload=earn.CloseStakeRequest(stake_id='s1'), user_id='u1', db=db)
+    result = asyncio.run(earn.redeem_stake(payload=earn.CloseStakeRequest(stake_id='s1'), user_id='u1', db=db))
 
     assert result['success'] is True
     assert result['redeemed']['token'] == 'USD'
-    wallet = await wallets.find_one({'user_id': 'u1'})
+    wallet = asyncio.run(wallets.find_one({'user_id': 'u1'}))
     assert wallet['balances']['USD'] > 350
 
 
-@pytest.mark.anyio
-async def test_positions_returns_dynamic_days_remaining(monkeypatch):
+def test_positions_returns_dynamic_days_remaining(monkeypatch):
     monkeypatch.setattr(earn.settings, 'feature_staking_enabled', True)
 
     created = datetime.utcnow() - timedelta(days=10)
@@ -156,6 +239,6 @@ async def test_positions_returns_dynamic_days_remaining(monkeypatch):
     }])
 
     db = FakeDB({'stakes': stakes})
-    data = await earn.get_earn_positions(user_id='u1', db=db)
+    data = asyncio.run(earn.get_earn_positions(user_id='u1', db=db))
 
     assert data['positions'][0]['daysRemaining'] == 20
