@@ -1,10 +1,9 @@
 """
 Multi-Source Cryptocurrency Data Service
-Primary source: CoinCap (best free tier - 200 req/min)
+Primary source: CoinGecko (reliable public market API)
 Secondary source: CoinPaprika (free, no auth needed)
 Provides redundant data fetching with automatic fallback
 
-Note: CoinGecko has been removed due to strict rate limiting issues.
 """
 import httpx
 import logging
@@ -20,10 +19,10 @@ logger = logging.getLogger(__name__)
 class MultiSourceCryptoService:
     """
     Fetches cryptocurrency data from multiple sources with automatic fallback.
-    Priority order: CoinCap (primary) → CoinPaprika (fallback)
+    Priority order: CoinGecko (primary) → CoinPaprika (fallback)
     
     Why this order:
-    - CoinCap: 200 req/min free, reliable, good WebSocket support
+    - CoinGecko: mature market API, broad asset coverage
     - CoinPaprika: No auth required, good fallback
     """
     
@@ -62,12 +61,12 @@ class MultiSourceCryptoService:
         self.tracked_coins = list(self.coin_id_map.keys())
         
         logger.info("🌐 Multi-Source Crypto Service initialized")
-        logger.info("📊 Sources: CoinCap (primary) → CoinPaprika (fallback)")
+        logger.info("📊 Sources: CoinGecko (primary) → CoinPaprika (fallback)")
     
     async def get_prices(self, coin_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Fetch current prices for specified coins with multi-source fallback.
-        Tries CoinCap first, then CoinPaprika as fallback.
+        Tries CoinGecko first, then CoinPaprika as fallback.
         """
         coins_to_fetch = coin_ids or self.tracked_coins
         
@@ -77,16 +76,16 @@ class MultiSourceCryptoService:
             logger.info("✅ Using cached prices")
             return cached_prices
         
-        # Try CoinCap first (PRIMARY - best rate limits)
+        # Try CoinGecko first (PRIMARY)
         try:
-            logger.info("📊 Fetching from CoinCap (primary)...")
+            logger.info("📊 Fetching from CoinGecko (primary)...")
             prices = await coincap_service.get_prices(coins_to_fetch)
             if prices:
-                logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinCap")
+                logger.info(f"✅ Successfully fetched {len(prices)} prices from CoinGecko")
                 await redis_cache.cache_prices(prices)
                 return prices
         except Exception as e:
-            logger.warning(f"⚠️ CoinCap failed: {str(e)}")
+            logger.warning(f"⚠️ CoinGecko failed: {str(e)}")
         
         # Try CoinPaprika (FALLBACK)
         try:
@@ -138,7 +137,7 @@ class MultiSourceCryptoService:
                         "volume_24h": quote.get("volume_24h", 0),
                         "change_24h": quote.get("percent_change_24h", 0),
                         "rank": data.get("rank", 0),
-                        "image": f"https://assets.coincap.io/assets/icons/{symbol.lower()}@2x.png",
+                        "image": "",
                         "last_updated": data.get("last_updated", datetime.now().isoformat()),
                         "source": "coinpaprika"
                     })
@@ -151,15 +150,15 @@ class MultiSourceCryptoService:
     async def get_coin_details(self, coin_id: str) -> Optional[Dict[str, Any]]:
         """
         Get detailed information about a specific cryptocurrency.
-        Tries CoinCap first, then CoinPaprika as fallback.
+        Tries CoinGecko first, then CoinPaprika as fallback.
         """
-        # Try CoinCap first
+        # Try CoinGecko first
         try:
             details = await coincap_service.get_coin_details(coin_id)
             if details:
                 return details
         except Exception as e:
-            logger.warning(f"⚠️ CoinCap details failed: {str(e)}")
+            logger.warning(f"⚠️ CoinGecko details failed: {str(e)}")
         
         # Fallback to CoinPaprika
         try:
@@ -194,16 +193,16 @@ class MultiSourceCryptoService:
     async def get_price_history(self, coin_id: str, days: int = 7) -> List[Dict[str, Any]]:
         """
         Get historical price data.
-        CoinCap provides good free historical data.
+        CoinGecko provides robust historical data.
         Falls back to CoinPaprika if needed.
         """
-        # Try CoinCap first (better historical data)
+        # Try CoinGecko first (better historical data)
         try:
             history = await coincap_service.get_price_history(coin_id, days)
             if history:
                 return history
         except Exception as e:
-            logger.warning(f"⚠️ CoinCap history failed: {str(e)}")
+            logger.warning(f"⚠️ CoinGecko history failed: {str(e)}")
         
         # Fallback to CoinPaprika
         try:
