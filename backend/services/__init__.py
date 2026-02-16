@@ -3,7 +3,7 @@ Backend microservices for CryptoVault
 Real-time price streaming, caching, gas fee calculation, and WebSocket management
 
 Enterprise Features:
-- Price streaming via CoinCap WebSocket
+- Price streaming via CoinGecko polling
 - Connection management with rate limiting
 - Metrics and health monitoring
 - Graceful shutdown support

@@ -159,13 +159,13 @@ async def websocket_price_stream(websocket: WebSocket):
             "ethereum": "2500.25"
         },
         "timestamp": "2026-01-16T05:00:00.000Z",
-        "source": "coincap"
+        "source": "coingecko"
     }
     
     {
         "type": "status",
         "state": "connected",
-        "source": "coincap",
+        "source": "coingecko",
         "prices_cached": 1247,
         "timestamp": "2026-01-16T05:00:00.000Z"
     }
