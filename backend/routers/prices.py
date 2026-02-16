@@ -32,7 +32,7 @@ async def get_all_prices(response: Response) -> Dict[str, Any]:
         },
         "status": {
             "state": "connected",
-            "source": "coincap",
+            "source": "coingecko",
             "last_update": "2026-01-16T05:00:00.000Z"
         }
     }
@@ -105,7 +105,7 @@ async def health_check() -> Dict[str, Any]:
     {
         "healthy": true,
         "state": "connected",
-        "source": "coincap",
+        "source": "coingecko",
         "prices_cached": 1200,
         "last_update": "2026-01-16T05:00:00.000Z"
     }

@@ -270,7 +270,14 @@ JWT_SECRET=secret-key
 CORS_ORIGINS=http://localhost:3000
 
 # Optional
-RESEND_API_KEY=          # Email service
+EMAIL_SERVICE=sendgrid    # sendgrid | smtp | mock
+SENDGRID_API_KEY=         # Required when EMAIL_SERVICE=sendgrid
+SMTP_HOST=                # Required when EMAIL_SERVICE=smtp
+SMTP_PORT=587
+SMTP_USERNAME=            # Optional for relay hosts that require auth
+SMTP_PASSWORD=            # Optional if SMTP auth is not required
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
 UPSTASH_REDIS_REST_URL=  # Redis cache
 SENTRY_DSN=              # Error tracking
 ```
