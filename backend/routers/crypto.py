@@ -13,7 +13,7 @@ router = APIRouter(prefix="/crypto", tags=["cryptocurrency"])
 async def get_all_cryptocurrencies(response: Response):
     """
     Get all cryptocurrency prices from multiple sources.
-    Primary: CoinCap (200 req/min) → Fallback: CoinPaprika
+    Primary: CoinGecko → Fallback: CoinPaprika
     """
     try:
         # Cache for 30 seconds - prices update frequently but not instantly
@@ -45,7 +45,7 @@ async def get_trading_pairs():
 async def get_cryptocurrency(coin_id: str):
     """
     Get specific cryptocurrency details from multiple sources.
-    Primary: CoinCap → Fallback: CoinPaprika
+    Primary: CoinGecko → Fallback: CoinPaprika
     """
     try:
         coin_data = await multi_source_service.get_coin_details(coin_id.lower())
@@ -63,7 +63,7 @@ async def get_cryptocurrency(coin_id: str):
 async def get_price_history(coin_id: str, days: int = 7):
     """
     Get price history for a cryptocurrency from multiple sources.
-    Primary: CoinCap (excellent historical data) → Fallback: CoinPaprika
+    Primary: CoinGecko → Fallback: CoinPaprika
     """
     try:
         if days < 1 or days > 365:
