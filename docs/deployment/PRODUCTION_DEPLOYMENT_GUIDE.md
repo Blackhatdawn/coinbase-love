@@ -6,8 +6,8 @@ This guide provides comprehensive instructions for deploying CryptoVault to prod
 
 | Component | Platform | URL | Status |
 |-----------|----------|-----|--------|
-| Frontend | Vercel | `https://coinbase-love.vercel.app` | 🚀 Production Ready |
-| Backend | Render | `https://coinbase-love.fly.dev` | 🚀 Production Ready |
+| Frontend | Vercel | `https://coinbase-love.vercel.app` | 🟡 Production Candidate |
+| Backend | Render | `https://coinbase-love.fly.dev` | 🟡 Production Candidate |
 
 ## 📋 Pre-Deployment Checklist
 
@@ -22,6 +22,9 @@ MONGO_URL=mongodb+srv://username:password@cluster.mongodb.net/cryptovault
 # CRITICAL: Authentication
 JWT_SECRET=your-random-256-bit-secret-here
 CSRF_SECRET=your-csrf-secret-different-from-jwt
+
+# Feature flags (set per rollout plan)
+FEATURE_STAKING_ENABLED=true
 
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -293,6 +296,8 @@ Before announcing production readiness:
 - [ ] Cookies set correctly (httpOnly, Secure, SameSite)
 - [ ] CSRF tokens working
 - [ ] Socket.IO real-time updates
+- [ ] Earn feature flag enabled intentionally (`FEATURE_STAKING_ENABLED=true`)
+- [ ] Earn smoke checks pass (`GET /api/earn/products`, stake, redeem flow)
 - [ ] File uploads work (if applicable)
 
 ## 📞 Support
@@ -315,4 +320,4 @@ If deployment fails:
 
 **Last Updated:** 2026-02-10  
 **Version:** 2.0.0  
-**Status:** Production Ready ✅
+**Status:** Production Candidate (verify checklist before go-live) 🟡

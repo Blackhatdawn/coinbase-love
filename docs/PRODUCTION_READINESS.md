@@ -216,7 +216,7 @@
 ### Post-Deployment
 
 - [ ] Health checks passing
-- [ ] Smoke tests completed
+- [ ] Smoke tests completed (including Earn stake/redeem flow when staking is enabled)
 - [ ] Monitoring dashboards active
 - [ ] Logs streaming correctly
 - [ ] Error tracking configured
@@ -230,7 +230,7 @@
 - [x] Token blacklisting
 - [x] Password hashing (bcrypt)
 - [x] Account lockout mechanism
-- [ ] 2FA implementation (backend ready, frontend pending)
+- [x] 2FA implementation (backend + frontend)
 - [ ] Session management
 
 ### API Security
@@ -332,12 +332,13 @@
 - Rate limits can be adjusted in `config.py`
 - Structured logging is enabled in production mode
 - WebSocket connections have ping/pong health monitoring
+- Earn endpoints are controlled by `FEATURE_STAKING_ENABLED` and require rollout-specific smoke checks
 - Frontend API client handles token refresh automatically
 - Sentry integration requires DSN configuration
 
 ## 🎯 Current Status
 
-**Production Ready**: YES ✅
+**Production Ready**: NOT YET (checklist pending) ⚠️
 
 The application has been successfully enhanced with:
 - ✅ Sentry error tracking integration (backend & frontend)
@@ -357,5 +358,5 @@ The application has been successfully enhanced with:
 
 ---
 
-**Last Updated**: August 2025
+**Last Updated**: February 2026
 **Version**: 1.1.0
