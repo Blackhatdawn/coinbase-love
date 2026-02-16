@@ -410,6 +410,28 @@ class Settings(BaseSettings):
             raise ValueError(f"Email service must be one of {valid_services}, got {v}")
         return value
 
+    @validator("smtp_host", "smtp_username", pre=True)
+    def normalize_optional_smtp_strings(cls, v):
+        """Convert blank SMTP text fields to None for predictable validation."""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @validator("smtp_password", pre=True)
+    def normalize_optional_smtp_password(cls, v):
+        """Convert blank SMTP password values to None."""
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+
+        get_secret_value = getattr(v, "get_secret_value", None)
+        if callable(get_secret_value):
+            raw = get_secret_value()
+            if isinstance(raw, str) and not raw.strip():
+                return None
+        return v
+
     @validator("smtp_port")
     def validate_smtp_port(cls, v):
         """Ensure SMTP port is within valid TCP range."""
