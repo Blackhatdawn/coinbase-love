@@ -216,7 +216,7 @@
 ### Post-Deployment
 
 - [ ] Health checks passing
-- [ ] Smoke tests completed
+- [ ] Smoke tests completed (including Earn stake/redeem flow when staking is enabled)
 - [ ] Monitoring dashboards active
 - [ ] Logs streaming correctly
 - [ ] Error tracking configured
@@ -332,6 +332,7 @@
 - Rate limits can be adjusted in `config.py`
 - Structured logging is enabled in production mode
 - WebSocket connections have ping/pong health monitoring
+- Earn endpoints are controlled by `FEATURE_STAKING_ENABLED` and require rollout-specific smoke checks
 - Frontend API client handles token refresh automatically
 - Sentry integration requires DSN configuration
 

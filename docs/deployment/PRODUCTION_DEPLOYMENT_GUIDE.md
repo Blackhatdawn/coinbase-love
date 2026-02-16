@@ -23,6 +23,9 @@ MONGO_URL=mongodb+srv://username:password@cluster.mongodb.net/cryptovault
 JWT_SECRET=your-random-256-bit-secret-here
 CSRF_SECRET=your-csrf-secret-different-from-jwt
 
+# Feature flags (set per rollout plan)
+FEATURE_STAKING_ENABLED=true
+
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
@@ -293,6 +296,8 @@ Before announcing production readiness:
 - [ ] Cookies set correctly (httpOnly, Secure, SameSite)
 - [ ] CSRF tokens working
 - [ ] Socket.IO real-time updates
+- [ ] Earn feature flag enabled intentionally (`FEATURE_STAKING_ENABLED=true`)
+- [ ] Earn smoke checks pass (`GET /api/earn/products`, stake, redeem flow)
 - [ ] File uploads work (if applicable)
 
 ## 📞 Support
