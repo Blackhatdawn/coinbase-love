@@ -206,7 +206,7 @@ class Settings(BaseSettings):
     # ============================================
     # EMAIL CONFIGURATION
     # ============================================
-    email_service: str = Field(default="sendgrid", description="Email service provider")
+    email_service: str = Field(default="sendgrid", description="Email service provider (sendgrid, smtp, mock)")
     sendgrid_api_key: Optional[SecretStr] = Field(
         default=None,
         description="SendGrid API key"
@@ -223,6 +223,12 @@ class Settings(BaseSettings):
         default="https://cryptovault.financial/verify",
         description="Email verification URL"
     )
+    smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_username: Optional[str] = Field(default=None, description="SMTP username")
+    smtp_password: Optional[SecretStr] = Field(default=None, description="SMTP password")
+    smtp_use_tls: bool = Field(default=True, description="Use STARTTLS for SMTP connections")
+    smtp_use_ssl: bool = Field(default=False, description="Use implicit SSL/TLS for SMTP connections")
 
     # ============================================
     # EXTERNAL CRYPTO SERVICES
@@ -394,6 +400,15 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of {valid_levels}, got {v}")
         return v.upper()
+
+    @validator("email_service")
+    def validate_email_service(cls, v):
+        """Ensure email service provider is valid."""
+        value = str(v).strip().lower()
+        valid_services = ["sendgrid", "smtp", "mock"]
+        if value not in valid_services:
+            raise ValueError(f"Email service must be one of {valid_services}, got {v}")
+        return value
 
     @validator("app_url", "public_api_url", "public_ws_url", pre=True)
     def normalize_urls(cls, v):
@@ -586,6 +601,11 @@ def validate_startup_environment() -> dict:
 
         if settings.email_service == "sendgrid":
             strict_required["sendgrid_api_key"] = settings.sendgrid_api_key
+        elif settings.email_service == "smtp":
+            strict_required["smtp_host"] = settings.smtp_host
+            strict_required["smtp_port"] = settings.smtp_port
+            strict_required["smtp_username"] = settings.smtp_username
+            strict_required["smtp_password"] = settings.smtp_password
 
         if not settings.allow_mock_payment_fallback:
             strict_required["nowpayments_api_key"] = settings.nowpayments_api_key

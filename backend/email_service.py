@@ -15,6 +15,9 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Tuple, Optional, Dict, Any
 import logging
+from email.message import EmailMessage
+
+import aiosmtplib
 
 from config import settings
 
@@ -60,8 +63,8 @@ def get_token_expiration(hours: int = 24, minutes: int = 0) -> datetime:
 
 class EmailService:
     """
-    Production-ready email service with SendGrid integration.
-    Falls back to mock mode if SendGrid is not configured.
+    Production-ready email service with SendGrid and SMTP integration.
+    Falls back to mock mode if configured provider is unavailable.
     Includes CryptoVault branding and SOC 2 compliant logging.
     """
     
@@ -71,21 +74,47 @@ class EmailService:
         self.sendgrid_api_key = api_key.get_secret_value() if api_key else None
         self.from_email = settings.email_from
         self.from_name = settings.email_from_name
-        self.use_mock = settings.email_service == 'mock'
 
-        if self.sendgrid_api_key and SENDGRID_AVAILABLE and not self.use_mock:
-            self.client = SendGridAPIClient(self.sendgrid_api_key)
-            self.mode = 'sendgrid'
-            logger.info("✅ Email service initialized with SendGrid")
+        smtp_password = settings.smtp_password
+        self.smtp_host = settings.smtp_host
+        self.smtp_port = settings.smtp_port
+        self.smtp_username = settings.smtp_username
+        self.smtp_password = smtp_password.get_secret_value() if smtp_password else None
+        self.smtp_use_tls = settings.smtp_use_tls
+        self.smtp_use_ssl = settings.smtp_use_ssl
+
+        configured_service = settings.email_service
+        self.client = None
+
+        if configured_service == 'sendgrid':
+            if self.sendgrid_api_key and SENDGRID_AVAILABLE:
+                self.client = SendGridAPIClient(self.sendgrid_api_key)
+                self.mode = 'sendgrid'
+                logger.info("✅ Email service initialized with SendGrid")
+            else:
+                self.mode = 'mock'
+                if not self.sendgrid_api_key:
+                    logger.warning("⚠️ SENDGRID_API_KEY missing - falling back to mock email mode")
+                elif not SENDGRID_AVAILABLE:
+                    logger.warning("⚠️ sendgrid package not installed - falling back to mock email mode")
+                logger.info("📧 Email service running in mock mode")
+
+        elif configured_service == 'smtp':
+            if self.smtp_host and self.smtp_username and self.smtp_password:
+                self.mode = 'smtp'
+                logger.info("✅ Email service initialized with SMTP")
+            else:
+                self.mode = 'mock'
+                logger.warning(
+                    "⚠️ SMTP is selected but SMTP credentials are incomplete "
+                    "(SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD) - falling back to mock email mode"
+                )
+                logger.info("📧 Email service running in mock mode")
+
         else:
-            self.client = None
             self.mode = 'mock'
-            if settings.email_service == 'sendgrid' and not self.sendgrid_api_key:
-                logger.warning("⚠️ SENDGRID_API_KEY missing - falling back to mock email mode")
-            elif settings.email_service == 'sendgrid' and not SENDGRID_AVAILABLE:
-                logger.warning("⚠️ sendgrid package not installed - falling back to mock email mode")
             logger.info("📧 Email service running in mock mode")
-    
+
     def _get_email_header(self) -> str:
         """Get branded email header HTML."""
         return """
@@ -350,8 +379,11 @@ CryptoVault Financial, Inc.
             if retry:
                 return await self._send_with_retry(to_email, subject, html_content, text_content)
             return await self._send_sendgrid(to_email, subject, html_content, text_content)
-        else:
-            return await self._send_mock(to_email, subject)
+
+        if self.mode == 'smtp':
+            return await self._send_smtp(to_email, subject, html_content, text_content)
+
+        return await self._send_mock(to_email, subject)
     
     async def _send_with_retry(
         self,
@@ -419,6 +451,38 @@ CryptoVault Financial, Inc.
             logger.error(f"❌ SendGrid exception: {str(e)}")
             raise  # Re-raise for retry logic
     
+    async def _send_smtp(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: str
+    ) -> bool:
+        """Send email via SMTP."""
+        try:
+            message = EmailMessage()
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+            message["Subject"] = subject
+            message.set_content(text_content)
+            message.add_alternative(html_content, subtype="html")
+
+            await aiosmtplib.send(
+                message,
+                hostname=self.smtp_host,
+                port=self.smtp_port,
+                username=self.smtp_username,
+                password=self.smtp_password,
+                start_tls=self.smtp_use_tls,
+                use_tls=self.smtp_use_ssl,
+                timeout=20,
+            )
+            logger.info(f"✅ SMTP email sent successfully to {to_email}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ SMTP exception: {str(e)}")
+            return False
+
     async def _send_mock(self, to_email: str, subject: str) -> bool:
         """Mock email sending for development/testing."""
         logger.info(f"📧 [MOCK] Email to {to_email}")
