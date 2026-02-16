@@ -40,6 +40,8 @@ class TelegramBotService:
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
         self._polling_task: Optional[asyncio.Task] = None
         self._last_update_id: Optional[int] = None
+        self._polling_disabled_reason: Optional[str] = None
+        self._polling_conflict_logged: bool = False
     
     async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
         """Send message to all admin chats"""
@@ -381,6 +383,7 @@ Check logs and take action if needed.
             "configured_admin_count": len(self.admin_chat_ids),
             "api_reachable": False,
             "bot_username": None,
+            "polling_disabled_reason": self._polling_disabled_reason,
         }
 
         if not self.enabled:
@@ -410,6 +413,20 @@ Check logs and take action if needed.
         if not self.enabled:
             logger.info("Telegram command polling not started (bot disabled or not fully configured)")
             return
+
+        # Long-polling Telegram updates from multiple app workers causes 409 conflicts.
+        # In multi-worker deployments, prefer webhook mode for commands instead of polling.
+        if settings.workers and int(settings.workers) > 1:
+            self._polling_disabled_reason = (
+                f"Polling disabled because WORKERS={settings.workers}. "
+                "Use Telegram webhook mode for multi-worker deployments."
+            )
+            logger.warning("Telegram command polling disabled: %s", self._polling_disabled_reason)
+            return
+
+        if self._polling_disabled_reason:
+            logger.warning("Telegram command polling disabled: %s", self._polling_disabled_reason)
+            return
         if self._polling_task and not self._polling_task.done():
             return
 
@@ -436,6 +453,10 @@ Check logs and take action if needed.
         while True:
             try:
                 updates = await self.get_updates(offset=self._last_update_id)
+                if self._polling_disabled_reason:
+                    logger.warning("Stopping Telegram command polling loop: %s", self._polling_disabled_reason)
+                    return
+
                 for update in updates.get("result", []):
                     update_id = update.get("update_id")
                     if isinstance(update_id, int):
@@ -468,29 +489,51 @@ Check logs and take action if needed.
             await asyncio.sleep(2)
 
     async def get_updates(self, offset: Optional[int] = None) -> Dict[str, Any]:
-        """Get bot updates (for command polling)"""
+        """Get bot updates (for command polling)."""
         if not self.enabled:
             return {"ok": False, "result": []}
-        
+
         try:
             params = {}
             if offset:
                 params['offset'] = offset
-            
+
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.get(
                     f"{self.base_url}/getUpdates",
                     params=params
                 )
-                
+
                 if response.status_code == 200:
                     return response.json()
-                else:
-                    logger.error(f"Failed to get updates: {response.status_code}")
+
+                # Telegram returns 409 when webhook mode is active while polling is used.
+                if response.status_code == 409:
+                    description = ""
+                    try:
+                        payload = response.json()
+                        description = str(payload.get("description", "")).strip()
+                    except Exception:
+                        description = response.text.strip()
+
+                    if not self._polling_conflict_logged:
+                        logger.warning(
+                            "Telegram polling conflict (409). Likely webhook mode is active elsewhere; "
+                            "disabling command polling to avoid log spam. Details: %s",
+                            description or "<none>",
+                        )
+                        self._polling_conflict_logged = True
+
+                    self._polling_disabled_reason = (
+                        "Telegram getUpdates conflict (409). Disable webhook or disable polling."
+                    )
                     return {"ok": False, "result": []}
-                    
+
+                logger.error("Failed to get updates: %s", response.status_code)
+                return {"ok": False, "result": []}
+
         except Exception as e:
-            logger.error(f"Failed to get updates: {str(e)}")
+            logger.error("Failed to get updates: %s", str(e))
             return {"ok": False, "result": []}
     
     async def handle_command(
