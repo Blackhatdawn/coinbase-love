@@ -24,6 +24,8 @@ import { Analytics } from "@vercel/analytics/react";
 import { VersionMismatchBanner, ConnectionStatus } from "@/components/ui/version-banner";
 import { useVersionSync } from "@/hooks/useVersionSync";
 
+const API_WARMUP_TIMEOUT_MS = 5000;
+
 // Eager loaded pages (critical path)
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -121,12 +123,21 @@ const AppContent = () => {
 
   // Initialize health check and warmup API
   useEffect(() => {
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
+        }),
+      ]);
+    };
+
     const initializeApp = async () => {
       try {
         // Warmup: Make initial API request to activate backend
         console.log('[App] Warming up backend API...');
         try {
-          await api.crypto.getAll();
+          await withTimeout(api.crypto.getAll(), API_WARMUP_TIMEOUT_MS);
           console.log('[App] ✅ Backend API is active and responding');
           setApiAvailable(true);
         } catch (error) {
@@ -142,7 +153,9 @@ const AppContent = () => {
         // Start health check service to keep backend alive
         healthCheckService.start();
       } finally {
-        setTimeout(() => setIsInitializing(false), 2000);
+        // Let OnboardingLoader enforce its own minimum display window.
+        // Avoid adding an extra fixed delay after warmup completion/timeout.
+        setIsInitializing(false);
       }
     };
 
