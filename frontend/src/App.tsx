@@ -153,7 +153,9 @@ const AppContent = () => {
         // Start health check service to keep backend alive
         healthCheckService.start();
       } finally {
-        setTimeout(() => setIsInitializing(false), 2000);
+        // Let OnboardingLoader enforce its own minimum display window.
+        // Avoid adding an extra fixed delay after warmup completion/timeout.
+        setIsInitializing(false);
       }
     };
 
