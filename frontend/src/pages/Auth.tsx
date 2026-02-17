@@ -17,6 +17,17 @@ interface ValidationError {
   message: string;
 }
 
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
+}
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -88,7 +99,7 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      await api.auth.verifyEmail(verificationCode);
+      await withTimeout(api.auth.verifyEmail(verificationCode), AUTH_REQUEST_TIMEOUT_MS);
 
       toast({
         title: "Email verified!",
@@ -129,7 +140,7 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const result = await signIn(email, password);
+        const result = await withTimeout(signIn(email, password), AUTH_REQUEST_TIMEOUT_MS);
 
         if (result.error) {
           if (result.error.includes("Email not verified")) {
@@ -159,7 +170,7 @@ const Auth = () => {
           return;
         }
 
-        const result = await signUp({
+        const result = await withTimeout(signUp({
           email,
           password,
           name,
@@ -167,7 +178,7 @@ const Auth = () => {
           country: country || undefined,
           city: city || undefined,
           referral_code: referralCode ? referralCode.toUpperCase() : undefined,
-        });
+        }), AUTH_REQUEST_TIMEOUT_MS);
 
         if (result.error) {
           toast({
@@ -194,6 +205,12 @@ const Auth = () => {
           setShowOTPModal(true);
         }
       }
+    } catch (error: any) {
+      toast({
+        title: isLogin ? "Sign in failed" : "Sign up failed",
+        description: error?.message || "Request failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
