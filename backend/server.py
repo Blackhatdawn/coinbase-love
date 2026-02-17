@@ -247,13 +247,13 @@ class SecurityHeadersMiddleware:
                     
                     # Cross-Origin Isolation (Enhanced Security)
                     # COEP - Requires explicit opt-in for cross-origin resources
-                    (b"cross-origin-embedder-policy", b"require-corp"),
+                    (b"cross-origin-embedder-policy", b"unsafe-none"),
                     
                     # COOP - Isolates browsing context from other origins
                     (b"cross-origin-opener-policy", b"same-origin"),
                     
                     # CORP - Controls cross-origin resource sharing
-                    (b"cross-origin-resource-policy", b"same-origin"),
+                    (b"cross-origin-resource-policy", b"cross-origin"),
                     
                     # Content Security Policy
                     (b"content-security-policy", (
