@@ -91,7 +91,9 @@ export class APIClientError extends Error {
 const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
     baseURL: BASE_URL,
-    timeout: 30000, // 30 seconds
+    // FIX #1: Reduce timeout from 30s to 15s to match frontend auth timeout
+    // This prevents infinite loading spinners when backend queries hang
+    timeout: 15000, // 15 seconds (matches frontend auth timeout)
     withCredentials: true, // Send cookies with requests
     headers: {
       'Content-Type': 'application/json',

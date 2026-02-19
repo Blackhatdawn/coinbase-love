@@ -26,6 +26,8 @@ class DatabaseConnection:
         server_selection_timeout_ms: int = 5000,
         base_retry_delay: float = 2.0,
         client_options: Optional[Dict[str, Any]] = None,
+        # FIX #1: Add default timeout for all database operations (10 seconds)
+        default_query_timeout_ms: int = 10000,
     ):
         if not mongo_url:
             raise ValueError("mongo_url is required")
@@ -42,6 +44,8 @@ class DatabaseConnection:
         self.server_selection_timeout_ms = server_selection_timeout_ms
         self.base_retry_delay = base_retry_delay
         self.client_options = client_options or {}
+        # FIX #1: Store default query timeout for database operations
+        self.default_query_timeout_ms = default_query_timeout_ms
 
         self.client: Optional[AsyncIOMotorClient] = None
         self.db: Optional[AsyncIOMotorDatabase] = None
@@ -80,6 +84,13 @@ class DatabaseConnection:
             try:
                 logger.info(f"🔌 Attempting MongoDB connection (attempt {attempt}/{max_retries})...")
 
+                # FIX #1: Add default query timeout to client options
+                client_options_with_timeout = {
+                    **self.client_options,
+                    # Set socket timeout to prevent indefinite hangs on queries
+                    "socketTimeoutMS": self.default_query_timeout_ms,
+                }
+
                 self.client = AsyncIOMotorClient(
                     self.mongo_url,
                     maxPoolSize=self.max_pool_size,
@@ -87,7 +98,7 @@ class DatabaseConnection:
                     serverSelectionTimeoutMS=self.server_selection_timeout_ms,
                     retryWrites=True,
                     retryReads=True,
-                    **self.client_options,
+                    **client_options_with_timeout,
                 )
 
                 self.db = self.client[self.db_name]
@@ -99,6 +110,7 @@ class DatabaseConnection:
                 logger.info(f"✅ MongoDB connected successfully to database: {self.db_name}")
                 logger.debug(f"Pool size: {self.min_pool_size}-{self.max_pool_size}")
                 logger.debug(f"Server selection timeout: {self.server_selection_timeout_ms}ms")
+                logger.debug(f"Default query timeout: {self.default_query_timeout_ms}ms")
                 return
 
             except (ConnectionFailure, ServerSelectionTimeoutError, asyncio.TimeoutError) as e:
