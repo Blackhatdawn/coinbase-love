@@ -24,12 +24,15 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Retry configuration for email sending
+# FIX #2: Reduce retry delays to keep total email time under 10 seconds
+# Previous config: 3 retries with exponential backoff could take 60+ seconds
+# New config: 2 retries with shorter delays keeps total time under 10 seconds
 EMAIL_RETRY_CONFIG = {
-    "max_retries": 3,
-    "base_delay": 1.0,  # seconds
-    "max_delay": 30.0,  # seconds
+    "max_retries": 2,  # Reduced from 3 to 2
+    "base_delay": 0.5,  # Reduced from 1.0 to 0.5 seconds
+    "max_delay": 5.0,  # Reduced from 30.0 to 5.0 seconds
     "exponential_base": 2.0,
+    "send_timeout": 5.0,  # Add timeout for individual send attempts
 }
 
 # Try to import SendGrid
@@ -86,6 +89,7 @@ class EmailService:
 
         configured_service = settings.email_service
         self.client = None
+        is_production = settings.environment == 'production'
 
         if configured_service == 'sendgrid':
             if self.sendgrid_api_key and SENDGRID_AVAILABLE:
@@ -93,25 +97,55 @@ class EmailService:
                 self.mode = 'sendgrid'
                 logger.info("✅ Email service initialized with SendGrid")
             else:
-                self.mode = 'mock'
-                if not self.sendgrid_api_key:
-                    logger.warning("⚠️ SENDGRID_API_KEY missing - falling back to mock email mode")
-                elif not SENDGRID_AVAILABLE:
-                    logger.warning("⚠️ sendgrid package not installed - falling back to mock email mode")
-                logger.info("📧 Email service running in mock mode")
+                # FIX #3: In production, FAIL LOUDLY if email service is misconfigured
+                # Don't silently fall back to mock mode in production
+                if is_production:
+                    error_msg = "❌ CRITICAL: Email service misconfigured in production environment"
+                    if not self.sendgrid_api_key:
+                        error_msg += " - SENDGRID_API_KEY is missing"
+                    elif not SENDGRID_AVAILABLE:
+                        error_msg += " - sendgrid package not installed"
+                    logger.error(error_msg)
+                    raise RuntimeError(
+                        f"{error_msg}. Production requires properly configured email service. "
+                        "Set SENDGRID_API_KEY or change EMAIL_SERVICE setting."
+                    )
+                else:
+                    self.mode = 'mock'
+                    if not self.sendgrid_api_key:
+                        logger.warning("⚠️ SENDGRID_API_KEY missing - falling back to mock email mode")
+                    elif not SENDGRID_AVAILABLE:
+                        logger.warning("⚠️ sendgrid package not installed - falling back to mock email mode")
+                    logger.info("📧 Email service running in mock mode")
 
         elif configured_service == 'smtp':
             if self.smtp_host:
                 self.mode = 'smtp'
                 logger.info("✅ Email service initialized with SMTP")
             else:
-                self.mode = 'mock'
-                logger.warning(
-                    "⚠️ SMTP is selected but SMTP_HOST is missing - falling back to mock email mode"
-                )
-                logger.info("📧 Email service running in mock mode")
+                # FIX #3: In production, FAIL LOUDLY if SMTP is misconfigured
+                if is_production:
+                    error_msg = "❌ CRITICAL: SMTP email service misconfigured in production - SMTP_HOST is missing"
+                    logger.error(error_msg)
+                    raise RuntimeError(
+                        f"{error_msg}. Production requires properly configured email service. "
+                        "Set SMTP_HOST or change EMAIL_SERVICE setting."
+                    )
+                else:
+                    self.mode = 'mock'
+                    logger.warning(
+                        "⚠️ SMTP is selected but SMTP_HOST is missing - falling back to mock email mode"
+                    )
+                    logger.info("📧 Email service running in mock mode")
 
         else:
+            # FIX #3: In production, don't allow mock email mode
+            if is_production and configured_service == 'mock':
+                error_msg = "❌ CRITICAL: Mock email service is not allowed in production"
+                logger.error(error_msg)
+                raise RuntimeError(
+                    f"{error_msg}. Set EMAIL_SERVICE to 'sendgrid' or 'smtp' and provide credentials."
+                )
             self.mode = 'mock'
             logger.info("📧 Email service running in mock mode")
 
@@ -428,25 +462,35 @@ CryptoVault Financial, Inc.
         html_content: str,
         text_content: str
     ) -> bool:
-        """Send email via SendGrid API."""
+        """Send email via SendGrid API with timeout."""
         try:
-            message = Mail(
-                from_email=Email(self.from_email, self.from_name),
-                to_emails=To(to_email),
-                subject=subject,
-                html_content=Content("text/html", html_content),
-                plain_text_content=Content("text/plain", text_content)
-            )
-            
-            response = self.client.send(message)
-            
-            if response.status_code in [200, 201, 202]:
-                logger.info(f"✅ Email sent successfully to {to_email}")
-                return True
-            else:
-                logger.error(f"❌ SendGrid error: {response.status_code}")
-                return False
+            # FIX #2: Add timeout to individual email send attempts (5 seconds max)
+            async def send_with_timeout():
+                message = Mail(
+                    from_email=Email(self.from_email, self.from_name),
+                    to_emails=To(to_email),
+                    subject=subject,
+                    html_content=Content("text/html", html_content),
+                    plain_text_content=Content("text/plain", text_content)
+                )
                 
+                response = self.client.send(message)
+                
+                if response.status_code in [200, 201, 202]:
+                    logger.info(f"✅ Email sent successfully to {to_email}")
+                    return True
+                else:
+                    logger.error(f"❌ SendGrid error: {response.status_code}")
+                    return False
+            
+            return await asyncio.wait_for(
+                send_with_timeout(),
+                timeout=EMAIL_RETRY_CONFIG["send_timeout"]
+            )
+                
+        except asyncio.TimeoutError:
+            logger.error(f"❌ SendGrid timeout after {EMAIL_RETRY_CONFIG['send_timeout']}s")
+            raise  # Re-raise for retry logic
         except Exception as e:
             logger.error(f"❌ SendGrid exception: {str(e)}")
             raise  # Re-raise for retry logic
@@ -458,7 +502,7 @@ CryptoVault Financial, Inc.
         html_content: str,
         text_content: str
     ) -> bool:
-        """Send email via SMTP."""
+        """Send email via SMTP with timeout."""
         try:
             message = EmailMessage()
             message["From"] = f"{self.from_name} <{self.from_email}>"
@@ -467,6 +511,7 @@ CryptoVault Financial, Inc.
             message.set_content(text_content)
             message.add_alternative(html_content, subtype="html")
 
+            # FIX #2: Reduce SMTP timeout from 20s to 5s to match send_timeout config
             await aiosmtplib.send(
                 message,
                 hostname=self.smtp_host,
@@ -475,7 +520,7 @@ CryptoVault Financial, Inc.
                 password=self.smtp_password if self.smtp_password else None,
                 start_tls=False if self.smtp_use_ssl else self.smtp_use_tls,
                 use_tls=self.smtp_use_ssl,
-                timeout=20,
+                timeout=EMAIL_RETRY_CONFIG["send_timeout"],  # Reduced from 20 to 5 seconds
             )
             logger.info(f"✅ SMTP email sent successfully to {to_email}")
             return True

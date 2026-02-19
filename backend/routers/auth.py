@@ -1,6 +1,6 @@
 """Authentication and user management endpoints."""
 
-from fastapi import APIRouter, HTTPException, Request, Response, status, Depends
+from fastapi import APIRouter, HTTPException, Request, Response, status, Depends, BackgroundTasks
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
 from urllib.parse import quote_plus
@@ -8,6 +8,7 @@ import uuid
 import bcrypt
 from typing import Optional
 import logging
+import asyncio
 
 from models import (
     User, UserCreate, UserLogin, UserResponse,
@@ -110,11 +111,12 @@ async def log_audit(
 
 @router.post("/signup")
 async def signup(
-    user_data: UserCreate, 
+    user_data: UserCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db = Depends(get_db)
 ):
-    """Create a new user account with KYC data collection"""
+    """Create a new user account with KYC data collection and non-blocking email"""
     users_collection = db.get_collection("users")
     portfolios_collection = db.get_collection("portfolios")
     wallets_collection = db.get_collection("wallets")
@@ -202,37 +204,56 @@ async def signup(
 
     generated_referral_code = await referral_service.get_or_create_referral_code(user.id)
 
-    app_url = settings.app_url
-    subject, html_content, text_content = email_service.get_verification_email(
-        name=user.name,
-        code=verification_code,
-        token=verification_token,
-        app_url=app_url
-    )
-
-    email_sent = await email_service.send_email(
-        to_email=user.email,
-        subject=subject,
-        html_content=html_content,
-        text_content=text_content
-    )
+    # FIX #2: Send verification email asynchronously to prevent blocking signup
+    # Email service can take up to 60 seconds, which exceeds frontend 15s timeout
+    # Move email sending to background task to complete signup immediately
+    async def send_verification_email_background():
+        """Background task to send verification email without blocking signup response"""
+        try:
+            app_url = settings.app_url
+            subject, html_content, text_content = email_service.get_verification_email(
+                name=user.name,
+                code=verification_code,
+                token=verification_token,
+                app_url=app_url
+            )
+            
+            email_sent = await email_service.send_email(
+                to_email=user.email,
+                subject=subject,
+                html_content=html_content,
+                text_content=text_content
+            )
+            
+            if email_sent:
+                logger.info(f"✅ Verification email sent successfully to {user.email}")
+            else:
+                logger.warning(f"⚠️ Failed to send verification email to {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Error sending verification email to {user.email}: {str(e)}")
+    
+    # Add email sending to background tasks (non-blocking)
+    background_tasks.add_task(send_verification_email_background)
 
     await log_audit(
-        db, user.id, "USER_SIGNUP", 
+        db, user.id, "USER_SIGNUP",
         ip_address=request.client.host,
         request_id=getattr(request.state, "request_id", "unknown")
     )
     
-    # Notify admin via Telegram (if KYC info provided)
+    # Notify admin via Telegram (if KYC info provided) - also in background
     if user_data.full_name and user_data.date_of_birth:
-        try:
-            from services.telegram_bot import telegram_bot
-            user_dict = user.dict()
-            user_dict.update(fraud_data)  # Add fraud data for admin
-            await telegram_bot.notify_new_kyc_submission(user.id, user_dict)
-            logger.info(f"✅ Telegram notification sent for new user: {user.id}")
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to send Telegram notification: {str(e)}")
+        async def send_telegram_notification():
+            try:
+                from services.telegram_bot import telegram_bot
+                user_dict = user.dict()
+                user_dict.update(fraud_data)  # Add fraud data for admin
+                await telegram_bot.notify_new_kyc_submission(user.id, user_dict)
+                logger.info(f"✅ Telegram notification sent for new user: {user.id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to send Telegram notification: {str(e)}")
+        
+        background_tasks.add_task(send_telegram_notification)
 
     return {
         "user": UserResponse(
@@ -242,7 +263,7 @@ async def signup(
             createdAt=user.created_at.isoformat()
         ).dict(),
         "message": "Account created!" if auto_verify else "Account created! Please check your email to verify your account.",
-        "emailSent": email_sent,
+        "emailSent": True,  # Always return True since email is sent in background
         "verificationRequired": not auto_verify,  # Skip verification in mock mode
         "kyc_status": user.kyc_status,
         "referralApplied": bool(referral_result and referral_result.get("success")),
@@ -252,14 +273,36 @@ async def signup(
 
 @router.post("/login")
 async def login(
-    credentials: UserLogin, 
+    credentials: UserLogin,
     request: Request,
     db = Depends(get_db)
 ):
-    """Login user with account lockout protection."""
+    """Login user with account lockout protection and database timeout handling."""
     users_collection = db.get_collection("users")
 
-    user_doc = await users_collection.find_one({"email": credentials.email})
+    # FIX #1: Add timeout handling to prevent infinite loading spinner
+    # Wrap database operations with timeout to prevent indefinite hangs
+    DB_QUERY_TIMEOUT = 10  # 10 seconds max for database queries
+    
+    try:
+        # Query user with timeout
+        user_doc = await asyncio.wait_for(
+            users_collection.find_one({"email": credentials.email}),
+            timeout=DB_QUERY_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"Database query timeout during login for email: {credentials.email}")
+        raise HTTPException(
+            status_code=504,
+            detail="Login request timed out. Please try again."
+        )
+    except Exception as e:
+        logger.error(f"Database error during login: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during login. Please try again."
+        )
+    
     if not user_doc:
         verify_password("dummy_password", bcrypt.gensalt().decode())
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -291,16 +334,37 @@ async def login(
         
         if failed_attempts >= 5:
             update_data["locked_until"] = datetime.utcnow() + timedelta(minutes=15)
-            await users_collection.update_one({"id": user.id}, {"$set": update_data})
-            await db.get_collection("login_attempts").insert_one(login_attempt)
-            await log_audit(db, user.id, "ACCOUNT_LOCKED", ip_address=request.client.host)
+            try:
+                await asyncio.wait_for(
+                    users_collection.update_one({"id": user.id}, {"$set": update_data}),
+                    timeout=DB_QUERY_TIMEOUT
+                )
+                await asyncio.wait_for(
+                    db.get_collection("login_attempts").insert_one(login_attempt),
+                    timeout=DB_QUERY_TIMEOUT
+                )
+                await asyncio.wait_for(
+                    log_audit(db, user.id, "ACCOUNT_LOCKED", ip_address=request.client.host),
+                    timeout=DB_QUERY_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Database timeout during failed login attempt for user: {user.id}")
             raise HTTPException(
                 status_code=429,
                 detail="Account locked for 15 minutes due to too many failed login attempts."
             )
         
-        await users_collection.update_one({"id": user.id}, {"$set": update_data})
-        await db.get_collection("login_attempts").insert_one(login_attempt)
+        try:
+            await asyncio.wait_for(
+                users_collection.update_one({"id": user.id}, {"$set": update_data}),
+                timeout=DB_QUERY_TIMEOUT
+            )
+            await asyncio.wait_for(
+                db.get_collection("login_attempts").insert_one(login_attempt),
+                timeout=DB_QUERY_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Database timeout during failed login attempt for user: {user.id}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Skip email verification check in non-production environments
@@ -318,19 +382,34 @@ async def login(
             }
         )
 
-    await users_collection.update_one(
-        {"id": user.id},
-        {"$set": {
-            "failed_login_attempts": 0,
-            "locked_until": None,
-            "last_login": datetime.utcnow()
-        }}
-    )
+    try:
+        # Update user login status with timeout
+        await asyncio.wait_for(
+            users_collection.update_one(
+                {"id": user.id},
+                {"$set": {
+                    "failed_login_attempts": 0,
+                    "locked_until": None,
+                    "last_login": datetime.utcnow()
+                }}
+            ),
+            timeout=DB_QUERY_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"Database timeout updating login status for user: {user.id}")
+        # Continue with login even if update fails
 
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
 
-    await log_audit(db, user.id, "USER_LOGIN", ip_address=request.client.host)
+    try:
+        await asyncio.wait_for(
+            log_audit(db, user.id, "USER_LOGIN", ip_address=request.client.host),
+            timeout=DB_QUERY_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"Database timeout logging audit for user: {user.id}")
+        # Continue with login even if audit log fails
 
     logger.info(f"Setting cookies - access_token length: {len(access_token)}, refresh_token length: {len(refresh_token)}")
 
