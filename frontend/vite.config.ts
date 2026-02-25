@@ -197,7 +197,7 @@ export default defineConfig(({ mode }) => ({
     host: '0.0.0.0',
     strictPort: true,
     // Allow all hosts in development
-    allowedHosts: 'all',
+    allowedHosts: true,
     // SECURITY FIX: Enable CORS with explicit origins
     cors: {
       origin: [
