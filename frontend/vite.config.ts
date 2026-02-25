@@ -196,15 +196,8 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     host: '0.0.0.0',
     strictPort: true,
-    // SECURITY FIX: Explicit allowed hosts (prevents DNS rebinding)
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      '.vercel.app',
-      '.gitpod.io',
-      '.codesandbox.io',
-      '.preview.emergentagent.com',
-    ],
+    // Allow all hosts in development
+    allowedHosts: 'all',
     // SECURITY FIX: Enable CORS with explicit origins
     cors: {
       origin: [
