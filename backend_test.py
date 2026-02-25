@@ -321,7 +321,7 @@ class AuthFlowTester:
 
 def main():
     print("🚀 Starting CryptoVault Auth Flow Tests")
-    print("🌐 Testing against: https://cryptovault-api.onrender.com")
+    print("🌐 Testing against: http://localhost:8001 (development environment)")
     print("-" * 60)
     
     tester = AuthFlowTester()
