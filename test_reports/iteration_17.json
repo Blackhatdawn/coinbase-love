@@ -23,7 +23,7 @@
     "environment_config_issues": [
       {
         "component": "Frontend Environment Configuration",
-        "issue": "VITE_API_BASE_URL points to external URL (https://web-fixer-8.preview.emergentagent.com) but Vite proxy expects VITE_BACKEND_URL variable",
+        "issue": "VITE_API_BASE_URL points to external URL (https://auth-fix-119.preview.emergentagent.com) but Vite proxy expects VITE_BACKEND_URL variable",
         "impact": "Frontend makes direct calls to external API instead of using local proxy, causing CORS errors",
         "fix_priority": "MEDIUM",
         "details": "Frontend loads and works, but API calls bypass proxy due to environment variable mismatch"
