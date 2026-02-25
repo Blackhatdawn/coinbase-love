@@ -185,6 +185,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: response.user.createdAt,
       };
 
+      // Store access token for WebSocket auth (if returned - auto-login mode)
+      if (response.access_token) {
+        setToken(response.access_token);
+      }
+
       // SECURITY FIX: No localStorage - session managed by httpOnly cookies
       setUser(userData);
       setIsLoading(false);
