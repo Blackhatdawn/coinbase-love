@@ -255,7 +255,7 @@ async def signup(
         
         background_tasks.add_task(send_telegram_notification)
 
-    return {
+    response_data = {
         "user": UserResponse(
             id=user.id,
             email=user.email,
@@ -269,6 +269,19 @@ async def signup(
         "referralApplied": bool(referral_result and referral_result.get("success")),
         "ownReferralCode": generated_referral_code
     }
+    
+    # Auto-login user if email verification not required (dev/mock mode)
+    if auto_verify:
+        access_token = create_access_token(data={"sub": user.id})
+        refresh_token = create_refresh_token(data={"sub": user.id})
+        response_data["access_token"] = access_token
+        
+        response = JSONResponse(content=response_data)
+        set_auth_cookies(response, access_token, refresh_token)
+        logger.info(f"Auto-login after signup for user: {user.id}")
+        return response
+    
+    return response_data
 
 
 @router.post("/login")
