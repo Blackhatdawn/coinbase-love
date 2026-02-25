@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class AuthFlowTester:
-    def __init__(self, base_url: str = "https://cryptovault-api.onrender.com"):
+    def __init__(self, base_url: str = "http://localhost:8001"):
         self.base_url = base_url
         self.session = requests.Session()
         self.session.timeout = 30
