@@ -31,12 +31,12 @@ class SocketIOManager:
     
     def __init__(self):
         # Get CORS origins from settings (environment-aware)
-        cors_origins = settings.get_socketio_cors_origins()
-        
-        # Log CORS configuration
-        if cors_origins == ["*"]:
-            logger.warning("⚠️ Socket.IO CORS set to wildcard - only for development")
+        # In development, allow all origins for easier testing
+        if settings.environment == "development":
+            cors_origins = "*"
+            logger.warning("⚠️ Socket.IO CORS set to wildcard - development mode")
         else:
+            cors_origins = settings.get_socketio_cors_origins()
             logger.info(f"🔒 Socket.IO CORS configured for {len(cors_origins)} origin(s)")
         
         # Create Socket.IO server with CORS support
@@ -44,7 +44,7 @@ class SocketIOManager:
         self.sio = socketio.AsyncServer(
             async_mode='asgi',
             cors_allowed_origins=cors_origins,
-            cors_credentials=True,  # Allow credentials (cookies, auth headers)
+            cors_credentials=True if cors_origins != "*" else False,  # No credentials with wildcard
             logger=settings.environment == "development",
             engineio_logger=False,
             ping_timeout=60,
