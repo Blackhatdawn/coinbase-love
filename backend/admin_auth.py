@@ -232,10 +232,16 @@ async def create_default_admin():
     if existing:
         logger.info("✅ Admin account already exists")
         return
-    
-    # Create default super admin
+
+    # Production safety guard: never create predictable default admin implicitly.
+    bootstrap_allowed = str(getattr(settings, "admin_bootstrap_enabled", "false")).lower() in {"1", "true", "yes"}
+    if settings.environment == "production" and not bootstrap_allowed:
+        logger.warning("⚠️ Skipping default admin bootstrap in production (ADMIN_BOOTSTRAP_ENABLED not true)")
+        return
+
+    # Create bootstrap admin
     admin_id = secrets.token_hex(16)
-    default_password = "CryptoVault@Admin2026!"  # Should be changed immediately
+    default_password = secrets.token_urlsafe(18)
     
     admin_doc = {
         "id": admin_id,
@@ -255,9 +261,9 @@ async def create_default_admin():
     
     await db.admins.insert_one(admin_doc)
     logger.info("=" * 60)
-    logger.info("🔐 DEFAULT ADMIN ACCOUNT CREATED")
-    logger.info(f"   Email: admin@cryptovault.financial")
-    logger.info(f"   Password: {default_password}")
+    logger.info("🔐 BOOTSTRAP ADMIN ACCOUNT CREATED")
+    logger.info("   Email: admin@cryptovault.financial")
+    logger.warning("   A random bootstrap password was generated. Retrieve it from secure deployment secrets/log pipeline and rotate immediately.")
     logger.info("   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!")
     logger.info("=" * 60)
 

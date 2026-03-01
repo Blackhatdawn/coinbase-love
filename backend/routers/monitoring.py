@@ -306,7 +306,7 @@ async def detailed_health_check():
         health["services"]["email"] = {
             "status": "healthy",
             "mode": email_service.mode,
-            "provider": "sendgrid" if email_service.mode == "sendgrid" else "mock"
+            "provider": email_service.mode
         }
     except Exception as e:
         health["services"]["email"] = {"status": "degraded", "error": str(e)}

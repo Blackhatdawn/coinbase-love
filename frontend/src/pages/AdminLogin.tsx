@@ -62,7 +62,6 @@ const AdminLogin = () => {
       } else {
         // Direct login (fallback for admins without OTP)
         if (data.token) {
-          sessionStorage.setItem('adminToken', data.token);
           sessionStorage.setItem('adminData', JSON.stringify(data.admin));
         }
         toast.success('Login successful!');
@@ -85,8 +84,7 @@ const AdminLogin = () => {
     try {
       const data = await api.admin.verifyOtp({ email, otp_code: otpCode });
       
-      // Store admin data in sessionStorage (not localStorage for security)
-      sessionStorage.setItem('adminToken', data.token);
+      // Store non-sensitive admin profile for UI only; auth is cookie-backed.
       sessionStorage.setItem('adminData', JSON.stringify(data.admin));
       
       toast.success(`Welcome back, ${data.admin.name}!`);
