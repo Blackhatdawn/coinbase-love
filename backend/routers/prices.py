@@ -69,17 +69,19 @@ async def get_price(symbol: str) -> Dict[str, Any]:
         cached_price = await redis_cache.get(cache_key)
         
         if cached_price:
+            price_value = cached_price.get("price") if isinstance(cached_price, dict) else cached_price
             return {
                 "symbol": symbol.lower(),
-                "price": str(cached_price),
+                "price": str(price_value),
                 "source": "redis_cache"
             }
         
         # Try in-memory if not in Redis
-        if symbol in price_stream_service.prices:
+        normalized = symbol.lower()
+        if normalized in price_stream_service.prices:
             return {
-                "symbol": symbol,
-                "price": str(price_stream_service.prices[symbol]),
+                "symbol": normalized,
+                "price": str(price_stream_service.prices[normalized]),
                 "source": "memory_cache"
             }
         
@@ -147,7 +149,8 @@ async def get_bulk_prices(symbols: str) -> Dict[str, Any]:
             cached_price = await redis_cache.get(cache_key)
 
             if cached_price:
-                prices[symbol] = str(cached_price)
+                price_value = cached_price.get("price") if isinstance(cached_price, dict) else cached_price
+                prices[symbol] = str(price_value)
                 price_stream_metrics.record_cache_hit()
             elif symbol in price_stream_service.prices:
                 prices[symbol] = str(price_stream_service.prices[symbol])
