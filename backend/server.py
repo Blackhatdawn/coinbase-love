@@ -26,7 +26,6 @@ from database import DatabaseConnection
 from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, files, referrals, earn, contact
 
 # Services
-from services.websocket_feed import price_feed
 from services.telegram_bot import telegram_bot
 from services import price_stream_service
 from coincap_service import coincap_service
@@ -423,7 +422,6 @@ async def lifespan(app: FastAPI):
             await create_database_indexes(db_connection.db)
 
         await price_stream_service.start()
-        await price_feed.start()
 
         telegram_status = await telegram_bot.get_health_status()
         if telegram_status.get("enabled") and telegram_status.get("api_reachable"):
@@ -467,7 +465,6 @@ async def lifespan(app: FastAPI):
 
     await telegram_bot.stop_command_polling()
     await price_stream_service.stop()
-    await price_feed.stop()
 
     if db_connection:
         await db_connection.disconnect()
