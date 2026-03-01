@@ -26,6 +26,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Dashboard"])
 
+def enforce_permission(current_admin: dict, permission: str) -> None:
+    """Enforce fine-grained RBAC permissions for admin endpoints."""
+    if current_admin.get("role") == "super_admin":
+        return
+    perms = set(current_admin.get("permissions", []))
+    if permission not in perms:
+        raise HTTPException(status_code=403, detail=f"Permission denied: {permission} required")
+
+
+
+
 
 # ============================================
 # PYDANTIC MODELS
@@ -380,6 +391,7 @@ async def get_admin_profile(current_admin: dict = Depends(get_current_admin)):
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(current_admin: dict = Depends(get_current_admin)):
     """Get real-time dashboard statistics."""
+    enforce_permission(current_admin, "reports:read")
     db = get_db()
     
     now = datetime.now(timezone.utc)
@@ -448,6 +460,7 @@ async def get_dashboard_charts(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Get chart data for dashboard visualizations"""
+    enforce_permission(current_admin, "reports:read")
     db = get_db()
     now = datetime.now(timezone.utc)
     
@@ -509,6 +522,7 @@ async def list_users(
     current_admin: dict = Depends(get_current_admin)
 ):
     """List all users with filtering and pagination."""
+    enforce_permission(current_admin, "users:read")
     db = get_db()
     
     query = {}
@@ -556,6 +570,7 @@ async def list_users(
 @router.get("/users/{user_id}")
 async def get_user_detail(user_id: str, current_admin: dict = Depends(get_current_admin)):
     """Get detailed user information"""
+    enforce_permission(current_admin, "users:read")
     db = get_db()
     
     user = await db.users.find_one({"id": user_id}, {"password_hash": 0, "two_factor_secret": 0})
@@ -580,6 +595,7 @@ async def perform_user_action(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Perform administrative action on a user."""
+    enforce_permission(current_admin, "users:write")
     db = get_db()
     
     user = await db.users.find_one({"id": user_id})
@@ -665,6 +681,7 @@ async def adjust_wallet(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Manually adjust user wallet balance."""
+    enforce_permission(current_admin, "wallets:adjust")
     db = get_db()
     
     user = await db.users.find_one({"id": adjustment.user_id})
@@ -736,6 +753,7 @@ async def list_all_transactions(
     current_admin: dict = Depends(get_current_admin)
 ):
     """List all transactions with filtering"""
+    enforce_permission(current_admin, "transactions:read")
     db = get_db()
     
     query = {}
@@ -760,6 +778,7 @@ async def list_all_transactions(
 @router.get("/system/health")
 async def get_system_health(current_admin: dict = Depends(get_current_admin)):
     """Get comprehensive system health status"""
+    enforce_permission(current_admin, "system:read")
     db = get_db()
     
     health = {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "services": {}}
@@ -773,10 +792,12 @@ async def get_system_health(current_admin: dict = Depends(get_current_admin)):
     
     try:
         from redis_cache import redis_cache
-        is_connected = await redis_cache.is_connected()
-        health["services"]["redis"] = {"status": "healthy" if is_connected else "disconnected"}
-    except:
-        health["services"]["redis"] = {"status": "error"}
+        test_key = "admin:health:redis"
+        await redis_cache.set(test_key, "ok", ttl=5)
+        redis_ok = await redis_cache.get(test_key) == "ok"
+        health["services"]["redis"] = {"status": "healthy" if redis_ok else "degraded"}
+    except Exception as exc:
+        health["services"]["redis"] = {"status": "error", "error": str(exc)}
     
     stats = socketio_manager.get_stats()
     health["services"]["socketio"] = {"status": "healthy", "active_connections": stats.get("active_connections", 0)}
@@ -787,6 +808,7 @@ async def get_system_health(current_admin: dict = Depends(get_current_admin)):
 @router.post("/system/broadcast")
 async def broadcast_message(message: BroadcastMessage, current_admin: dict = Depends(get_current_admin)):
     """Broadcast message to all connected users"""
+    enforce_permission(current_admin, "system:write")
     await socketio_manager.broadcast("announcement", {
         "title": message.title,
         "message": message.message,
@@ -809,6 +831,7 @@ async def get_audit_logs(
     current_admin: dict = Depends(get_current_admin)
 ):
     """Get admin audit logs"""
+    enforce_permission(current_admin, "audit:read")
     db = get_db()
     
     query = {}

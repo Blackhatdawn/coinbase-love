@@ -89,6 +89,7 @@ const AdminDashboard = () => {
   
   // Auth state - AdminRoute wrapper handles redirect, we just load data
   const [admin, setAdmin] = useState<AdminData | null>(null);
+  const isAuthenticated = Boolean(admin);
   
   // Dashboard state
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -138,14 +139,12 @@ const AdminDashboard = () => {
 
   // API call helper
   const adminFetch = useCallback(async (endpoint: string, options: RequestInit = {}) => {
-    const token = sessionStorage.getItem('adminToken');
     const csrfToken = getCSRFToken();
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await fetch(`${baseUrl}/api/admin${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
         ...options.headers,
       },
@@ -153,7 +152,6 @@ const AdminDashboard = () => {
     });
     
     if (response.status === 401) {
-      sessionStorage.removeItem('adminToken');
       sessionStorage.removeItem('adminData');
       navigate('/admin/login');
       throw new Error('Session expired');
@@ -306,7 +304,6 @@ const AdminDashboard = () => {
     } catch {
       // Continue with local logout even if API fails
     }
-    sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('adminData');
     navigate('/admin/login');
   };

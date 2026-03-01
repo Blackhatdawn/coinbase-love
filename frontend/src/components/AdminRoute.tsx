@@ -12,59 +12,54 @@ interface AdminRouteProps {
   children?: React.ReactNode;
 }
 
-/**
- * AdminRoute - Protected route wrapper for admin pages
- * 
- * Checks for admin authentication via sessionStorage (separate from user auth).
- * Redirects to /admin/login if not authenticated.
- * 
- * Usage in App.tsx:
- * <Route element={<AdminRoute />}>
- *   <Route path="/admin/dashboard" element={<AdminDashboard />} />
- * </Route>
- */
 const AdminRoute = ({ children }: AdminRouteProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkAdminAuth = () => {
-      const token = sessionStorage.getItem('adminToken');
-      const adminData = sessionStorage.getItem('adminData');
-      
-      if (!token || !adminData) {
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-      
+    let mounted = true;
+
+    const checkAdminAuth = async () => {
       try {
-        // Verify adminData is valid JSON
-        const parsed: AdminData = JSON.parse(adminData);
-        
-        // Basic validation - ensure required fields exist
-        if (parsed.id && parsed.email && parsed.role) {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const response = await fetch(`${baseUrl}/api/admin/me`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!mounted) return;
+
+        if (!response.ok) {
+          sessionStorage.removeItem('adminData');
+          setIsAuthenticated(false);
+          return;
+        }
+
+        const data = await response.json();
+        const admin: AdminData = data?.admin;
+        if (admin?.id && admin?.email && admin?.role) {
+          sessionStorage.setItem('adminData', JSON.stringify(admin));
           setIsAuthenticated(true);
         } else {
-          // Invalid admin data structure
-          sessionStorage.removeItem('adminToken');
           sessionStorage.removeItem('adminData');
           setIsAuthenticated(false);
         }
       } catch {
-        // Invalid JSON in sessionStorage
-        sessionStorage.removeItem('adminToken');
-        sessionStorage.removeItem('adminData');
+        if (!mounted) return;
+        // Fail closed: network/unknown failures should not grant access.
         setIsAuthenticated(false);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     checkAdminAuth();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Show loading state while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -76,12 +71,10 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     );
   }
 
-  // Redirect to admin login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Render children or Outlet for nested routes
   return children ? <>{children}</> : <Outlet />;
 };
 
