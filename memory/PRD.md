@@ -1,53 +1,74 @@
-# CryptoVault - Product Requirements Document
+# CryptoVault PRD - Crypto Exchange Platform
 
 ## Original Problem Statement
-Users were complaining about not being able to login and signup. Deep investigation and fixes required for the authentication system.
+Deep review and investigate the entire web application. Identify what hasn't been done and what needs updating. Admin panel/dashboard access review. App is meant to be like Bybit, Coinbase, Binance.
 
 ## Architecture
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **Authentication**: JWT tokens with httpOnly cookies
+- **Frontend**: Vite + React + TypeScript + TailwindCSS + Framer Motion + Chart.js + Socket.IO
+- **Backend**: FastAPI + MongoDB Atlas + Socket.IO + Upstash Redis (disabled - quota exhausted)
+- **Database**: MongoDB Atlas (16 collections)
+- **Real-time**: WebSocket price streaming from Coinbase/CoinGecko/Kraken
 
-## What Was Fixed (Feb 25, 2026)
+## User Personas
+1. **Retail Crypto Trader** - Buy/sell crypto, view portfolios, set price alerts
+2. **Passive Investor** - Stake/earn features, flexible/locked staking
+3. **Admin** - User management, transaction monitoring, system health
 
-### Root Causes Identified & Fixed:
-1. **Missing Backend Dependencies**
-   - pydantic-settings, pyotp, redis, python-socketio, psutil, aiosmtplib, sendgrid
-   - Fixed: Installed all missing packages and updated requirements.txt
+## Core Requirements
+- User registration/login with secure sessions (httpOnly cookies)
+- Live crypto price data from multiple sources
+- Trading (market/limit orders)
+- Wallet management (deposit/withdraw)
+- Staking/Earn products
+- Admin dashboard with OTP-secured access
+- P2P transfers, price alerts, referral system
 
-2. **Frontend Host Blocking**
-   - Vite config had restricted `allowedHosts` blocking preview URLs
-   - Fixed: Changed to `allowedHosts: true` in vite.config.ts
+## What's Been Implemented
+### Date: 2026-03-15
 
-3. **Environment Misconfiguration**
-   - ENVIRONMENT was set to 'production' with EMAIL_SERVICE='mock' (conflict)
-   - Fixed: Set ENVIRONMENT='development' and updated CORS origins
+#### Bugs Fixed (Deep Audit):
+1. **Login → Dashboard redirect race condition** - Fixed with useEffect watching user state instead of imperative navigate()
+2. **Admin password lost** - Reset to known credentials (admin@cryptovault.financial / CryptoAdmin2026!)
+3. **Admin OTP datetime mismatch** - Fixed timezone-naive vs timezone-aware comparison
+4. **Admin OTP in dev mode** - Auto-fills OTP when EMAIL_SERVICE=mock
+5. **Redis cache 400 errors** - Upstash free tier exhausted (500K limit); switched to POST-based API format and disabled until upgraded
+6. **WebSocket URLs hardcoded to localhost** - Fixed to derive from window.location dynamically
+7. **Auth cookies missing Secure flag** - Always set Secure=true for HTTPS
+8. **Staking/Earn disabled** - Enabled FEATURE_STAKING_ENABLED
+9. **Onboarding loader too slow** - Reduced from 5s to 2.5s max
+10. **Vercel analytics removed** - Was failing, not deployed on Vercel
+11. **React Router v7 deprecation warnings** - Added future flags
+12. **Welcome animation duration** - Reduced from 5s to 3s
 
-4. **Signup Not Auto-Logging Users**
-   - Signup endpoint didn't set auth cookies/tokens in dev mode
-   - Fixed: Added auto-login functionality to signup when email verification is disabled
+## Prioritized Backlog
 
-### Files Modified:
-- `/app/backend/.env` - Fixed environment and CORS settings
-- `/app/backend/routers/auth.py` - Added auto-login after signup
-- `/app/frontend/src/contexts/AuthContext.tsx` - Handle token from signup response
-- `/app/frontend/vite.config.ts` - Allow all hosts
-- `/app/backend/requirements.txt` - Updated with all dependencies
+### P0 (Critical - None remaining)
+All critical bugs fixed.
 
-## Test Results
-- Backend: 100% pass rate (10/10 tests)
-- Frontend: 85% pass rate (UI works, some browser automation issues)
-- Integration: 90% success
+### P1 (High Priority)
+- [ ] Firebase push notifications (credentials file missing)
+- [ ] Email service (currently mock) - configure SendGrid/real SMTP for production
+- [ ] Upstash Redis - upgrade plan or replace with new instance
+- [ ] Password reset flow end-to-end testing with real email
 
-## Features Working
-- User signup with auto-login
-- User login
-- Session persistence via cookies
-- Logout functionality
-- Protected routes
+### P2 (Medium Priority)
+- [ ] Referral system - implement actual tracking/rewards backend
+- [ ] Blog/Careers pages - connect to CMS or API
+- [ ] Sentry error tracking - configure for production
+- [ ] Advanced trading charts (TradingView integration)
+- [ ] Mobile responsive testing and optimization
 
-## Next Action Items
-- P1: Review WebSocket connection errors (403 on socket.io)
-- P2: Add proper SSL certificate handling for production
-- P3: Implement email verification flow for production mode
+### P3 (Low Priority)
+- [ ] Telegram bot admin notifications
+- [ ] Email templates for all transactional emails
+- [ ] Rate limiting with Redis (currently in-memory fallback)
+- [ ] Production deployment hardening (CORS, rate limits, etc.)
+
+## Admin Credentials
+- Email: admin@cryptovault.financial
+- Password: CryptoAdmin2026!
+- OTP: Auto-filled in dev mode (EMAIL_SERVICE=mock)
+
+## Test User
+- Email: test@example.com
+- Password: TestPassword123!
