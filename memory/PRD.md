@@ -26,6 +26,24 @@ Deep review and investigate the entire web application. Identify what hasn't bee
 ## What's Been Implemented
 ### Date: 2026-03-15
 
+#### Features Implemented:
+1. **Referral Reward System (Fixed $10 Bonus)**
+   - Both referrer and referred user get $10 USD credited to wallet on signup
+   - Direct wallet credit (no admin approval needed)
+   - Full audit trail with transactions collection
+   - Referral leaderboard API
+   - Auto-fills referral code from ?ref=CODE URL parameter
+   - In-app + push notifications on referral reward
+   - Privacy-masked referral list (emails/names partially hidden)
+
+2. **Firebase Push Notifications**
+   - FCM service with automatic mock fallback when Firebase not configured
+   - Endpoints: register-token, unregister-token, test, status
+   - Service worker for background notifications (firebase-messaging-sw.js)
+   - Frontend push notification service (lazy-loads Firebase SDK)
+   - Notification routing by type (price alerts -> /markets, orders -> /transactions, etc.)
+   - Pre-built notification types: referral_reward, price_alert, order_confirmation, deposit_confirmation
+
 #### Bugs Fixed (Deep Audit):
 1. **Login → Dashboard redirect race condition** - Fixed with useEffect watching user state instead of imperative navigate()
 2. **Admin password lost** - Reset to known credentials (admin@cryptovault.financial / CryptoAdmin2026!)
@@ -46,7 +64,7 @@ Deep review and investigate the entire web application. Identify what hasn't bee
 All critical bugs fixed.
 
 ### P1 (High Priority)
-- [ ] Firebase push notifications (credentials file missing)
+- [ ] Firebase credentials setup (see /app/FIREBASE_SETUP_GUIDE.md)
 - [ ] Email service (currently mock) - configure SendGrid/real SMTP for production
 - [ ] Upstash Redis - upgrade plan or replace with new instance
 - [ ] Password reset flow end-to-end testing with real email
