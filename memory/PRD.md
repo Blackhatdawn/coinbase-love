@@ -49,27 +49,28 @@ Deep review and investigate the entire web application. Identify what hasn't bee
 1. **Referral Reward System (Fixed $10 Bonus)** - Both sides get $10 on signup
 2. **Firebase Push Notifications** - FCM service with mock fallback
 
-### Session 3 (2026-03-21): Tier System + Firebase Live + SMTP
-1. **Referral Tier System**:
-   - Bronze (0-4 referrals): $10/referral
-   - Silver (5-9 referrals): $15/referral
-   - Gold (10-24 referrals): $20/referral
-   - Platinum (25+ referrals): $30/referral
-   - New users always get flat $10 signup bonus
-   - Tier progress bar, roadmap cards, leaderboard
-2. **Firebase Push Notifications LIVE**:
+### Session 3 (2026-03-22): Firebase Live + SendGrid + VAPID Key
+1. **Firebase Push Notifications - LIVE MODE**:
    - Service account credentials configured (crypto-vault-8026a)
-   - FCM token registration, test, status endpoints
-   - Service worker for background notifications
-   - Notification routing by type (price_alert, order, referral, deposit)
-3. **SMTP Email Service**:
-   - GMX SMTP configured (auth credentials need updating)
-   - Graceful fallback to mock mode in dev when SMTP fails
-   - SMTP validation on startup with warning logs
+   - Fixed env loading issue (fallback to file path when os.environ not set)
+   - FCM token registration, test, status endpoints all working
+   - mock_mode: false, firebase_setup_required: false
+2. **SendGrid Email Service**:
+   - Configured with API key (currently returning 401 - key needs renewal)
+   - Added graceful fallback to mock mode in dev for both SendGrid AND SMTP failures
+   - Signup flow works regardless of email service status
+3. **VAPID Key**:
+   - Web push VAPID key configured in frontend .env
+   - Service worker ready for browser push permission prompts
+4. **Gunicorn Clarification**:
+   - FastAPI uses ASGI (not WSGI), correct command: `gunicorn -k uvicorn.workers.UvicornWorker server:app`
+   - Already handled by start_server.py
 
 ## Testing Status
 - Backend: 100% (20/20 tests passed)
-- Frontend: 100% (all UI features, auth flows, referral page working)
+- Frontend: 95% (all UI features working, minor session timeout during extended Playwright testing)
+- Firebase: LIVE (mock_mode=false)
+- Email: SendGrid with mock fallback (key needs renewal)
 
 ## Prioritized Backlog
 
