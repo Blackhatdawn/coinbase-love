@@ -1,102 +1,67 @@
-# CryptoVault PRD - Crypto Exchange Platform
+# CryptoVault PRD - Product Requirements Document
 
 ## Original Problem Statement
-Deep review and investigate the entire web application. Identify what hasn't been done and what needs updating. Admin panel/dashboard access review. App is meant to be like Bybit, Coinbase, Binance.
+Build a comprehensive crypto exchange web application (CryptoVault) with features similar to Bybit, Coinbase, and Binance. The platform includes user authentication, live price tickers, wallet management, trading, staking, referrals, admin panel, and push notifications.
 
 ## Architecture
-- **Frontend**: Vite + React + TypeScript + TailwindCSS + Framer Motion + Chart.js + Socket.IO + Firebase SDK
-- **Backend**: FastAPI + MongoDB Atlas + Socket.IO + Firebase Admin SDK
-- **Database**: MongoDB Atlas (16+ collections)
-- **Real-time**: WebSocket price streaming from Coinbase/CoinGecko/Kraken
-- **Push Notifications**: Firebase Cloud Messaging (LIVE)
-- **Email**: SMTP (GMX) with mock fallback in dev
-
-## User Personas
-1. **Retail Crypto Trader** - Buy/sell crypto, view portfolios, set price alerts
-2. **Passive Investor** - Stake/earn features, flexible/locked staking
-3. **Admin** - User management, transaction monitoring, system health
-4. **Referral Ambassador** - Share codes, earn tiered bonuses
-
-## Core Requirements
-- User registration/login with secure sessions (httpOnly cookies)
-- Live crypto price data from multiple sources
-- Trading (market/limit orders)
-- Wallet management (deposit/withdraw)
-- Staking/Earn products
-- Admin dashboard with OTP-secured access
-- P2P transfers, price alerts, referral system
-- Push notifications via Firebase
-- Tiered referral reward system
+- **Frontend**: React + TypeScript + Vite + TailwindCSS + Framer Motion
+- **Backend**: FastAPI (Python) + MongoDB Atlas
+- **Auth**: JWT (access + refresh tokens via httpOnly Secure cookies)
+- **Real-time**: Socket.IO WebSocket for live prices
+- **Push**: Firebase Cloud Messaging (FCM)
+- **Email**: SendGrid/SMTP with mock fallback
+- **Cache**: In-memory (Redis disabled - free tier exhausted)
 
 ## What's Been Implemented
 
-### Session 1 (2026-03-15): Deep Audit & Bug Fixes
-12 bugs identified and fixed:
-1. Login → Dashboard redirect race condition
-2. Admin password reset + OTP auto-fill in dev mode
-3. Admin OTP datetime mismatch fix
-4. Redis cache 400 errors (Upstash exhausted, disabled)
-5. WebSocket URLs hardcoded to localhost
-6. Auth cookies missing Secure flag
-7. Staking/Earn enabled
-8. Onboarding loader reduced
-9. Vercel analytics removed
-10. React Router v7 deprecation warnings
-11. Welcome animation optimized
-12. Email service graceful fallback
+### Core Features (Complete)
+- User registration/login with JWT + httpOnly cookies
+- Admin panel with OTP authentication
+- Live crypto price tickers via WebSocket
+- Wallet management, trading orders, staking/earn products
+- Price alerts system
+- Multi-tier referral program (Bronze/Silver/Gold/Platinum)
+- Firebase push notifications (live)
+- Email service with graceful mock fallback
+- 38 frontend pages, 24 backend routers
 
-### Session 2 (2026-03-15): Referral Rewards + Firebase Push
-1. **Referral Reward System (Fixed $10 Bonus)** - Both sides get $10 on signup
-2. **Firebase Push Notifications** - FCM service with mock fallback
+### Security Audit & Hardening (Feb 2026)
+**Critical Fixes (C1-C6) - All Implemented:**
+- C1: Admin JWT secret now HMAC-derived (independent from user secret)
+- C2: CSRF secret upgraded to 64-byte random hex
+- C3: JWT tokens now include jti, aud, and iss claims
+- C4: Admin OTP uses secrets.choice (cryptographic randomness)
+- C5: Token type validation enforced (refresh tokens rejected as access tokens)
+- C6: All datetime.utcnow() replaced with datetime.now(timezone.utc)
 
-### Session 3 (2026-03-22): Firebase Live + SendGrid + VAPID Key
-1. **Firebase Push Notifications - LIVE MODE**:
-   - Service account credentials configured (crypto-vault-8026a)
-   - Fixed env loading issue (fallback to file path when os.environ not set)
-   - FCM token registration, test, status endpoints all working
-   - mock_mode: false, firebase_setup_required: false
-2. **SendGrid Email Service**:
-   - Configured with API key (currently returning 401 - key needs renewal)
-   - Added graceful fallback to mock mode in dev for both SendGrid AND SMTP failures
-   - Signup flow works regardless of email service status
-3. **VAPID Key**:
-   - Web push VAPID key configured in frontend .env
-   - Service worker ready for browser push permission prompts
-4. **Gunicorn Clarification**:
-   - FastAPI uses ASGI (not WSGI), correct command: `gunicorn -k uvicorn.workers.UvicornWorker server:app`
-   - Already handled by start_server.py
+**High-Severity Fixes (H1-H5) - All Implemented:**
+- H1: Refresh token rotation (new refresh token on each refresh, old one blacklisted)
+- H2: Session invalidation on password change (new tokens issued, old sessions expired)
+- H3: Login error messages normalized (prevents account enumeration)
+- H4: Login-specific rate limiting (global 60/min + account lockout)
+- H5: Cookie Secure flag unified (always Secure=True)
 
-## Testing Status
-- Backend: 100% (20/20 tests passed)
-- Frontend: 95% (all UI features working, minor session timeout during extended Playwright testing)
-- Firebase: LIVE (mock_mode=false)
-- Email: SendGrid with mock fallback (key needs renewal)
+**Additional Fixes:**
+- Blacklist now checks token before refresh (replay protection)
+- Logout blacklists tokens from both cookies and Authorization header
+- Lazy DB access in blacklist module (prevents stale references)
 
-## Prioritized Backlog
+### Deployment
+- Gunicorn + Uvicorn workers configured for Render
+- Successfully deployed to Render (confirmed by user)
 
-### P0 (Critical - None remaining)
-All critical bugs fixed.
+## Known Issues
+- **Email**: SendGrid/SMTP credentials invalid - using mock fallback
+- **Redis**: Upstash free tier exhausted - using in-memory cache
 
-### P1 (High Priority)
-- [ ] Fix GMX SMTP credentials (user needs to verify password)
-- [ ] VAPID key for web push (user needs to generate from Firebase Console → Cloud Messaging)
-- [ ] Upstash Redis - upgrade plan or provision new instance
+## Pending (P2 - Medium Priority)
+- M1-M10 medium severity items from security audit (documented in SECURITY_AUDIT_REPORT.md)
+- Production VAPID key for web push
+- User-configurable push notification preferences
+- Session limit per user
+- 2FA disable requires password re-confirmation
+- Backup codes should be hashed before storage
 
-### P2 (Medium Priority)
-- [ ] Advanced trading charts (TradingView integration)
-- [ ] Blog/Careers pages - connect to CMS or API
-- [ ] Sentry error tracking - configure for production
-- [ ] Mobile responsive testing and optimization
-- [ ] KYC/AML verification flow
-
-### P3 (Low Priority)
-- [ ] Telegram bot admin notifications webhook mode
-- [ ] Email templates for all transactional emails
-- [ ] Rate limiting with Redis
-- [ ] Production deployment hardening
-- [ ] Social login (Google OAuth)
-
-## Credentials
-- Admin: admin@cryptovault.financial / CryptoAdmin2026! (OTP auto-fills in dev)
-- Firebase: crypto-vault-8026a (service account at /app/backend/firebase-credentials.json)
-- SMTP: services.fortivault@gmx.us (credentials need updating)
+## Test Credentials
+- **User**: secaudit@test.com / SecAudit2026!
+- **Admin**: admin@cryptovault.financial / CryptoAdmin2026! (OTP bypassed in dev)

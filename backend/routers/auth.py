@@ -33,7 +33,7 @@ from auth import (
 )
 from referral_service import ReferralService
 from dependencies import get_current_user_id, get_db
-from blacklist import blacklist_token
+from blacklist import blacklist_token, is_token_blacklisted
 from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
@@ -455,21 +455,30 @@ async def logout(
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
-    """Secure logout: Blacklist tokens and delete cookies."""
+    """Secure logout: Blacklist tokens from both cookies and Authorization header, then delete cookies."""
     refresh_token = request.cookies.get("refresh_token")
     access_token = request.cookies.get("access_token")
 
-    if refresh_token:
-        payload = decode_token(refresh_token, expected_type="refresh")
-        if payload:
-            expires_in = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
-            await blacklist_token(refresh_token, max(expires_in, 60))
+    # Also check Authorization header for Bearer token
+    auth_header = request.headers.get("Authorization", "")
+    bearer_token = None
+    if auth_header.startswith("Bearer "):
+        bearer_token = auth_header[7:]
 
+    # Blacklist all tokens found
+    tokens_to_blacklist = set()
+    if refresh_token:
+        tokens_to_blacklist.add(("refresh", refresh_token))
     if access_token:
-        payload = decode_token(access_token, expected_type="access")
+        tokens_to_blacklist.add(("access", access_token))
+    if bearer_token and bearer_token != access_token:
+        tokens_to_blacklist.add(("access", bearer_token))
+
+    for token_type, token_val in tokens_to_blacklist:
+        payload = decode_token(token_val, expected_type=token_type)
         if payload:
             expires_in = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
-            await blacklist_token(access_token, max(expires_in, 60))
+            await blacklist_token(token_val, max(expires_in, 60))
 
     await log_audit(db, user_id, "USER_LOGOUT", ip_address=request.client.host)
 
@@ -579,6 +588,10 @@ async def refresh_token(request: Request):
     if not old_refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token not found")
 
+    # Check if the incoming refresh token has been blacklisted (replay protection)
+    if await is_token_blacklisted(old_refresh_token):
+        raise HTTPException(status_code=401, detail="Refresh token has been revoked")
+
     payload = decode_token(old_refresh_token, expected_type="refresh")
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -591,12 +604,10 @@ async def refresh_token(request: Request):
     new_access_token = create_access_token(data={"sub": user_id})
     new_refresh_token = create_refresh_token(data={"sub": user_id})
 
-    # Blacklist the old refresh token
-    old_jti = payload.get("jti")
-    if old_jti:
-        old_exp = payload.get("exp", 0)
-        expires_in = max(int(old_exp - datetime.now(timezone.utc).timestamp()), 60)
-        await blacklist_token(old_refresh_token, expires_in)
+    # Blacklist the old refresh token to prevent reuse
+    old_exp = payload.get("exp", 0)
+    expires_in = max(int(old_exp - datetime.now(timezone.utc).timestamp()), 60)
+    await blacklist_token(old_refresh_token, expires_in)
 
     response = JSONResponse(content={"message": "Token refreshed"})
     set_auth_cookies(response, new_access_token, new_refresh_token)
