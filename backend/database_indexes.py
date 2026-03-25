@@ -161,7 +161,22 @@ async def create_indexes(db: AsyncIOMotorDatabase):
             partialFilterExpression={"expire_time": {"$exists": True}}
         )
         
-        logger.info("✅ Orders indexes created")
+        # High-value withdrawal multi-approver tracking
+        await orders_collection.create_index([
+            ("trading_pair", ASCENDING),
+            ("price", ASCENDING),
+            ("status", ASCENDING),
+        ])
+        
+        # Index for order book queries (high-volume trading)
+        await orders_collection.create_index([
+            ("trading_pair", ASCENDING),
+            ("side", ASCENDING),
+            ("status", ASCENDING),
+            ("price", ASCENDING),
+        ])
+        
+        logger.info("Orders indexes created")
         
         # ============================================
         # TRANSACTIONS COLLECTION
@@ -248,7 +263,21 @@ async def create_indexes(db: AsyncIOMotorDatabase):
             ("created_at", ASCENDING)
         ])
         
-        logger.info("✅ Withdrawals indexes created")
+        # Multi-approver workflow: track approval status
+        await withdrawals_collection.create_index([
+            ("status", ASCENDING),
+            ("amount", DESCENDING),
+        ])
+        
+        # Index for high-value withdrawals requiring multi-approval
+        await safe_create_index(
+            withdrawals_collection,
+            [("requires_multi_approval", ASCENDING), ("approval_count", ASCENDING), ("status", ASCENDING)],
+            name="multi_approval_idx",
+            sparse=True,
+        )
+        
+        logger.info("Withdrawals indexes created")
         
         # ============================================
         # TRANSFERS COLLECTION (P2P)

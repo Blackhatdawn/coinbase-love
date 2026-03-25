@@ -22,7 +22,7 @@ import uuid
 
 # Use localhost for cookie-based tests since cookies have Secure flag
 BASE_URL = "http://localhost:8001"
-PUBLIC_URL = os.environ.get("APP_URL", "https://app-audit-review-2.preview.emergentagent.com")
+PUBLIC_URL = os.environ.get("APP_URL", "https://secure-trading-api.preview.emergentagent.com")
 
 # Test credentials
 TEST_EMAIL = f"secaudit_test_{uuid.uuid4().hex[:8]}@test.com"

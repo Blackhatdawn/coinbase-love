@@ -10,7 +10,7 @@ from config import settings
 # Base URL for email assets (configurable via backend .env)
 SITE_URL = settings.app_url.rstrip("/")
 LOGO_URL = settings.public_logo_url or f"{SITE_URL}/favicon.svg"
-SUPPORT_EMAIL = settings.public_support_email or "support@cryptovault.financial"
+SUPPORT_EMAIL = settings.public_support_email or "support@cryptovaultpro.finance"
 
 def get_base_template(content: str, preheader: str = "") -> str:
     """

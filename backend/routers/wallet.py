@@ -1,4 +1,23 @@
-"""Wallet and deposit management endpoints."""
+"""Wallet and deposit management endpoints.
+
+Fund Segregation Notes:
+- Hot Wallet: Holds a small amount of funds for immediate withdrawals and P2P transfers.
+  Connected to payment processors (NOWPayments) for real-time operations.
+- Cold Wallet: Majority of funds stored offline for security.
+  Accessed only for large withdrawals (>$10,000) or treasury operations.
+  Cold wallet integration will require:
+  1. Multi-signature scheme (2-of-3 admin keys)
+  2. Hardware Security Module (HSM) integration
+  3. Scheduled batch processing (daily/weekly)
+  4. Manual override with audit trail
+
+Hot/Cold Wallet Balance Thresholds:
+- Hot wallet target: 10% of total assets or $100,000 (whichever is lower)
+- Auto-sweep: Move excess hot wallet funds to cold storage daily
+- Auto-refill: Top up hot wallet from cold storage when balance < 5%
+
+TODO: Implement cold wallet integration with hardware signing
+"""
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
@@ -648,6 +667,11 @@ async def create_withdrawal(
             detail=f"Insufficient balance. Required: ${total_amount:.2f} (including ${withdrawal_fee:.2f} fee), Available: ${current_balance:.2f}"
         )
     
+    # Check if high-value withdrawal requiring multi-approval
+    # Threshold: $5,000 requires at least 2 admin approvals
+    MULTI_APPROVAL_THRESHOLD = 5000.0
+    requires_multi_approval = data.amount >= MULTI_APPROVAL_THRESHOLD
+    
     # Create withdrawal record
     withdrawals_collection = db.get_collection("withdrawals")
     withdrawal_id = str(uuid.uuid4())
@@ -658,15 +682,20 @@ async def create_withdrawal(
         "amount": data.amount,
         "currency": data.currency.upper(),
         "address": data.address.strip(),
-        "status": "pending",  # pending, processing, completed, failed, cancelled
+        "status": "pending_approval" if requires_multi_approval else "pending",
         "fee": withdrawal_fee,
         "net_amount": data.amount,
         "total_amount": total_amount,
         "transaction_hash": None,
+        "requires_multi_approval": requires_multi_approval,
+        "required_approvals": 2 if requires_multi_approval else 0,
+        "approval_count": 0,
+        "approvals": [],  # [{admin_id, approved_at, ip_address}]
+        "rejections": [],
         "created_at": datetime.utcnow(),
         "processed_at": None,
         "completed_at": None,
-        "notes": None
+        "notes": f"High-value withdrawal (${data.amount:,.2f}) - requires 2 admin approvals" if requires_multi_approval else None,
     }
     
     await withdrawals_collection.insert_one(withdrawal_record)
@@ -748,10 +777,162 @@ async def create_withdrawal(
         "address": data.address,
         "fee": withdrawal_fee,
         "totalAmount": total_amount,
-        "status": "pending",
+        "status": "pending_approval" if requires_multi_approval else "pending",
+        "requiresMultiApproval": requires_multi_approval,
+        "requiredApprovals": 2 if requires_multi_approval else 0,
         "estimatedProcessingTime": "1-3 business days",
-        "note": "Your withdrawal request has been received and will be processed within 1-3 business days. You will receive an email notification when the withdrawal is complete."
+        "note": (
+            f"High-value withdrawal (${data.amount:,.2f}) requires approval from 2 admins before processing."
+            if requires_multi_approval
+            else "Your withdrawal request has been received and will be processed within 1-3 business days."
+        ),
     }
+
+
+# ============================================
+# MULTI-APPROVER WITHDRAWAL WORKFLOW
+# ============================================
+
+@router.post("/withdraw/{withdrawal_id}/approve")
+async def approve_withdrawal(
+    withdrawal_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db),
+):
+    """
+    Admin endpoint: Approve a high-value withdrawal.
+    Requires at least 2 different admins to approve.
+    """
+    # Verify admin status
+    users_collection = db.get_collection("users")
+    admin_user = await users_collection.find_one({"id": user_id})
+    if not admin_user or not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    withdrawals_collection = db.get_collection("withdrawals")
+    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
+
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+
+    if withdrawal["status"] not in ("pending_approval", "pending"):
+        raise HTTPException(status_code=400, detail=f"Withdrawal is already {withdrawal['status']}")
+
+    # Check if this admin already approved
+    existing_approvals = withdrawal.get("approvals", [])
+    if any(a["admin_id"] == user_id for a in existing_approvals):
+        raise HTTPException(status_code=400, detail="You have already approved this withdrawal")
+
+    # Add approval
+    approval_record = {
+        "admin_id": user_id,
+        "admin_email": admin_user.get("email"),
+        "approved_at": datetime.utcnow().isoformat(),
+        "ip_address": request.client.host if request.client else None,
+    }
+
+    new_approval_count = len(existing_approvals) + 1
+    required = withdrawal.get("required_approvals", 2)
+    new_status = "pending" if new_approval_count >= required else "pending_approval"
+
+    await withdrawals_collection.update_one(
+        {"id": withdrawal_id},
+        {
+            "$push": {"approvals": approval_record},
+            "$set": {
+                "approval_count": new_approval_count,
+                "status": new_status,
+                "updated_at": datetime.utcnow(),
+            },
+        },
+    )
+
+    # Audit log
+    await log_audit(
+        db, user_id, "ADMIN_WITHDRAWAL_APPROVAL",
+        resource=withdrawal_id,
+        ip_address=request.client.host if request.client else None,
+        details={
+            "withdrawal_amount": withdrawal["amount"],
+            "approval_count": new_approval_count,
+            "required_approvals": required,
+            "fully_approved": new_approval_count >= required,
+        },
+    )
+
+    logger.info(
+        "Withdrawal %s approved by admin %s (%d/%d approvals)",
+        withdrawal_id, user_id, new_approval_count, required,
+    )
+
+    return {
+        "success": True,
+        "withdrawalId": withdrawal_id,
+        "approvalCount": new_approval_count,
+        "requiredApprovals": required,
+        "fullyApproved": new_approval_count >= required,
+        "newStatus": new_status,
+    }
+
+
+@router.post("/withdraw/{withdrawal_id}/reject")
+async def reject_withdrawal(
+    withdrawal_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db),
+):
+    """Admin endpoint: Reject a withdrawal request and refund the user."""
+    users_collection = db.get_collection("users")
+    admin_user = await users_collection.find_one({"id": user_id})
+    if not admin_user or not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    withdrawals_collection = db.get_collection("withdrawals")
+    withdrawal = await withdrawals_collection.find_one({"id": withdrawal_id})
+
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+
+    if withdrawal["status"] not in ("pending_approval", "pending"):
+        raise HTTPException(status_code=400, detail=f"Withdrawal cannot be rejected (status: {withdrawal['status']})")
+
+    # Refund user's wallet
+    wallets_collection = db.get_collection("wallets")
+    wallet = await wallets_collection.find_one({"user_id": withdrawal["user_id"]})
+    if wallet:
+        current_balance = wallet.get("balances", {}).get(withdrawal["currency"], 0)
+        refund_amount = withdrawal.get("total_amount", withdrawal["amount"] + withdrawal.get("fee", 0))
+        await wallets_collection.update_one(
+            {"user_id": withdrawal["user_id"]},
+            {"$set": {
+                f"balances.{withdrawal['currency']}": current_balance + refund_amount,
+                "updated_at": datetime.utcnow(),
+            }},
+        )
+
+    await withdrawals_collection.update_one(
+        {"id": withdrawal_id},
+        {"$set": {
+            "status": "rejected",
+            "updated_at": datetime.utcnow(),
+        },
+        "$push": {"rejections": {
+            "admin_id": user_id,
+            "rejected_at": datetime.utcnow().isoformat(),
+            "ip_address": request.client.host if request.client else None,
+        }}},
+    )
+
+    await log_audit(
+        db, user_id, "ADMIN_WITHDRAWAL_REJECTION",
+        resource=withdrawal_id,
+        ip_address=request.client.host if request.client else None,
+        details={"withdrawal_amount": withdrawal["amount"]},
+    )
+
+    return {"success": True, "withdrawalId": withdrawal_id, "status": "rejected"}
 
 
 @router.get("/withdrawals")

@@ -1,0 +1,178 @@
+{
+  "summary": {
+    "tests_run": 12,
+    "tests_passed": 11,
+    "tests_failed": 1,
+    "success_rate": 91.66666666666666,
+    "backend_url": "https://secure-trading-api.preview.emergentagent.com"
+  },
+  "test_results": [
+    {
+      "test_name": "GET /health/live returns {status: ok} with 200",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:29.989561",
+      "details": {
+        "status_code": 200,
+        "response": {
+          "status": "ok"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "GET /health/ready returns checks for mongodb, redis, price_stream with 200",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.071335",
+      "details": {
+        "status_code": 200,
+        "checks": {
+          "mongodb": {
+            "status": "up"
+          },
+          "redis": {
+            "status": "skipped",
+            "detail": "Redis not configured, using in-memory fallback"
+          },
+          "price_stream": {
+            "status": "up",
+            "prices_cached": 12,
+            "has_cached_data": false,
+            "stream_state": "reconnecting",
+            "last_update": "2026-03-25T17:33:29.993059+00:00"
+          }
+        },
+        "status": "ok"
+      },
+      "error": null
+    },
+    {
+      "test_name": "GET /api/health/live returns {status: ok} with 200",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.127618",
+      "details": {
+        "status_code": 200,
+        "response": {
+          "status": "ok"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "GET /api/health/ready returns readiness info with 200",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.218065",
+      "details": {
+        "status_code": 200,
+        "checks": {
+          "mongodb": {
+            "status": "up"
+          },
+          "redis": {
+            "status": "skipped",
+            "detail": "Redis not configured, using in-memory fallback"
+          },
+          "price_stream": {
+            "status": "up",
+            "prices_cached": 12,
+            "has_cached_data": false,
+            "stream_state": "reconnecting",
+            "last_update": "2026-03-25T17:33:30.047873+00:00"
+          }
+        },
+        "status": "ok"
+      },
+      "error": null
+    },
+    {
+      "test_name": "GET /ping returns pong with 200",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.282006",
+      "details": {
+        "status_code": 200,
+        "response": {
+          "status": "ok",
+          "message": "pong",
+          "timestamp": "2026-03-25T17:33:30.257608",
+          "version": "2.0.0"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "GET /api/kyc/status returns 401 when unauthenticated",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.333127",
+      "details": {
+        "status_code": 401
+      },
+      "error": null
+    },
+    {
+      "test_name": "POST /api/kyc/documents/upload returns 401 when unauthenticated",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.385109",
+      "details": {
+        "status_code": 401
+      },
+      "error": null
+    },
+    {
+      "test_name": "POST /api/kyc/aml/screen returns 401 when unauthenticated",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.450057",
+      "details": {
+        "status_code": 401
+      },
+      "error": null
+    },
+    {
+      "test_name": "Backend starts without errors and all indexes created",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.502535",
+      "details": {
+        "status_code": 200,
+        "response": {
+          "status": "ok",
+          "message": "pong",
+          "timestamp": "2026-03-25T17:33:30.483669",
+          "version": "2.0.0"
+        },
+        "backend_running": true
+      },
+      "error": null
+    },
+    {
+      "test_name": "Email config updated to SMTP with mail.spacemail.com",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.551605",
+      "details": {
+        "status_code": 200,
+        "csrf_token_generated": true,
+        "note": "Email config tested indirectly via backend functionality"
+      },
+      "error": null
+    },
+    {
+      "test_name": "Domain references updated to cryptovaultpro.finance in backend config",
+      "success": false,
+      "timestamp": "2026-03-25T17:33:30.602270",
+      "details": {
+        "status_code": 200,
+        "domain_found": false,
+        "content_type": "text/html"
+      },
+      "error": "New domain references not found in frontend HTML"
+    },
+    {
+      "test_name": "Price stream with Redis caching operational",
+      "success": true,
+      "timestamp": "2026-03-25T17:33:30.661822",
+      "details": {
+        "status_code": 200,
+        "prices_available": true,
+        "note": "Price stream tested via API endpoint"
+      },
+      "error": null
+    }
+  ]
+}

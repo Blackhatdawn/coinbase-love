@@ -99,7 +99,7 @@ const mergeConfig = (base: RuntimeConfig, incoming: Partial<RuntimeConfig>): Run
   // In development/preview, always prefer relative API to use proxy
   const isDev = import.meta.env.DEV || 
     (typeof window !== 'undefined' && 
-      !window.location.hostname.endsWith('cryptovault.financial') &&
+      !window.location.hostname.endsWith('cryptovaultpro.finance') &&
       !window.location.hostname.endsWith('.vercel.app'));
   
   const preferRelativeApi = isDev || incoming.preferRelativeApi || base.preferRelativeApi || false;

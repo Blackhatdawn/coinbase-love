@@ -153,7 +153,7 @@ const AdminLogin = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@cryptovault.financial"
+                  placeholder="admin@cryptovaultpro.finance"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 bg-slate-900/50 border-slate-700"

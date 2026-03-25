@@ -24,6 +24,8 @@ from database import DatabaseConnection
 
 # Routers
 from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, files, referrals, earn, contact, push
+from routers.health import router as health_router
+from routers.kyc_aml import router as kyc_aml_router
 
 # Services
 from services.telegram_bot import telegram_bot
@@ -674,6 +676,14 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitHeadersMiddleware)
 app.add_middleware(TimeoutMiddleware, timeout_seconds=30)  # 30-second request timeout
 
+# Import and add geo-blocking middleware
+try:
+    from middleware.geo_blocking import GeoBlockingMiddleware
+    app.add_middleware(GeoBlockingMiddleware)
+    logger.info("Geo-blocking middleware enabled")
+except ImportError as e:
+    logger.warning(f"Geo-blocking middleware not available: {e}")
+
 # Import and add advanced security middleware from middleware/security.py
 try:
     from middleware.security import (
@@ -751,6 +761,12 @@ app.include_router(referrals.router, prefix="/api")
 app.include_router(earn.router, prefix="/api")
 app.include_router(contact.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
+
+# Health check endpoints (liveness + readiness probes)
+app.include_router(health_router)
+
+# KYC/AML endpoints
+app.include_router(kyc_aml_router, prefix="/api", tags=["kyc"])
 
 # Admin dashboard (custom prefix already in router)
 from routers.admin import router as admin_dashboard_router

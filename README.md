@@ -1,42 +1,44 @@
-# 🏦 CryptoVault - Institutional-Grade Crypto Platform
+# 🏦 CryptoVault Pro - Institutional-Grade Crypto Platform
 
 > **Production Candidate** | Secure, scalable cryptocurrency trading and custody platform with advanced features
 
 [![Status](https://img.shields.io/badge/status-production--candidate-yellow)](/)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](/)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](/)
 [![License](https://img.shields.io/badge/license-MIT-green)](/)
 
-## 🌟 Features
+**Domain**: [cryptovaultpro.finance](https://cryptovaultpro.finance)
+
+## Features
 
 ### Core Platform
-- ✅ **User Authentication** - JWT + Refresh tokens, 2FA, account lockout
-- ✅ **Wallet Management** - Multi-currency support, instant deposits
-- ✅ **Trading Engine** - Market, limit, stop-loss, take-profit orders
-- ✅ **P2P Transfers** - Free instant transfers between users
-- ✅ **Real-time Updates** - WebSocket price feeds and notifications
-- ✅ **Admin Dashboard** - User management, analytics, withdrawal approval
+- **User Authentication** - JWT + Refresh tokens, 2FA, account lockout
+- **Wallet Management** - Multi-currency support, instant deposits, hot/cold wallet architecture
+- **Trading Engine** - Market, limit, stop-loss, take-profit orders
+- **P2P Transfers** - Free instant transfers between users
+- **Real-time Updates** - WebSocket price feeds (Binance, Kraken, Coinbase) and notifications
+- **Admin Dashboard** - User management, analytics, multi-approver withdrawal approval
+- **KYC/AML Integration** - Document upload (S3), compliance hooks, AML screening placeholders
 
 ### Advanced Features
-- 🚀 **Withdrawal System** - Automated processing with fee calculation
-- 💹 **Advanced Order Types** - Stop-loss, take-profit, time-in-force
-- 📊 **Business Analytics** - Revenue tracking, conversion funnels
-- 🔔 **Real-time Notifications** - WebSocket-based alert system
-- ⚡ **Multi-layer Caching** - L1/L2/L3 cache for optimal performance
-- 🗄️ **Optimized Database** - Compound indexes for fast queries
-- 📱 **Mobile Responsive** - Touch-optimized interface
+- **Multi-Provider Price Stream** - CoinGecko + CoinMarketCap fallback with 45s Redis cache
+- **Multi-Approver Withdrawals** - High-value withdrawals ($5,000+) require 2 admin approvals
+- **IP/Country Blocking** - GeoIP-based middleware for restricted regions
+- **Comprehensive Audit Logging** - All financial actions logged with request_id and user_id
+- **S3 Document Storage** - KYC documents stored in S3-compatible storage (with local fallback)
+- **Health Check Probes** - Separate liveness/readiness endpoints for Kubernetes/Render
 
-### Security & Compliance
-- 🔐 **Enterprise Security** - Rate limiting, audit logs, security headers
-- 🛡️ **Account Protection** - Brute-force protection, device tracking
-- 📝 **Comprehensive Logging** - Request correlation, structured logs
-- 🎯 **Error Tracking** - Sentry integration for production monitoring
+### Infrastructure
+- **Redis Caching** - Market data (45s TTL), user sessions, order books
+- **Production Server** - Gunicorn + Uvicorn workers with graceful shutdown
+- **Compound Indexes** - Optimized for high-volume trading queries
+- **Structured Logging** - JSON logs with request_id correlation
 
-## 🚀 Quick Start
+## Requirements
 
-### Prerequisites
 - Python 3.9+
 - Node.js 18+
 - MongoDB (local or Atlas)
+- Redis (optional - Upstash recommended for serverless)
 
 ### 1. Clone & Install
 
@@ -117,9 +119,10 @@ The project should only be labeled "Production Ready" when those checklists are 
 **Backend**:
 - FastAPI (Python)
 - MongoDB (Database)
-- Redis (Caching - optional)
-- WebSocket (Real-time)
+- Redis (Caching - prices, sessions, order books)
+- WebSocket (Real-time: Binance, Kraken, Coinbase)
 - JWT (Authentication)
+- S3 (Document storage)
 
 **Frontend**:
 - React 18 + TypeScript
@@ -176,6 +179,8 @@ POST   /api/auth/reset-password      - Reset password
 GET    /api/wallet/balance           - Get balance
 POST   /api/wallet/deposit/create    - Create deposit
 POST   /api/wallet/withdraw          - Request withdrawal
+POST   /api/wallet/withdraw/:id/approve  - Admin: approve high-value withdrawal
+POST   /api/wallet/withdraw/:id/reject   - Admin: reject withdrawal
 GET    /api/wallet/withdrawals       - Withdrawal history
 POST   /api/wallet/transfer          - P2P transfer
 GET    /api/wallet/transfers         - Transfer history
@@ -198,10 +203,20 @@ GET    /api/admin/withdrawals        - Pending withdrawals
 POST   /api/admin/withdrawals/:id/approve  - Approve withdrawal
 ```
 
-### System
+### System & Health
 ```
-GET    /ping                         - Simple health check
-GET    /health                       - Full health check
+GET    /ping                         - Simple ping (always 200)
+GET    /health/live                   - Liveness probe (no deps, fast)
+GET    /health/ready                  - Readiness probe (checks MongoDB, Redis, price stream)
+GET    /health                       - Legacy health check
+```
+
+### KYC/AML
+```
+POST   /api/kyc/documents/upload     - Upload KYC document
+GET    /api/kyc/status               - Get KYC verification status
+POST   /api/kyc/aml/screen           - AML screening hook (placeholder)
+GET    /api/kyc/compliance/report    - Compliance report
 ```
 
 See full API documentation at `http://localhost:8001/api/docs`

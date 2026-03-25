@@ -104,11 +104,11 @@ class Settings(BaseSettings):
         description="When true in production, enforce strict checks for all integration-critical env vars"
     )
     app_url: str = Field(
-        default="https://www.cryptovault.financial",
+        default="https://www.cryptovaultpro.finance",
         description="Frontend application URL"
     )
     public_site_name: str = Field(
-        default="CryptoVault Financial",
+        default="CryptoVault Pro",
         description="Public site name for frontend branding"
     )
     public_logo_url: Optional[str] = Field(
@@ -216,15 +216,15 @@ class Settings(BaseSettings):
         description="Resend API key"
     )
     email_from: str = Field(
-        default="team@cryptovault.financial",
+        default="securedvault@cryptovaultpro.finance",
         description="Default sender email"
     )
     email_from_name: str = Field(
-        default="CryptoVault Financial",
+        default="CryptoVault Pro",
         description="Default sender name"
     )
     email_verification_url: str = Field(
-        default="https://cryptovault.financial/verify",
+        default="https://cryptovaultpro.finance/verify",
         description="Email verification URL"
     )
     smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
@@ -256,6 +256,13 @@ class Settings(BaseSettings):
         description="Allow NOWPayments mock fallback when API key is missing"
     )
     
+    # CoinMarketCap (Fallback price provider - free tier 30 req/min)
+    # Get your free API key at: https://coinmarketcap.com/api/
+    coinmarketcap_api_key: Optional[str] = Field(
+        default=None,
+        description="CoinMarketCap API key (free tier, optional fallback)"
+    )
+
     # NowPayments (Payment Processing)
     nowpayments_api_key: Optional[SecretStr] = Field(
         default=None,
@@ -266,6 +273,32 @@ class Settings(BaseSettings):
         description="NowPayments IPN secret"
     )
     nowpayments_sandbox: bool = Field(default=False, description="Use NowPayments sandbox")
+
+    # ============================================
+    # S3 STORAGE (KYC Documents, Audit Logs)
+    # ============================================
+    s3_endpoint_url: Optional[str] = Field(default=None, description="S3-compatible endpoint URL")
+    s3_access_key_id: Optional[str] = Field(default=None, description="S3 access key ID")
+    s3_secret_access_key: Optional[str] = Field(default=None, description="S3 secret access key")
+    s3_region: str = Field(default="us-east-1", description="S3 region")
+    s3_bucket_kyc: str = Field(default="cryptovault-kyc-documents", description="S3 bucket for KYC documents")
+    s3_bucket_audit: str = Field(default="cryptovault-audit-logs", description="S3 bucket for audit logs")
+
+    # ============================================
+    # GEO-BLOCKING / IP RESTRICTIONS
+    # ============================================
+    blocked_countries: str = Field(
+        default="",
+        description="Comma-separated ISO country codes to block (e.g., KP,IR,CU,SY)"
+    )
+    geoip_db_path: Optional[str] = Field(
+        default=None,
+        description="Path to GeoLite2-Country.mmdb file"
+    )
+    maxmind_license_key: Optional[str] = Field(
+        default=None,
+        description="MaxMind license key for GeoIP database download"
+    )
 
     # ============================================
     # FEATURE FLAGS
