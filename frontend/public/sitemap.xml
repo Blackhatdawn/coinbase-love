@@ -2,103 +2,103 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Main Pages -->
   <url>
-    <loc>https://cryptovault.financial/</loc>
+    <loc>https://cryptovaultpro.finance/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/markets</loc>
+    <loc>https://cryptovaultpro.finance/markets</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/trade</loc>
+    <loc>https://cryptovaultpro.finance/trade</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/earn</loc>
+    <loc>https://cryptovaultpro.finance/earn</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/learn</loc>
+    <loc>https://cryptovaultpro.finance/learn</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <!-- Company Pages -->
   <url>
-    <loc>https://cryptovault.financial/about</loc>
+    <loc>https://cryptovaultpro.finance/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/services</loc>
+    <loc>https://cryptovaultpro.finance/services</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/security</loc>
+    <loc>https://cryptovaultpro.finance/security</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/fees</loc>
+    <loc>https://cryptovaultpro.finance/fees</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/careers</loc>
+    <loc>https://cryptovaultpro.finance/careers</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/blog</loc>
+    <loc>https://cryptovaultpro.finance/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/contact</loc>
+    <loc>https://cryptovaultpro.finance/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <!-- Resources -->
   <url>
-    <loc>https://cryptovault.financial/faq</loc>
+    <loc>https://cryptovaultpro.finance/faq</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/help</loc>
+    <loc>https://cryptovaultpro.finance/help</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   
   <!-- Legal Pages -->
   <url>
-    <loc>https://cryptovault.financial/terms</loc>
+    <loc>https://cryptovaultpro.finance/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/privacy</loc>
+    <loc>https://cryptovaultpro.finance/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/cookies</loc>
+    <loc>https://cryptovaultpro.finance/cookies</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/aml</loc>
+    <loc>https://cryptovaultpro.finance/aml</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://cryptovault.financial/risk-disclosure</loc>
+    <loc>https://cryptovaultpro.finance/risk-disclosure</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

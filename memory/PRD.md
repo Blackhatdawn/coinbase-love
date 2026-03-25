@@ -1,67 +1,112 @@
-# CryptoVault PRD - Product Requirements Document
+# CryptoVault Pro - Product Requirements Document
 
 ## Original Problem Statement
-Build a comprehensive crypto exchange web application (CryptoVault) with features similar to Bybit, Coinbase, and Binance. The platform includes user authentication, live price tickers, wallet management, trading, staking, referrals, admin panel, and push notifications.
+Update the CryptoVault project with production-grade improvements across 8 major areas:
+1. Price Stream Service with Redis caching and CoinMarketCap fallback
+2. Health Check Endpoints (liveness/readiness probes)
+3. Production Server Setup
+4. Security & Compliance (KYC/AML, multi-approver withdrawals, geo-blocking, audit logging, S3)
+5. Email Configuration for cryptovaultpro.finance domain
+6. Domain Change (cryptovault.finance → cryptovaultpro.finance)
+7. Database & Infrastructure (compound indexes, Redis)
+8. Documentation Updates
 
 ## Architecture
-- **Frontend**: React + TypeScript + Vite + TailwindCSS + Framer Motion
-- **Backend**: FastAPI (Python) + MongoDB Atlas
-- **Auth**: JWT (access + refresh tokens via httpOnly Secure cookies)
-- **Real-time**: Socket.IO WebSocket for live prices
-- **Push**: Firebase Cloud Messaging (FCM)
-- **Email**: SendGrid/SMTP with mock fallback
-- **Cache**: In-memory (Redis disabled - free tier exhausted)
+- **Backend**: FastAPI (Python) + MongoDB + Redis (Upstash) + WebSocket
+- **Frontend**: React 18 + TypeScript + Vite + TailwindCSS
+- **Infrastructure**: Render.com (backend), Vercel (frontend), MongoDB Atlas, Upstash Redis
 
-## What's Been Implemented
+## User Personas
+- **Traders**: Buy/sell crypto, view real-time prices, manage portfolio
+- **Admin**: Approve withdrawals, manage users, view analytics
+- **Compliance Officer**: Review KYC docs, AML screening, audit logs
 
-### Core Features (Complete)
-- User registration/login with JWT + httpOnly cookies
-- Admin panel with OTP authentication
-- Live crypto price tickers via WebSocket
-- Wallet management, trading orders, staking/earn products
-- Price alerts system
-- Multi-tier referral program (Bronze/Silver/Gold/Platinum)
-- Firebase push notifications (live)
-- Email service with graceful mock fallback
-- 38 frontend pages, 24 backend routers
+## Core Requirements
+- Real-time price streaming from multiple exchanges
+- Secure authentication with JWT + 2FA
+- Multi-currency wallet management
+- P2P transfers between users
+- KYC/AML compliance hooks
+- Production-grade health monitoring
 
-### Security Audit & Hardening (Feb 2026)
-**Critical Fixes (C1-C6) - All Implemented:**
-- C1: Admin JWT secret now HMAC-derived (independent from user secret)
-- C2: CSRF secret upgraded to 64-byte random hex
-- C3: JWT tokens now include jti, aud, and iss claims
-- C4: Admin OTP uses secrets.choice (cryptographic randomness)
-- C5: Token type validation enforced (refresh tokens rejected as access tokens)
-- C6: All datetime.utcnow() replaced with datetime.now(timezone.utc)
+## What's Been Implemented (March 2026)
 
-**High-Severity Fixes (H1-H5) - All Implemented:**
-- H1: Refresh token rotation (new refresh token on each refresh, old one blacklisted)
-- H2: Session invalidation on password change (new tokens issued, old sessions expired)
-- H3: Login error messages normalized (prevents account enumeration)
-- H4: Login-specific rate limiting (global 60/min + account lockout)
-- H5: Cookie Secure flag unified (always Secure=True)
+### Phase 1: Price Stream + Health + Redis
+- [x] Rewrote `services/price_stream.py` with:
+  - Redis caching for market data (45s TTL)
+  - CoinMarketCap fallback provider (CoinGecko → CMC → cached data)
+  - Exponential backoff with random jitter (0-1s) on all exchanges
+  - Max retry limit (50) with 5-minute cooldown on Binance WS
+  - Scheduled market data refresh (every 45s) instead of aggressive polling
+  - Clear HTTP 451 (geo-blocked) logging for Binance
+- [x] Created `routers/health.py` with:
+  - `GET /health/live` - Fast liveness probe (no deps)
+  - `GET /health/ready` - Full readiness check (MongoDB, Redis, price stream)
+  - Parallel dependency checks with `asyncio.gather()` and timeouts
+  - Proper HTTP 200/503 status codes
 
-**Additional Fixes:**
-- Blacklist now checks token before refresh (replay protection)
-- Logout blacklists tokens from both cookies and Authorization header
-- Lazy DB access in blacklist module (prevents stale references)
+### Phase 2: Security & Compliance
+- [x] Created `services/audit_service.py` - Comprehensive audit logging for all financial actions
+- [x] Created `services/s3_service.py` - S3 document upload for KYC docs (with local fallback)
+- [x] Created `middleware/geo_blocking.py` - IP/country blocking with GeoIP support
+- [x] Created `routers/kyc_aml.py` - KYC document upload, status, AML screening hooks
+- [x] Added multi-approver withdrawal workflow in `routers/wallet.py`:
+  - $5,000+ withdrawals require 2 admin approvals
+  - `POST /wallet/withdraw/{id}/approve` and `/reject` endpoints
+  - Full audit trail for approvals/rejections
+- [x] Added hot/cold wallet architecture documentation
 
-### Deployment
-- Gunicorn + Uvicorn workers configured for Render
-- Successfully deployed to Render (confirmed by user)
+### Phase 3: Email + Domain
+- [x] Updated email config to cryptovaultpro.finance domain
+- [x] SMTP settings: mail.spacemail.com, port 465 (SSL)
+- [x] Sender: securedvault@cryptovaultpro.finance
+- [x] Updated all frontend references (index.html, sitemap.xml, robots.txt, meta tags)
+- [x] Updated backend references (config.py, email_templates.py, admin_auth.py)
 
-## Known Issues
-- **Email**: SendGrid/SMTP credentials invalid - using mock fallback
-- **Redis**: Upstash free tier exhausted - using in-memory cache
+### Phase 4: Infrastructure + Documentation
+- [x] Created `production_start.sh` (Gunicorn + Uvicorn workers, graceful shutdown)
+- [x] Added compound indexes for high-volume trading (order book, multi-approval)
+- [x] Added new config fields (coinmarketcap_api_key, s3_*, blocked_countries, geoip_db_path)
+- [x] Updated `.env.example` with all new environment variables
+- [x] Updated `README.md` with new endpoints, Redis requirement, production commands
+- [x] Updated `PRODUCTION_READINESS.md` checklist
 
-## Pending (P2 - Medium Priority)
-- M1-M10 medium severity items from security audit (documented in SECURITY_AUDIT_REPORT.md)
-- Production VAPID key for web push
-- User-configurable push notification preferences
-- Session limit per user
-- 2FA disable requires password re-confirmation
-- Backup codes should be hashed before storage
+## New Environment Variables
+```
+COINMARKETCAP_API_KEY=        # Optional: CoinMarketCap fallback
+S3_ENDPOINT_URL=              # S3-compatible storage endpoint
+S3_ACCESS_KEY_ID=             # S3 access key
+S3_SECRET_ACCESS_KEY=         # S3 secret key
+S3_REGION=us-east-1           # S3 region
+S3_BUCKET_KYC=                # KYC documents bucket
+S3_BUCKET_AUDIT=              # Audit logs bucket
+BLOCKED_COUNTRIES=            # Comma-separated country codes to block
+GEOIP_DB_PATH=                # Path to GeoLite2-Country.mmdb
+MAXMIND_LICENSE_KEY=          # MaxMind license for auto-download
+```
 
-## Test Credentials
-- **User**: secaudit@test.com / SecAudit2026!
-- **Admin**: admin@cryptovault.financial / CryptoAdmin2026! (OTP bypassed in dev)
+## Prioritized Backlog
+
+### P0 (Critical for production)
+- [ ] Configure Redis (Upstash) in production
+- [ ] Set up real S3 credentials for KYC document storage
+- [ ] Full end-to-end email delivery testing
+
+### P1 (Important)
+- [ ] Add MaxMind GeoIP database for IP-based country blocking
+- [ ] Implement cold wallet integration with hardware signing
+- [ ] Complete AML screening integration (Chainalysis/Elliptic)
+- [ ] Database sharding plan for high-volume trading
+
+### P2 (Nice to have)
+- [ ] Load testing with realistic traffic patterns
+- [ ] Penetration testing
+- [ ] Webhook mode for Telegram in multi-worker deployments
+- [ ] IP whitelisting for MongoDB Atlas
+
+## Next Tasks
+1. User to configure Upstash Redis URL in production .env
+2. User to set up S3 credentials for KYC storage
+3. User to obtain CoinMarketCap API key (free tier)
+4. User to download GeoLite2-Country.mmdb from MaxMind
+5. End-to-end testing with real email delivery

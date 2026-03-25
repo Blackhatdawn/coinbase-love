@@ -252,7 +252,7 @@ async def create_default_admin():
     
     admin_doc = {
         "id": admin_id,
-        "email": "admin@cryptovault.financial",
+        "email": "admin@cryptovaultpro.finance",
         "password_hash": hash_password(default_password),
         "name": "Super Admin",
         "role": "super_admin",
@@ -269,7 +269,7 @@ async def create_default_admin():
     await db.admins.insert_one(admin_doc)
     logger.info("=" * 60)
     logger.info("🔐 BOOTSTRAP ADMIN ACCOUNT CREATED")
-    logger.info("   Email: admin@cryptovault.financial")
+    logger.info("   Email: admin@cryptovaultpro.finance")
     logger.warning("   A random bootstrap password was generated. Retrieve it from secure deployment secrets/log pipeline and rotate immediately.")
     logger.info("   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!")
     logger.info("=" * 60)

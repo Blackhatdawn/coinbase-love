@@ -21,7 +21,7 @@ Set these in Render Dashboard (never commit actual secret values):
 - `ENVIRONMENT=production`
 - `DB_NAME=cryptovault`
 - `PORT=8001`
-- `APP_URL=https://www.cryptovault.financial`
+- `APP_URL=https://www.cryptovaultpro.finance`
 - `PUBLIC_API_URL=https://cryptovault-api.onrender.com`
 - `PUBLIC_WS_URL=wss://cryptovault-api.onrender.com`
 - `PUBLIC_SOCKET_IO_PATH=/socket.io/`
@@ -30,8 +30,8 @@ Set these in Render Dashboard (never commit actual secret values):
 
 **CORS/hosted-frontend alignment**
 - `CORS_ORIGINS` must include your exact frontend domain(s), for example:
-  - `https://www.cryptovault.financial`
-  - `https://cryptovault.financial`
+  - `https://www.cryptovaultpro.finance`
+  - `https://cryptovaultpro.finance`
   - `https://coinbase-love.vercel.app`
 
 ### 2) Deploy
@@ -48,7 +48,7 @@ curl -fsS https://cryptovault-api.onrender.com/api/config
 - API: `https://cryptovault-api.onrender.com`
 - Health: `https://cryptovault-api.onrender.com/health`
 - API docs: `https://cryptovault-api.onrender.com/api/docs`
-- Frontend: `https://www.cryptovault.financial`
+- Frontend: `https://www.cryptovaultpro.finance`
 
 ## Security note
 Never store production tokens, API keys, or DB credentials in repository files or scripts.

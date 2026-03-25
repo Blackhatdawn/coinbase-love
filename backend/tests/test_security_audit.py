@@ -29,7 +29,7 @@ TEST_EMAIL = f"secaudit_test_{uuid.uuid4().hex[:8]}@test.com"
 TEST_PASSWORD = "SecAudit2026!"
 TEST_NAME = "Security Audit Test User"
 
-ADMIN_EMAIL = "admin@cryptovault.financial"
+ADMIN_EMAIL = "admin@cryptovaultpro.finance"
 ADMIN_PASSWORD = "CryptoAdmin2026!"
 
 

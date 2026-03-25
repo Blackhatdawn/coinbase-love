@@ -42,7 +42,7 @@ async def submit_contact_form(payload: ContactRequest, request: Request, db=Depe
 
     await contact_collection.insert_one(doc)
 
-    support_email = settings.public_support_email or settings.email_from or "support@cryptovault.financial"
+    support_email = settings.public_support_email or settings.email_from or "support@cryptovaultpro.finance"
     try:
         await email_service.send_email(
             to_email=support_email,

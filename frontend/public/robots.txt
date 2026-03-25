@@ -1,5 +1,5 @@
 # CryptoVault Robots.txt
-# https://cryptovault.financial
+# https://cryptovaultpro.finance
 
 User-agent: *
 Allow: /
@@ -31,4 +31,4 @@ Allow: /aml
 Allow: /risk-disclosure
 
 # Sitemap location
-Sitemap: https://cryptovault.financial/sitemap.xml
+Sitemap: https://cryptovaultpro.finance/sitemap.xml

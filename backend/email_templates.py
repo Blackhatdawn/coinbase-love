@@ -861,7 +861,7 @@ def kyc_status_update(name: str, status: str, tier: int, message: str) -> str:
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
             <tr>
                 <td align="center">
-                    <a href="https://cryptovault.financial/dashboard" 
+                    <a href="https://cryptovaultpro.finance/dashboard" 
                        style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #000000; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
                         Go to Dashboard →
                     </a>

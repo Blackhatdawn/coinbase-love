@@ -200,7 +200,7 @@ class EmailService:
         return """
         <tr>
             <td style="padding: 24px 40px; background-color: #0d0d0e; border-top: 1px solid #2a2a2d; text-align: center;">
-                <p style="margin: 0 0 8px; color: #666; font-size: 12px;">© 2024 CryptoVault Financial, Inc. All rights reserved.</p>
+                <p style="margin: 0 0 8px; color: #666; font-size: 12px;">© 2024 CryptoVault Pro. All rights reserved.</p>
                 <p style="margin: 0; color: #555; font-size: 11px;">1201 Market Street, Suite 101, Wilmington, DE 19801</p>
             </td>
         </tr>
@@ -292,7 +292,7 @@ This code expires in 5 minutes.
 If you didn't request this code, please ignore this email.
 
 ---
-CryptoVault Financial, Inc.
+CryptoVault Pro.
 1201 Market Street, Suite 101, Wilmington, DE 19801
         """
         
@@ -343,7 +343,7 @@ Your account has been verified and is now ready to use.
 Get started: {app_url}/dashboard
 
 ---
-CryptoVault Financial, Inc.
+CryptoVault Pro.
         """
         
         return subject, html_content, text_content
@@ -415,7 +415,7 @@ This link expires in 1 hour.
 If you didn't request this, please ignore this email.
 
 ---
-CryptoVault Financial, Inc.
+CryptoVault Pro.
         """
         
         return subject, html_content, text_content
