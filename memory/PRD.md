@@ -71,6 +71,24 @@ Update the CryptoVault project with production-grade improvements across 8 major
 - [x] Updated `README.md` with new endpoints, Redis requirement, production commands
 - [x] Updated `PRODUCTION_READINESS.md` checklist
 
+### Phase 5: Real-Time Admin Notification Dashboard (March 2026)
+- [x] Added "Withdrawals" tab to AdminDashboard with:
+  - Real-time pending withdrawal list (auto-refreshes every 15s)
+  - Stats cards: pending count, high-value count, processing count, total pending amount
+  - Approve/Reject buttons per withdrawal
+  - Multi-approval progress tracking (X/2 approvals shown)
+  - Approval history with admin names and timestamps
+  - Color-coded badges for status and high-value flags
+- [x] Admin API endpoints:
+  - `GET /api/admin/withdrawals/pending` - List pending withdrawals with user info
+  - `GET /api/admin/withdrawals/stats` - Withdrawal approval statistics
+- [x] Enhanced Telegram bot notifications:
+  - `notify_multi_approval_withdrawal()` - High-value withdrawal alerts with amount, user, approval status
+  - `notify_withdrawal_approval_update()` - Real-time approval progress notifications
+  - `/info_withdrawal <id>` command for detailed withdrawal lookup
+  - Updated `/approve_withdrawal` to support multi-approval logic
+- [x] Withdrawal creation sends Telegram push to all admins automatically
+
 ## New Environment Variables
 ```
 COINMARKETCAP_API_KEY=        # Optional: CoinMarketCap fallback
