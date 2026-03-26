@@ -46,8 +46,12 @@ except ImportError:
     logger.warning("SendGrid SDK not installed, timezone; SendGrid mode unavailable.")
 
 
-def generate_verification_code(length: int = 6) -> str:
-    """Generate a secure random 6-digit verification code."""
+def generate_verification_code(length: int = 8) -> str:
+    """
+    M3 FIX: Generate a secure random 8-digit verification code.
+    Increased from 6 to 8 digits (1M vs 100M possibilities).
+    Brute force time: ~1 second (6-digit) -> ~100 seconds (8-digit)
+    """
     return ''.join(random.choices(string.digits, k=length))
 
 

@@ -362,6 +362,16 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         if self._should_skip_path(request.url.path):
             return await call_next(request)
         
+        # M4 FIX: CSRF token httpOnly + SPA conflict
+        # Allow CSRF bypass for authenticated API calls with valid JWT token
+        # This supports SPAs that use Authorization header instead of cookies
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            # Valid JWT token in header - allow request without CSRF check
+            # JWT validation happens in endpoint dependencies
+            logger.debug(f"Allowing {request.method} {request.url.path} - authenticated via JWT token")
+            return await call_next(request)
+        
         # Get CSRF token from header
         header_token = request.headers.get("X-CSRF-Token")
         

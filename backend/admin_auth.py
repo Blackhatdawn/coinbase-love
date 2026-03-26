@@ -245,6 +245,15 @@ async def create_default_admin():
     admin_id = secrets.token_hex(16)
     default_password = secrets.token_urlsafe(18)
     
+    # M9 FIX: Store temporary bootstrap password metadata for retrieval
+    # Allow password retrieval via special bootstrap endpoint during setup
+    bootstrap_metadata = {
+        "password_hash": hash_password(default_password),
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=24),  # 24-hour window
+        "retrieved": False
+    }
+    
     admin_doc = {
         "id": admin_id,
         "email": "admin@cryptovaultpro.finance",
@@ -258,7 +267,8 @@ async def create_default_admin():
         "last_login": None,
         "login_history": [],
         "two_factor_enabled": False,
-        "two_factor_secret": None
+        "two_factor_secret": None,
+        "bootstrap_metadata": bootstrap_metadata  # Track bootstrap password state
     }
     
     await db.admins.insert_one(admin_doc)

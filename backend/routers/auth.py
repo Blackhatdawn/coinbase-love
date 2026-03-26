@@ -308,8 +308,24 @@ async def login(
     # H4 FIX: Add login-specific rate limiting
     # Rate limit: max 5 failed login attempts per minute per email+IP combo
     rate_limit_key = f"login:ratelimit:{credentials.email}:{request.client.host}"
+    
+    # M10 FIX: Add per-IP cooldown after failed attempts
+    # Track total failed attempts per IP across all accounts
+    ip_cooldown_key = f"login:ip_cooldown:{request.client.host}"
+    
     try:
         from redis_cache import redis_cache
+        # Check per-IP cooldown first
+        ip_cooldown = await redis_cache.get(ip_cooldown_key)
+        if ip_cooldown:
+            cooldown_count = int(ip_cooldown)
+            if cooldown_count >= 20:  # 20+ failed attempts from this IP
+                logger.warning(f"IP cooldown active for {request.client.host} - too many failed attempts")
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many failed login attempts from your IP. Please try again later."
+                )
+        
         failed_count = await redis_cache.get(rate_limit_key)
         failed_count = int(failed_count) if failed_count else 0
         
@@ -372,11 +388,17 @@ async def login(
     }
     if not verify_password(credentials.password, user.password_hash):
         # H4 FIX: Increment login rate limit counter on failed attempt
+        # M10 FIX: Also increment per-IP cooldown tracker
         try:
             from redis_cache import redis_cache
             failed_count = await redis_cache.get(rate_limit_key)
             failed_count = int(failed_count) if failed_count else 0
             await redis_cache.set(rate_limit_key, str(failed_count + 1), ex=60)  # 60 second TTL
+            
+            # M10: Increment IP-wide cooldown counter (5 hour cooldown after 20 attempts)
+            ip_cooldown = await redis_cache.get(ip_cooldown_key)
+            ip_cooldown_count = int(ip_cooldown) if ip_cooldown else 0
+            await redis_cache.set(ip_cooldown_key, str(ip_cooldown_count + 1), ex=18000)  # 5 hour TTL
         except Exception as e:
             logger.debug(f"Redis rate limit increment failed: {str(e)}")
         
@@ -450,6 +472,57 @@ async def login(
     except asyncio.TimeoutError:
         logger.error(f"Database timeout updating login status for user: {user.id}")
         # Continue with login even if update fails
+
+    # M6 FIX: Session limit per user (max 5 concurrent sessions)
+    # Track active sessions and invalidate oldest if exceeding limit
+    try:
+        sessions_collection = db.get_collection("sessions")
+        session_id = str(uuid.uuid4())
+        
+        # Insert new session record
+        await asyncio.wait_for(
+            sessions_collection.insert_one({
+                "id": session_id,
+                "user_id": user.id,
+                "device_fingerprint": device_fingerprint,
+                "ip_address": request.client.host,
+                "user_agent": request.headers.get("User-Agent", ""),
+                "created_at": datetime.now(timezone.utc),
+                "last_activity": datetime.now(timezone.utc)
+            }),
+            timeout=DB_QUERY_TIMEOUT
+        )
+        
+        # Count active sessions for this user (created within last 30 days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        active_count = await asyncio.wait_for(
+            sessions_collection.count_documents({
+                "user_id": user.id,
+                "created_at": {"$gt": cutoff}
+            }),
+            timeout=DB_QUERY_TIMEOUT
+        )
+        
+        # If exceeding limit (5 sessions), remove oldest
+        max_sessions = 5
+        if active_count > max_sessions:
+            oldest = await asyncio.wait_for(
+                sessions_collection.find_one(
+                    {"user_id": user.id, "created_at": {"$gt": cutoff}},
+                    sort=[("created_at", 1)]
+                ),
+                timeout=DB_QUERY_TIMEOUT
+            )
+            if oldest:
+                await asyncio.wait_for(
+                    sessions_collection.delete_one({"id": oldest["id"]}),
+                    timeout=DB_QUERY_TIMEOUT
+                )
+                logger.info(f"Session limit exceeded for user {user.id}, removed oldest session")
+    except asyncio.TimeoutError:
+        logger.error(f"Database timeout managing sessions for user: {user.id}")
+    except Exception as e:
+        logger.debug(f"Session management failed: {str(e)}")
 
     # H7 FIX: Include device fingerprint in refresh token for device binding
     access_token = create_access_token(data={"sub": user.id})
@@ -681,14 +754,23 @@ async def verify_email(
     })
 
     if not user_doc:
+        # M2 FIX: Log failed email verification attempts
+        await log_audit(db, "unknown", "EMAIL_VERIFICATION_FAILED", 
+                       details={"reason": "invalid_code", "ip": request.client.host})
         raise HTTPException(status_code=400, detail="Invalid verification code")
 
     user = User(**user_doc)
 
     if user.email_verified:
+        # M2 FIX: Log already-verified email attempts
+        await log_audit(db, user.id, "EMAIL_VERIFICATION_FAILED",
+                       details={"reason": "already_verified", "ip": request.client.host})
         raise HTTPException(status_code=400, detail="Email already verified")
 
     if user.email_verification_expires < datetime.now(timezone.utc):
+        # M2 FIX: Log expired verification code attempts
+        await log_audit(db, user.id, "EMAIL_VERIFICATION_FAILED",
+                       details={"reason": "code_expired", "ip": request.client.host})
         raise HTTPException(
             status_code=400,
             detail="Verification code expired. Please request a new one."
@@ -970,19 +1052,23 @@ async def verify_2fa(
         raise HTTPException(status_code=400, detail="Invalid verification code")
 
     # Generate backup codes and enable 2FA
-    backup_codes = generate_backup_codes()
+    # M8 FIX: Hash backup codes before storing (don't store plaintext)
+    backup_codes_plaintext = generate_backup_codes()
+    # Hash each backup code for storage
+    hashed_backup_codes = [get_password_hash(code) for code in backup_codes_plaintext]
+    
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {
             "two_factor_enabled": True,
-            "backup_codes": backup_codes
+            "backup_codes": hashed_backup_codes
         }}
     )
 
     return {
         "message": "2FA enabled successfully",
-        "backup_codes": backup_codes,
-        "backupCodes": backup_codes
+        "backup_codes": backup_codes_plaintext,
+        "backupCodes": backup_codes_plaintext
     }
 
 
@@ -1006,8 +1092,31 @@ async def disable_2fa(
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
-    """Disable 2FA."""
+    """
+    Disable 2FA with password re-confirmation.
+    M7 FIX: Require password verification before disabling 2FA.
+    """
     users_collection = db.get_collection("users")
+    
+    # M7 FIX: Verify password before allowing 2FA disable
+    password = data.get("password")
+    if not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Password is required to disable 2FA for security"
+        )
+    
+    user_doc = await users_collection.find_one({"id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = User(**user_doc)
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid password"
+        )
+    
     await users_collection.update_one(
         {"id": user_id},
         {"$set": {
@@ -1027,10 +1136,13 @@ async def get_backup_codes(
 ):
     """Generate new backup codes."""
     users_collection = db.get_collection("users")
-    backup_codes = generate_backup_codes()
+    # M8 FIX: Hash backup codes before storing
+    backup_codes_plaintext = generate_backup_codes()
+    hashed_backup_codes = [get_password_hash(code) for code in backup_codes_plaintext]
+    
     await users_collection.update_one(
         {"id": user_id},
-        {"$set": {"backup_codes": backup_codes}}
+        {"$set": {"backup_codes": hashed_backup_codes}}
     )
 
-    return {"codes": backup_codes, "backupCodes": backup_codes}
+    return {"codes": backup_codes_plaintext, "backupCodes": backup_codes_plaintext}
