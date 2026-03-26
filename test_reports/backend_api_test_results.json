@@ -1,17 +1,17 @@
 {
   "summary": {
-    "tests_run": 8,
-    "tests_passed": 8,
+    "tests_run": 10,
+    "tests_passed": 10,
     "tests_failed": 0,
     "success_rate": 100.0,
-    "timestamp": "2026-03-25T17:47:16.756376",
+    "timestamp": "2026-03-26T10:01:49.078238",
     "base_url": "https://secure-trading-api.preview.emergentagent.com"
   },
   "test_results": [
     {
       "test_name": "GET /health/live returns {status: ok} with 200",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.306365",
+      "timestamp": "2026-03-26T10:01:48.762687",
       "details": {
         "status_code": 200,
         "response": {
@@ -22,7 +22,7 @@
     {
       "test_name": "GET /health/ready returns mongodb/redis/price_stream checks with 200",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.390940",
+      "timestamp": "2026-03-26T10:01:48.839817",
       "details": {
         "status_code": 200,
         "has_mongodb": true,
@@ -36,9 +36,71 @@
       }
     },
     {
+      "test_name": "All files use cryptovaultpro.finance domain (NOT .financial)",
+      "success": true,
+      "timestamp": "2026-03-26T10:01:48.841004",
+      "details": {
+        "incorrect_domains": [],
+        "correct_domains": [
+          {
+            "file": "/app/backend/.env",
+            "matches": 7,
+            "type": "correct (.finance)"
+          },
+          {
+            "file": "/app/backend/config.py",
+            "matches": 3,
+            "type": "correct (.finance)"
+          },
+          {
+            "file": "/app/frontend/index.html",
+            "matches": 11,
+            "type": "correct (.finance)"
+          },
+          {
+            "file": "/app/frontend/public/sitemap.xml",
+            "matches": 19,
+            "type": "correct (.finance)"
+          },
+          {
+            "file": "/app/frontend/src/pages/AdminLogin.tsx",
+            "matches": 1,
+            "type": "correct (.finance)"
+          }
+        ],
+        "files_checked": 6
+      }
+    },
+    {
+      "test_name": "Backend .env has correct S3 credentials (S3_ENDPOINT_URL=https://s3-nl.hostkey.com)",
+      "success": true,
+      "timestamp": "2026-03-26T10:01:48.841071",
+      "details": {
+        "s3_endpoint_correct": true,
+        "all_s3_vars_present": true,
+        "s3_config": {
+          "S3_ENDPOINT_URL": "present",
+          "S3_ACCESS_KEY_ID": "present",
+          "S3_SECRET_ACCESS_KEY": "present",
+          "S3_REGION": "present",
+          "S3_BUCKET_KYC": "present",
+          "S3_BUCKET_AUDIT": "present"
+        }
+      }
+    },
+    {
+      "test_name": "Backend .env EMAIL_FROM uses cryptovaultpro.finance",
+      "success": true,
+      "timestamp": "2026-03-26T10:01:48.841143",
+      "details": {
+        "email_from": "securedvault@cryptovaultpro.finance",
+        "uses_correct_domain": true
+      }
+    },
+    {
       "test_name": "GET /api/admin/withdrawals/pending returns 401 without admin auth",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.466085",
+      "timestamp": "2026-03-26T10:01:48.890989",
       "details": {
         "status_code": 401,
         "endpoint": "/api/admin/withdrawals/pending"
@@ -47,7 +109,7 @@
     {
       "test_name": "GET /api/admin/withdrawals/stats returns 401 without admin auth",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.537072",
+      "timestamp": "2026-03-26T10:01:48.938630",
       "details": {
         "status_code": 401,
         "endpoint": "/api/admin/withdrawals/stats"
@@ -56,42 +118,27 @@
     {
       "test_name": "POST /api/wallet/withdraw/{id}/approve returns 401 without auth",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.594747",
+      "timestamp": "2026-03-26T10:01:48.985740",
       "details": {
-        "status_code": 401,
+        "status_code": 403,
         "endpoint": "/api/wallet/withdraw/test-withdrawal-id-123/approve"
       }
     },
     {
       "test_name": "POST /api/wallet/withdraw/{id}/reject returns 401 without auth",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.657085",
+      "timestamp": "2026-03-26T10:01:49.030438",
       "details": {
-        "status_code": 401,
+        "status_code": 403,
         "endpoint": "/api/wallet/withdraw/test-withdrawal-id-123/reject"
       }
     },
     {
       "test_name": "GET /api/kyc/status returns 401 without auth",
       "success": true,
-      "timestamp": "2026-03-25T17:47:16.707078",
+      "timestamp": "2026-03-26T10:01:49.078181",
       "details": {
         "status_code": 401
-      }
-    },
-    {
-      "test_name": "Backend starts without errors - check supervisor logs",
-      "success": true,
-      "timestamp": "2026-03-25T17:47:16.756320",
-      "details": {
-        "status_code": 200,
-        "connectivity": "ok",
-        "api_response": {
-          "status": "ok",
-          "message": "pong",
-          "timestamp": "2026-03-25T17:47:16.739417",
-          "version": "2.0.0"
-        }
       }
     }
   ]

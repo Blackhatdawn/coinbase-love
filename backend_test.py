@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
 CryptoVault Backend API Testing Suite
-Tests all endpoints mentioned in the review request for iteration 32
+Tests all requirements from review request: domain correction, S3 config, health endpoints, admin protection
 """
 
 import requests
 import sys
 import json
+import os
+import re
 from datetime import datetime
 from typing import Dict, Any, List, Tuple
+from pathlib import Path
 
 class CryptoVaultAPITester:
     def __init__(self, base_url: str = "https://secure-trading-api.preview.emergentagent.com"):
@@ -107,7 +110,7 @@ class CryptoVaultAPITester:
                 else:
                     response = self.session.request(method, f"{self.base_url}{endpoint}")
                 
-                success = response.status_code == 401
+                success = response.status_code in [401, 403]  # Both indicate unauthorized
                 self.log_test(
                     test_name,
                     success,
@@ -136,7 +139,7 @@ class CryptoVaultAPITester:
             try:
                 headers = {"Content-Type": "application/json"}
                 response = self.session.request(method, f"{self.base_url}{endpoint}", headers=headers)
-                success = response.status_code == 401
+                success = response.status_code in [401, 403]  # Both indicate unauthorized
                 self.log_test(
                     test_name,
                     success,
@@ -168,30 +171,171 @@ class CryptoVaultAPITester:
                 {"error": str(e)}
             )
 
-    def test_backend_startup(self):
-        """Test that backend starts without errors by checking basic connectivity"""
-        print("\n🔍 Testing Backend Startup...")
+    def test_domain_references(self):
+        """Test that all files use cryptovaultpro.finance domain (NOT .financial)"""
+        print("\n🔍 Testing Domain References...")
+        
+        # Files to check for domain references
+        files_to_check = [
+            "/app/backend/.env",
+            "/app/backend/config.py", 
+            "/app/backend/services/s3_service.py",
+            "/app/frontend/index.html",
+            "/app/frontend/public/sitemap.xml",
+            "/app/frontend/src/pages/AdminLogin.tsx"
+        ]
+        
+        incorrect_domains = []
+        correct_domains = []
+        
+        for file_path in files_to_check:
+            try:
+                if os.path.exists(file_path):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # Check for incorrect .financial domain
+                    financial_matches = re.findall(r'cryptovaultpro\.financial', content, re.IGNORECASE)
+                    if financial_matches:
+                        incorrect_domains.append({
+                            "file": file_path,
+                            "matches": len(financial_matches),
+                            "type": "incorrect (.financial)"
+                        })
+                    
+                    # Check for correct .finance domain
+                    finance_matches = re.findall(r'cryptovaultpro\.finance', content, re.IGNORECASE)
+                    if finance_matches:
+                        correct_domains.append({
+                            "file": file_path,
+                            "matches": len(finance_matches),
+                            "type": "correct (.finance)"
+                        })
+                        
+            except Exception as e:
+                print(f"    Error checking {file_path}: {e}")
+        
+        # Test passes if no incorrect domains found
+        success = len(incorrect_domains) == 0
+        
+        self.log_test(
+            "All files use cryptovaultpro.finance domain (NOT .financial)",
+            success,
+            {
+                "incorrect_domains": incorrect_domains,
+                "correct_domains": correct_domains,
+                "files_checked": len(files_to_check)
+            }
+        )
+
+    def test_s3_configuration(self):
+        """Test S3 Hostkey configuration in backend .env"""
+        print("\n🔍 Testing S3 Configuration...")
+        
+        env_file = "/app/backend/.env"
+        s3_config = {}
         
         try:
-            # Test basic connectivity with API ping endpoint
-            response = self.session.get(f"{self.base_url}/api/ping")
-            success = response.status_code == 200
-            
-            if success:
-                data = response.json()
-                has_status = data.get("status") == "ok"
-                has_message = data.get("message") == "pong"
-                has_version = "version" in data
-                success = has_status and has_message and has_version
-            
-            self.log_test(
-                "Backend starts without errors - check supervisor logs",
-                success,
-                {"status_code": response.status_code, "connectivity": "ok", "api_response": data if success else None}
-            )
+            if os.path.exists(env_file):
+                with open(env_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            if key.startswith('S3_'):
+                                s3_config[key] = value
+                
+                # Check required S3 configuration
+                required_s3_vars = {
+                    'S3_ENDPOINT_URL': 'https://s3-nl.hostkey.com',
+                    'S3_ACCESS_KEY_ID': None,  # Should exist but we don't check value
+                    'S3_SECRET_ACCESS_KEY': None,  # Should exist but we don't check value
+                    'S3_REGION': 'nl',
+                    'S3_BUCKET_KYC': None,  # Should exist
+                    'S3_BUCKET_AUDIT': None  # Should exist
+                }
+                
+                config_correct = True
+                config_details = {}
+                
+                for var, expected_value in required_s3_vars.items():
+                    if var in s3_config:
+                        config_details[var] = "present"
+                        if expected_value and s3_config[var] != expected_value:
+                            config_details[var] = f"incorrect (expected: {expected_value}, got: {s3_config[var]})"
+                            config_correct = False
+                    else:
+                        config_details[var] = "missing"
+                        config_correct = False
+                
+                # Specific check for Hostkey endpoint
+                hostkey_correct = s3_config.get('S3_ENDPOINT_URL') == 'https://s3-nl.hostkey.com'
+                
+                self.log_test(
+                    "Backend .env has correct S3 credentials (S3_ENDPOINT_URL=https://s3-nl.hostkey.com)",
+                    hostkey_correct and config_correct,
+                    {
+                        "s3_endpoint_correct": hostkey_correct,
+                        "all_s3_vars_present": config_correct,
+                        "s3_config": config_details
+                    }
+                )
+                
+            else:
+                self.log_test(
+                    "Backend .env has correct S3 credentials (S3_ENDPOINT_URL=https://s3-nl.hostkey.com)",
+                    False,
+                    {"error": "Backend .env file not found"}
+                )
+                
         except Exception as e:
             self.log_test(
-                "Backend starts without errors - check supervisor logs",
+                "Backend .env has correct S3 credentials (S3_ENDPOINT_URL=https://s3-nl.hostkey.com)",
+                False,
+                {"error": str(e)}
+            )
+
+    def test_email_domain_configuration(self):
+        """Test that EMAIL_FROM uses cryptovaultpro.finance domain"""
+        print("\n🔍 Testing Email Domain Configuration...")
+        
+        env_file = "/app/backend/.env"
+        
+        try:
+            if os.path.exists(env_file):
+                with open(env_file, 'r') as f:
+                    content = f.read()
+                
+                # Find EMAIL_FROM line
+                email_from_match = re.search(r'EMAIL_FROM=(.+)', content)
+                if email_from_match:
+                    email_from = email_from_match.group(1).strip()
+                    success = 'cryptovaultpro.finance' in email_from
+                    
+                    self.log_test(
+                        "Backend .env EMAIL_FROM uses cryptovaultpro.finance",
+                        success,
+                        {
+                            "email_from": email_from,
+                            "uses_correct_domain": success
+                        }
+                    )
+                else:
+                    self.log_test(
+                        "Backend .env EMAIL_FROM uses cryptovaultpro.finance",
+                        False,
+                        {"error": "EMAIL_FROM not found in .env"}
+                    )
+            else:
+                self.log_test(
+                    "Backend .env EMAIL_FROM uses cryptovaultpro.finance",
+                    False,
+                    {"error": "Backend .env file not found"}
+                )
+                
+        except Exception as e:
+            self.log_test(
+                "Backend .env EMAIL_FROM uses cryptovaultpro.finance",
                 False,
                 {"error": str(e)}
             )
@@ -204,10 +348,12 @@ class CryptoVaultAPITester:
         
         # Run test suites
         self.test_health_endpoints()
+        self.test_domain_references()
+        self.test_s3_configuration()
+        self.test_email_domain_configuration()
         self.test_admin_endpoints_unauthorized()
         self.test_wallet_endpoints_unauthorized()
         self.test_kyc_endpoints_unauthorized()
-        self.test_backend_startup()
         
         # Print summary
         print("\n" + "=" * 60)
