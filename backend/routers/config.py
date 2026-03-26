@@ -3,11 +3,15 @@ Public runtime configuration endpoint.
 Provides frontend-safe settings from backend .env.
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends, HTTPException
 from typing import Dict, Any
+import logging
+from datetime import datetime, timezone
 
 from config import settings
+from dependencies import get_current_user_id, get_db
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/config", tags=["config"])
 
 
@@ -68,4 +72,98 @@ async def get_public_config(request: Request) -> Dict[str, Any]:
             "logoUrl": logo_url,
             "supportEmail": support_email,
         },
+    }
+
+
+@router.get("/env")
+async def get_environment_config(
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """
+    Get runtime environment configuration (admin-only).
+    Shows service health, configuration status, and key metrics.
+    """
+    # Check if user is admin
+    users_collection = db.get_collection("users")
+    user = await users_collection.find_one({"id": user_id})
+    
+    if not user or not user.get("is_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+    
+    # Check database connectivity
+    db_connected = False
+    db_response_time = None
+    try:
+        import time
+        start = time.time()
+        await db.command("ping")
+        db_response_time = (time.time() - start) * 1000
+        db_connected = True
+    except Exception as e:
+        logger.error(f"Database connectivity check failed: {e}")
+    
+    # Check Redis connectivity (if available)
+    redis_connected = False
+    redis_response_time = None
+    try:
+        from redis_cache import redis_cache
+        if redis_cache and hasattr(redis_cache, 'health_check'):
+            import time
+            start = time.time()
+            await redis_cache.health_check()
+            redis_response_time = (time.time() - start) * 1000
+            redis_connected = True
+    except Exception as e:
+        logger.warning(f"Redis connectivity check: {e}")
+    
+    # Check email configuration
+    email_configured = bool(settings.smtp_host and settings.smtp_password)
+    
+    return {
+        "environment": settings.environment,
+        "version": settings.app_version,
+        "production_mode": settings.environment == "production",
+        "full_production_configuration": settings.full_production_configuration,
+        "services": {
+            "database": {
+                "type": "mongodb",
+                "connected": db_connected,
+                "response_time_ms": db_response_time,
+                "url_configured": bool(settings.mongo_url)
+            },
+            "cache": {
+                "type": "redis",
+                "connected": redis_connected,
+                "response_time_ms": redis_response_time,
+                "url_configured": bool(settings.redis_url or settings.upstash_redis_rest_url)
+            },
+            "email": {
+                "service": settings.email_service,
+                "configured": email_configured,
+                "from_email": settings.email_from,
+                "provider": "SMTP" if settings.email_service == "smtp" else settings.email_service
+            }
+        },
+        "security": {
+            "jwt_secret_configured": bool(settings.jwt_secret and len(settings.jwt_secret) >= 32),
+            "admin_jwt_secret_configured": bool(settings.admin_jwt_secret and len(settings.admin_jwt_secret) >= 32),
+            "csrf_secret_configured": bool(settings.csrf_secret and len(settings.csrf_secret) >= 32),
+            "https_enabled": settings.environment == "production",
+            "cors_enabled": bool(settings.cors_origins),
+            "rate_limiting_enabled": True,
+            "two_factor_available": True
+        },
+        "configuration": {
+            "app_url": settings.app_url,
+            "public_api_url": settings.public_api_url,
+            "public_ws_url": settings.public_ws_url,
+            "cors_origins": settings.cors_origins[:3] if settings.cors_origins else [],  # Show first 3
+            "environment_name": settings.environment,
+            "debug_mode": settings.debug if hasattr(settings, 'debug') else False
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

@@ -389,6 +389,20 @@ async def login(
     if not verify_password(credentials.password, user.password_hash):
         # H4 FIX: Increment login rate limit counter on failed attempt
         # M10 FIX: Also increment per-IP cooldown tracker
+        
+        # Log failed login attempt
+        logger.warning(
+            f"❌ Failed login attempt for {credentials.email}",
+            extra={
+                "event_type": "security",
+                "security_event": "failed_login",
+                "user_id": user.id,
+                "email": credentials.email,
+                "ip_address": request.client.host,
+                "reason": "Invalid password"
+            }
+        )
+        
         try:
             from redis_cache import redis_cache
             failed_count = await redis_cache.get(rate_limit_key)
@@ -536,6 +550,19 @@ async def login(
     except asyncio.TimeoutError:
         logger.error(f"Database timeout logging audit for user: {user.id}")
         # Continue with login even if audit log fails
+
+    # Log successful login
+    logger.info(
+        f"👤 User login successful",
+        extra={
+            "event_type": "auth",
+            "auth_event": "login",
+            "user_id": user.id,
+            "email": user.email,
+            "ip_address": request.client.host,
+            "device_fingerprint": device_fingerprint[:16] if device_fingerprint else None
+        }
+    )
 
     logger.info(f"Setting cookies - access_token length: {len(access_token)}, refresh_token length: {len(refresh_token)}")
 
@@ -1146,3 +1173,102 @@ async def get_backup_codes(
     )
 
     return {"codes": backup_codes_plaintext, "backupCodes": backup_codes_plaintext}
+
+
+# ============================================
+# SESSION & DEVICE MANAGEMENT
+# ============================================
+
+@router.get("/sessions")
+async def get_sessions(
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """
+    Get user's active sessions and devices.
+    Returns device history sorted by last access time.
+    Includes geolocation and device information.
+    """
+    sessions_collection = db.get_collection("sessions")
+    
+    # Fetch all sessions for this user (max 5 per M6 fix)
+    sessions = await sessions_collection.find(
+        {"user_id": user_id}
+    ).sort("last_accessed", -1).limit(5).to_list(5)
+    
+    # Transform for frontend
+    result = []
+    for session in sessions:
+        # Parse user agent to extract device info
+        user_agent = session.get("user_agent", "Unknown")
+        device_name = "Unknown Device"
+        
+        if "Chrome" in user_agent:
+            device_name = "Chrome"
+        elif "Firefox" in user_agent:
+            device_name = "Firefox"
+        elif "Safari" in user_agent:
+            device_name = "Safari"
+        elif "Edge" in user_agent:
+            device_name = "Edge"
+        
+        if "Windows" in user_agent:
+            device_name += " on Windows"
+        elif "Mac" in user_agent:
+            device_name += " on Mac"
+        elif "Linux" in user_agent:
+            device_name += " on Linux"
+        elif "iPhone" in user_agent:
+            device_name += " on iPhone"
+        elif "Android" in user_agent:
+            device_name += " on Android"
+        
+        # Get current session marker from request
+        is_current = session.get("is_current", False)
+        
+        result.append({
+            "id": session.get("id", str(uuid.uuid4())),
+            "device": device_name,
+            "user_agent": user_agent,
+            "ip_address": session.get("ip_address", "Unknown"),
+            "location": session.get("location", "Unknown"),
+            "last_accessed": session.get("last_accessed", datetime.now(timezone.utc)).isoformat(),
+            "created_at": session.get("created_at", datetime.now(timezone.utc)).isoformat(),
+            "is_current": is_current
+        })
+    
+    logger.info(f"📱 Fetched {len(result)} sessions for user {user_id}")
+    
+    return {
+        "sessions": result,
+        "total": len(result),
+        "max_sessions": 5
+    }
+
+
+@router.post("/sessions/{session_id}/logout")
+async def logout_session(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """
+    Logout a specific session (device).
+    Useful for "logout from all other devices" feature.
+    """
+    sessions_collection = db.get_collection("sessions")
+    
+    result = await sessions_collection.delete_one({
+        "id": session_id,
+        "user_id": user_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found"
+        )
+    
+    logger.info(f"🚪 Session {session_id} logged out for user {user_id}")
+    
+    return {"message": "Session logged out successfully"}

@@ -372,3 +372,36 @@ async def notify_transfer_received(db, user_id: str, amount: float, currency: st
         notification_type="success",
         link="/transactions"
     )
+
+
+@router.get("/count")
+async def get_notification_count(
+    user_id: str = Depends(get_current_user_id),
+    db = Depends(get_db)
+):
+    """Get count of unread notifications with optional breakdown by type."""
+    notifications_collection = db.get_collection("notifications")
+    
+    # Count unread notifications
+    unread_count = await notifications_collection.count_documents({
+        "user_id": user_id,
+        "read": False
+    })
+    
+    # Get breakdown by type
+    breakdown = {}
+    for notification_type in ["info", "success", "warning", "error", "alert", "price_alert", "trade", "deposit", "withdrawal", "transfer"]:
+        count = await notifications_collection.count_documents({
+            "user_id": user_id,
+            "read": False,
+            "type": notification_type
+        })
+        if count > 0:
+            breakdown[notification_type] = count
+    
+    logger.info(f"📬 Notification count: {unread_count} unread for user {user_id}")
+    
+    return {
+        "total_unread": unread_count,
+        "breakdown": breakdown
+    }

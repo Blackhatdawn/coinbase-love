@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   Menu,
   Bell,
@@ -20,6 +21,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,8 +40,16 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ onMenuToggle, isSidebarCollapsed }: DashboardHeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [notificationCount] = useState(3); // Mock notification count
   const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Fetch real notification count
+  const { data: notificationData } = useQuery({
+    queryKey: ['notificationCount'],
+    queryFn: () => api.notifications.getCount(),
+    refetchInterval: 10000, // Poll every 10 seconds
+  });
+
+  const notificationCount = notificationData?.total_unread || 0;
 
   const handleSignOut = async () => {
     await signOut();

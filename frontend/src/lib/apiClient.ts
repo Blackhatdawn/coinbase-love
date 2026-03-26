@@ -463,6 +463,25 @@ export const api = {
       apiClient.post('/api/auth/2fa/disable', {}),
     getBackupCodes: () =>
       apiClient.post('/api/auth/2fa/backup-codes'),
+    // Session management
+    getSessions: () =>
+      apiClient.get('/api/auth/sessions'),
+    logoutSession: (sessionId: string) =>
+      apiClient.post(`/api/auth/sessions/${sessionId}/logout`),
+  },
+
+  // Notifications
+  notifications: {
+    getAll: (skip?: number, limit?: number, unreadOnly?: boolean) =>
+      apiClient.get('/api/notifications', { params: { skip, limit, unread_only: unreadOnly } }),
+    getCount: () =>
+      apiClient.get('/api/notifications/count'),
+    markAsRead: (notificationId: string) =>
+      apiClient.patch(`/api/notifications/${notificationId}/read`),
+    markAllAsRead: () =>
+      apiClient.post('/api/notifications/mark-all-read'),
+    delete: (notificationId: string) =>
+      apiClient.delete(`/api/notifications/${notificationId}`),
   },
 
   // Contact

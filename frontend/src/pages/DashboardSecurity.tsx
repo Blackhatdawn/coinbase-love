@@ -32,13 +32,6 @@ import { api } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 
-// Mock login activity
-const mockLoginActivity = [
-  { id: '1', device: 'Chrome on Windows', ip: '192.168.1.1', location: 'New York, US', time: '2 hours ago', current: true },
-  { id: '2', device: 'Safari on iPhone', ip: '192.168.1.2', location: 'New York, US', time: '1 day ago', current: false },
-  { id: '3', device: 'Firefox on Mac', ip: '10.0.0.1', location: 'San Francisco, US', time: '3 days ago', current: false },
-];
-
 const DashboardSecurity = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -50,6 +43,15 @@ const DashboardSecurity = () => {
     queryKey: ['2faStatus'],
     queryFn: () => api.auth.get2FAStatus(),
   });
+
+  // Fetch sessions/login activity from real API
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.auth.getSessions(),
+    refetchInterval: 30000, // Refetch every 30s
+  });
+
+  const loginActivity = sessionsData?.sessions || [];
 
   // Security items
   const securityItems = [
@@ -172,48 +174,58 @@ const DashboardSecurity = () => {
         {/* Login Activity */}
         <DashboardCard title="Recent Login Activity" icon={<Monitor className="h-5 w-5" />}>
           <div className="space-y-3">
-            {mockLoginActivity.map((activity) => (
-              <div
-                key={activity.id}
-                className={cn(
-                  'p-4 rounded-xl transition-colors',
-                  activity.current ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-white/5'
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-white/10 rounded-lg">
-                      <Monitor className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-white flex items-center gap-2">
-                        {activity.device}
-                        {activity.current && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500 text-white rounded font-bold">
-                            CURRENT
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+              </div>
+            ) : loginActivity && loginActivity.length > 0 ? (
+              loginActivity.map((activity) => (
+                <div
+                  key={activity.id}
+                  className={cn(
+                    'p-4 rounded-xl transition-colors',
+                    activity.is_current ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-white/5'
+                  )}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-white/10 rounded-lg">
+                        <Monitor className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white flex items-center gap-2">
+                          {activity.device}
+                          {activity.is_current && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500 text-white rounded font-bold">
+                              CURRENT
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {activity.location}
                           </span>
-                        )}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {activity.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {activity.time}
-                        </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(activity.last_accessed).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    {!activity.is_current && (
+                      <button className="text-xs text-red-400 hover:text-red-300">
+                        Revoke
+                      </button>
+                    )}
                   </div>
-                  {!activity.current && (
-                    <button className="text-xs text-red-400 hover:text-red-300">
-                      Revoke
-                    </button>
-                  )}
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <p>No sessions found</p>
               </div>
-            ))}
+            )}
           </div>
           <Button variant="outline" className="w-full mt-4 border-white/10 hover:bg-white/5">
             View All Activity
