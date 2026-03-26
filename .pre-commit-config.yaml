@@ -1,0 +1,109 @@
+# A5 FIX: Pre-commit hooks to prevent weak secrets and credentials in commits
+# 
+# Installation:
+#   1. Install pre-commit: pip install pre-commit
+#   2. Install the hook: pre-commit install
+#   3. Run manually: pre-commit run --all-files
+#
+# This prevents accidental commits of:
+#   - Hardcoded secrets (API keys, tokens, passwords)
+#   - Weak placeholder values ("change-me-in-production")
+#   - Credentials in code
+
+repos:
+  # Detect secrets and credentials
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        description: Detects hardcoded secrets and credentials
+        args: ['--baseline', '.secrets.baseline', '--allow-multiple-files']
+        entry: detect-secrets scan
+        language: python
+        types: [python, yaml, json, text]
+        exclude: |
+          (?x)^(
+              \.env\.example|
+              docs/|
+              tests/|
+              migrations/
+          )
+
+  # Trufflehogg - finds credentials in git history
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.63.0
+    hooks:
+      - id: trufflehog
+        name: TruffleHog - Find secrets
+        description: Scans git diffs for credentials
+        entry: trufflehog git file://
+        language: python
+        stages: [commit]
+        types: [python, javascript, yaml, json, shell, text]
+
+  # Check for weak secrets in .env.example
+  - repo: local
+    hooks:
+      - id: check-weak-secrets
+        name: Check for weak/placeholder secrets
+        description: Prevents committing weak default secrets
+        entry: bash -c 'grep -r "change-me-in-production\|changeme\|default-secret\|admin123" . --include="*.py" --include=".env*" --include="*.yaml" --include="*.yml" 2>/dev/null && { echo "❌ Weak placeholder secrets detected! Please use strong secrets."; exit 1; } || exit 0'
+        language: system
+        stages: [commit]
+        fail_fast: true
+        files: |
+          (?x)^(
+              \.env|
+              \.env\.example|
+              backend/config\.py|
+              .*\.py
+          )
+
+  # Standard Python linting hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=1000']
+        
+      # Check for merge conflicts
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        
+      # Check YAML syntax
+      - id: check-yaml
+        name: Check YAML syntax
+        
+      # Check JSON syntax
+      - id: check-json
+        name: Check JSON syntax
+        
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        name: Fix end of file
+        
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+
+# Global configuration
+default_language_version:
+  python: python3.10
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+      ^\.git/|
+      ^\.venv/|
+      ^node_modules/|
+      ^\.env$|
+      ^\.env\.local$|
+      \.pyc$|
+      __pycache__|
+      _legacy_archive/|
+      migrations/|
+      \.secrets\.baseline$
+  )

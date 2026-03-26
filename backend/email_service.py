@@ -506,7 +506,46 @@ CryptoVault Pro.
         logger.error(f"❌ Email failed after {EMAIL_RETRY_CONFIG['max_retries']} attempts to {to_email}")
         if last_error:
             logger.error(f"   Last error: {str(last_error)}")
+        
+        # A2 FIX: Track failed emails for potential manual retry
+        await self._log_failed_email(to_email, subject, str(last_error))
         return False
+    
+    async def _log_failed_email(
+        self,
+        to_email: str,
+        subject: str,
+        error: str
+    ) -> None:
+        """
+        A2 FIX: Log failed email attempts to database for admin review and manual retry.
+        Enables operators to identify and fix email delivery issues.
+        """
+        try:
+            from dependencies import get_db
+            from datetime import datetime, timezone
+            
+            db = get_db()
+            if not db:
+                logger.warning(f"Cannot log failed email - database unavailable")
+                return
+            
+            failed_emails_collection = db.get_collection("failed_emails")
+            
+            # Insert failed email record
+            await failed_emails_collection.insert_one({
+                "id": secrets.token_hex(16),
+                "to_email": to_email,
+                "subject": subject,
+                "error": error,
+                "failed_at": datetime.now(timezone.utc),
+                "retry_count": 0,
+                "status": "pending_manual_retry"
+            })
+            
+            logger.info(f"📋 Failed email logged for manual review: {to_email}")
+        except Exception as e:
+            logger.warning(f"Failed to log email failure to database: {str(e)}")
     
     async def _send_sendgrid(
         self,
