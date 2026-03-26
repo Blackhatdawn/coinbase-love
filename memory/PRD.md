@@ -123,8 +123,8 @@ MAXMIND_LICENSE_KEY=          # MaxMind license for auto-download
 - [ ] IP whitelisting for MongoDB Atlas
 
 ## Next Tasks
-1. User to configure Upstash Redis URL in production .env
-2. User to set up S3 credentials for KYC storage
-3. User to obtain CoinMarketCap API key (free tier)
-4. User to download GeoLite2-Country.mmdb from MaxMind
-5. End-to-end testing with real email delivery
+1. User to provide Upstash Redis URL + token for production caching (currently using in-memory fallback)
+2. User to obtain CoinMarketCap API key (free tier) for price fallback
+3. User to download GeoLite2-Country.mmdb from MaxMind for IP blocking
+4. End-to-end testing with real email delivery via SendGrid
+5. Test full withdrawal multi-approval flow with 2 admin accounts
