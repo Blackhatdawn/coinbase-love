@@ -373,7 +373,7 @@ class SecurityAuditLogger:
                 "user_id": user_id,
                 "ip": ip,
                 "method": method,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
     
@@ -391,7 +391,7 @@ class SecurityAuditLogger:
                 "identifier": identifier,
                 "ip": ip,
                 "reason": reason,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
     
@@ -408,7 +408,7 @@ class SecurityAuditLogger:
             extra={
                 "event_type": event_type,
                 **details,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
     
@@ -428,7 +428,7 @@ class SecurityAuditLogger:
                 "resource": resource,
                 "action": action,
                 "ip": ip,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
     
@@ -448,7 +448,7 @@ class SecurityAuditLogger:
                 "action": action,
                 "target": target,
                 "details": details or {},
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 

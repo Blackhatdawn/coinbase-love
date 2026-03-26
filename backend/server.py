@@ -229,7 +229,7 @@ class SecurityHeadersMiddleware:
                 
                 security_headers = [
                     # HSTS - Force HTTPS for 1 year (31,536,000 seconds)
-                    (b"strict-transport-security", b"max-age=31536000; includeSubDomains; preload"),
+                    (b"strict-transport-security", b"max-age=31536000, timezone; includeSubDomains; preload"),
                     
                     # Prevent clickjacking
                     (b"x-frame-options", b"DENY"),
@@ -524,7 +524,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
                 "code": error_code,
                 "message": str(exc.detail) if exc.detail else "An error occurred",
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         }
     )
@@ -555,7 +555,7 @@ async def general_exception_handler(request: Request, exc: Exception):
                 "code": "INTERNAL_ERROR",
                 "message": "An internal server error occurred",
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         }
     )
@@ -829,7 +829,7 @@ async def root():
         "openapi": "/api/openapi.json",
         "health": "/health",
         "ping": "/ping",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -840,7 +840,7 @@ async def ping():
     return {
         "status": "ok",
         "message": "pong",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": settings.app_version
     }
 
@@ -861,7 +861,7 @@ async def health_check(request: Request):
         "environment": settings.environment,
         "version": settings.app_version,
         "request_id": request_id,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     # Check database (non-critical for API health)

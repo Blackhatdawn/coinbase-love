@@ -28,7 +28,7 @@ class MetricsCollector:
         self.request_count = 0
         self.error_count = 0
         self.request_duration_sum = 0.0
-        self.started_at = datetime.utcnow()
+        self.started_at = datetime.now(timezone.utc)
     
     def record_request(self, duration_ms: float, is_error: bool = False):
         """Record a request"""
@@ -39,7 +39,7 @@ class MetricsCollector:
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get current metrics"""
-        uptime = (datetime.utcnow() - self.started_at).total_seconds()
+        uptime = (datetime.now(timezone.utc) - self.started_at).total_seconds()
         avg_duration = (
             self.request_duration_sum / self.request_count 
             if self.request_count > 0 else 0
@@ -68,7 +68,7 @@ async def liveness_probe():
     Kubernetes liveness probe
     Returns 200 if application is alive
     """
-    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.get("/health/ready")
@@ -94,7 +94,7 @@ async def readiness_probe():
     response_data = {
         "status": "ready" if ready else "not ready",
         "services": services,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     return JSONResponse(
@@ -166,7 +166,7 @@ async def get_metrics_json():
     disk = psutil.disk_usage('/')
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "application": app_metrics,
         "system": {
             "cpu_percent": cpu_percent,
@@ -219,7 +219,7 @@ async def detailed_health_check():
     """
     health = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "environment": settings.environment,
         "version": settings.app_version,
         "services": {}

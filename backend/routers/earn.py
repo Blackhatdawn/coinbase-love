@@ -88,7 +88,7 @@ def _parse_dt(value) -> datetime:
     elif isinstance(value, str):
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     else:
-        dt = datetime.utcnow()
+        dt = datetime.now(timezone.utc)
 
     if dt.tzinfo is not None:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
@@ -98,7 +98,7 @@ def _parse_dt(value) -> datetime:
 def _calculate_rewards(stake: dict) -> float:
     created_at = _parse_dt(stake.get("created_at"))
 
-    elapsed_seconds = max((datetime.utcnow() - created_at).total_seconds(), 0)
+    elapsed_seconds = max((datetime.now(timezone.utc) - created_at).total_seconds(), 0)
     elapsed_days = elapsed_seconds / 86400
     apy = float(stake.get("apy", 0))
     principal = float(stake.get("amount", 0))
@@ -112,7 +112,7 @@ def _days_remaining(stake: dict) -> Optional[int]:
     if not lock_days:
         return None
 
-    elapsed = max((datetime.utcnow() - created_at).days, 0)
+    elapsed = max((datetime.now(timezone.utc) - created_at).days, 0)
     return max(int(lock_days) - elapsed, 0)
 
 
@@ -196,8 +196,8 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
         "funding_currency": funding_currency,
         "funding_amount": funding_amount,
         "status": "active",
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     }
 
     stakes = db.get_collection("stakes")
@@ -207,7 +207,7 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
         {"user_id": user_id},
         {
             "$inc": wallet_inc,
-            "$set": {"updated_at": datetime.utcnow()},
+            "$set": {"updated_at": datetime.now(timezone.utc)},
         },
         upsert=True,
     )
@@ -222,7 +222,7 @@ async def create_stake(payload: CreateStakeRequest, user_id: str = Depends(get_c
         "status": "completed",
         "reference": stake_doc["id"],
         "description": f"Staked into {product['name']} ({payload.amount} {token})",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     })
 
     return {"success": True, "stake": {**stake_doc, "rewards": 0.0, "startDate": stake_doc["created_at"].isoformat(), "lockPeriod": stake_doc["lock_period"]}}
@@ -245,7 +245,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
     lock_days = stake.get("lock_days")
     if lock_days:
         created_at = _parse_dt(stake.get("created_at"))
-        days_elapsed = (datetime.utcnow() - created_at).days
+        days_elapsed = (datetime.now(timezone.utc) - created_at).days
         if days_elapsed < int(lock_days):
             raise HTTPException(status_code=400, detail="This locked stake is not yet redeemable")
 
@@ -259,8 +259,8 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
             "$set": {
                 "status": "closed",
                 "rewards_paid": rewards,
-                "closed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "closed_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
             }
         },
     )
@@ -270,7 +270,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
         {"user_id": user_id},
         {
             "$inc": {f"balances.{credit_currency}": total_credit},
-            "$set": {"updated_at": datetime.utcnow()},
+            "$set": {"updated_at": datetime.now(timezone.utc)},
         },
         upsert=True,
     )
@@ -285,7 +285,7 @@ async def redeem_stake(payload: CloseStakeRequest, user_id: str = Depends(get_cu
         "status": "completed",
         "reference": payload.stake_id,
         "description": f"Redeemed stake principal + rewards ({rewards} {token})",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     })
 
     return {

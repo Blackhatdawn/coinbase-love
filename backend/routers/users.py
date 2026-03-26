@@ -150,7 +150,7 @@ async def get_user_profile(
             "id": user.get("id"),
             "email": user.get("email"),
             "name": user.get("name", ""),
-            "created_at": user.get("created_at", datetime.utcnow()).isoformat()
+            "created_at": user.get("created_at", datetime.now(timezone.utc)).isoformat()
         }
 
     except HTTPException:

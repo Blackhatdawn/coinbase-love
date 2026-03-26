@@ -24,7 +24,7 @@ async def get_optimization_metrics() -> Dict[str, Any]:
     from security_hardening import anomaly_detector
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "cache": {
             "status": "active",
             "statistics": response_cache.stats()
@@ -48,7 +48,7 @@ async def get_cache_stats() -> Dict[str, Any]:
     
     stats = response_cache.stats()
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "cache": {
             **stats,
             "status": "healthy" if stats["hit_rate"] > 0 else "warming_up"
@@ -68,7 +68,7 @@ async def invalidate_cache(pattern: str = None) -> Dict[str, Any]:
     
     count = response_cache.invalidate(pattern)
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "invalidated_count": count,
         "pattern": pattern or "*"
     }
@@ -84,7 +84,7 @@ async def get_security_status() -> Dict[str, Any]:
     blocked_ips = anomaly_detector.get_blocked_ips()
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "active",
         "blocked_ips": {
             "count": len(blocked_ips),
@@ -116,7 +116,7 @@ async def unblock_ip(ip: str) -> Dict[str, Any]:
     anomaly_detector.unblock_ip(ip)
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "success": True,
         "ip": ip,
         "was_blocked": was_blocked
@@ -131,6 +131,6 @@ async def get_pool_stats() -> Dict[str, Any]:
     from performance_optimizations import pool_monitor
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "statistics": pool_monitor.get_statistics()
     }

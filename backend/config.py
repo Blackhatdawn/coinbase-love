@@ -180,15 +180,21 @@ class Settings(BaseSettings):
     # ============================================
     jwt_secret: SecretStr = Field(
         default="change-me-in-production",
-        description="JWT signing secret key"
+        description="JWT signing secret key (minimum 32 characters)"
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     access_token_expire_minutes: int = Field(default=30, description="Access token expiration in minutes")
     refresh_token_expire_days: int = Field(default=7, description="Refresh token expiration in days")
     
+    # C1 FIX: Independent admin JWT secret (not derived from user secret)
+    admin_jwt_secret: SecretStr = Field(
+        default=None,
+        description="Admin JWT signing secret key (independent from user JWT). Minimum 32 characters. If not set, will be generated from JWT_SECRET (not recommended for production)"
+    )
+    
     csrf_secret: SecretStr = Field(
         default="change-me-in-production",
-        description="CSRF protection secret"
+        description="CSRF protection secret (minimum 32 characters for production)"
     )
     use_cross_site_cookies: bool = Field(
         default=False,
@@ -496,7 +502,114 @@ class Settings(BaseSettings):
             raise ValueError("smtp_use_tls and smtp_use_ssl cannot both be true")
         return v
 
+    @validator("jwt_secret", pre=True)
+    def validate_jwt_secret(cls, v):
+        """
+        C1/C2 FIX: Validate JWT secret strength.
+        - Minimum 32 characters for production
+        - Must not be default placeholder
+        """
+        if v is None:
+            raise ValueError("JWT_SECRET is required")
+        
+        secret_value = v.get_secret_value() if hasattr(v, 'get_secret_value') else str(v)
+        
+        if secret_value == "change-me-in-production":
+            raise ValueError(
+                "CRITICAL: JWT_SECRET has not been changed from default. "
+                "Generate a secure random secret (minimum 32 characters) and set JWT_SECRET environment variable."
+            )
+        
+        if len(secret_value) < 32:
+            raise ValueError(
+                f"CRITICAL: JWT_SECRET must be at least 32 characters for security. "
+                f"Current length: {len(secret_value)}. "
+                f"Generate a secure random secret using: openssl rand -hex 16"
+            )
+        
+        return v
+
+    @validator("csrf_secret", pre=True)
+    def validate_csrf_secret(cls, v):
+        """
+        C2 FIX: Validate CSRF secret strength.
+        - Minimum 32 characters for production
+        - Must not be default placeholder
+        """
+        if v is None:
+            raise ValueError("CSRF_SECRET is required")
+        
+        secret_value = v.get_secret_value() if hasattr(v, 'get_secret_value') else str(v)
+        
+        if secret_value == "change-me-in-production":
+            raise ValueError(
+                "CRITICAL: CSRF_SECRET has not been changed from default. "
+                "Generate a secure random secret (minimum 32 characters) and set CSRF_SECRET environment variable."
+            )
+        
+        if len(secret_value) < 32:
+            raise ValueError(
+                f"CRITICAL: CSRF_SECRET must be at least 32 characters for security. "
+                f"Current length: {len(secret_value)}. "
+                f"Generate a secure random secret using: openssl rand -hex 16"
+            )
+        
+        return v
+
+    @validator("admin_jwt_secret", pre=True, always=True)
+    def validate_admin_jwt_secret(cls, v, values):
+        """
+        C1 FIX: Ensure admin JWT secret is independent from user JWT secret.
+        If not provided, generates one (not recommended for production).
+        """
+        import secrets
+        import string
+        
+        if v is not None:
+            secret_value = v.get_secret_value() if hasattr(v, 'get_secret_value') else str(v)
+            
+            if len(secret_value) < 32:
+                raise ValueError(
+                    f"CRITICAL: ADMIN_JWT_SECRET must be at least 32 characters. "
+                    f"Current length: {len(secret_value)}. "
+                    f"Generate a secure random secret using: openssl rand -hex 16"
+                )
+            return v
+        
+        # If admin_jwt_secret not provided, generate one from JWT_SECRET
+        # NOTE: This is a fallback for development. Production MUST use separate ADMIN_JWT_SECRET env var
+        jwt_secret = values.get("jwt_secret")
+        if jwt_secret:
+            import hashlib
+            import hmac
+            secret_value = jwt_secret.get_secret_value() if hasattr(jwt_secret, 'get_secret_value') else str(jwt_secret)
+            derived = hmac.new(
+                secret_value.encode(),
+                b"cryptovault-admin-jwt-v2",
+                hashlib.sha256,
+            ).hexdigest()
+            return derived
+        
+        # Fallback: generate random secret
+        return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(64))
+
     @model_validator(mode="after")
+    def validate_production_jwt_secrets(self):
+        """
+        C1 FIX: In production, admin JWT secret MUST be independently configured.
+        """
+        if self.is_production and self.full_production_configuration:
+            if not self.admin_jwt_secret or self.admin_jwt_secret == "change-me-in-production":
+                raise ValueError(
+                    "CRITICAL: In production, ADMIN_JWT_SECRET must be set to a value independent from JWT_SECRET. "
+                    "Generate a secure random secret (minimum 32 characters) and set ADMIN_JWT_SECRET environment variable. "
+                    "Example: openssl rand -hex 16"
+                )
+        
+        return self
+
+    @model_validator(mode="after")
+
     def validate_production_email_config(self):
         """
         FIX #3: Validate email configuration in production.

@@ -88,7 +88,7 @@ class CoinCapService:
                 "supply": float(asset.get("circulating_supply") or 0),
                 "max_supply": float(asset.get("max_supply") or 0) if asset.get("max_supply") else None,
                 "image": asset.get("image") or "",
-                "last_updated": asset.get("last_updated") or datetime.utcnow().isoformat(),
+                "last_updated": asset.get("last_updated") or datetime.now(timezone.utc).isoformat(),
                 "source": "coingecko",
             })
         return results
@@ -128,7 +128,7 @@ class CoinCapService:
                 "change_24h": round(change_24h, 2),
                 "rank": coin_info["rank"],
                 "image": "",
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
                 "source": "coingecko_mock"
             })
         return results
@@ -170,7 +170,7 @@ class CoinCapService:
                 "vwap_24h": 0,
                 "explorer": ((data.get("links") or {}).get("blockchain_site") or [""])[0],
                 "image": ((data.get("image") or {}).get("large") or ""),
-                "last_updated": market.get("last_updated") or datetime.utcnow().isoformat(),
+                "last_updated": market.get("last_updated") or datetime.now(timezone.utc).isoformat(),
                 "source": "coingecko",
             }
             await redis_cache.cache_coin_details(coin_id, details)
@@ -202,7 +202,7 @@ class CoinCapService:
 
     def _get_mock_history(self, coin_id: str, days: int) -> List[Dict[str, Any]]:
         base_price = 68000 if coin_id == "bitcoin" else 3500 if coin_id == "ethereum" else 100
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         history = []
         for i in range(days * 24):
             timestamp = now - timedelta(hours=days * 24 - i)

@@ -37,7 +37,7 @@ async def enforce_rate_limit(
         except Exception as exc:
             logger.warning("Redis rate limit failed, falling back: %s", exc)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     count, window_start = _rate_limit_cache.get(key, (0, now))
     elapsed = (now - window_start).total_seconds()
     if elapsed >= window_seconds:

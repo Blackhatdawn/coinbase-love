@@ -5,7 +5,7 @@ Production-ready with bcrypt enforcement and pyotp for TOTP verification.
 Security Audit Fixes Applied:
 - C3: Added jti claim to all JWT tokens
 - C5: Token type validation helpers
-- C6: Replaced datetime.utcnow() with datetime.now(timezone.utc)
+- C6: Replaced datetime.now(timezone.utc) with datetime.now(timezone.utc)
 - H1: Refresh token rotation support
 - H6: Added aud (audience) claim
 """

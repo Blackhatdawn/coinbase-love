@@ -136,7 +136,7 @@ class EnterpriseWebSocketManager:
         self._total_connections_ever: int = 0
         self._total_messages_sent: int = 0
         self._total_messages_received: int = 0
-        self._start_time: datetime = datetime.utcnow()
+        self._start_time: datetime = datetime.now(timezone.utc)
         
         # Background tasks
         self._health_check_task: Optional[asyncio.Task] = None
@@ -204,7 +204,7 @@ class EnterpriseWebSocketManager:
             "type": "connection",
             "status": "connected",
             "message": "Connected to CryptoVault WebSocket",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Trigger callbacks
@@ -243,7 +243,7 @@ class EnterpriseWebSocketManager:
         logger.info(
             f"📡 WebSocket disconnected from {info.client_ip} "
             f"(total: {len(self._connections)}, "
-            f"duration: {(datetime.utcnow() - info.metrics.connected_at).seconds}s)"
+            f"duration: {(datetime.now(timezone.utc) - info.metrics.connected_at).seconds}s)"
         )
         
         # Trigger callbacks
@@ -298,7 +298,7 @@ class EnterpriseWebSocketManager:
             
             info.metrics.messages_sent += 1
             info.metrics.bytes_sent += message_bytes
-            info.metrics.last_activity = datetime.utcnow()
+            info.metrics.last_activity = datetime.now(timezone.utc)
             self._total_messages_sent += 1
             
             return True
@@ -348,7 +348,7 @@ class EnterpriseWebSocketManager:
             
             info.metrics.messages_received += 1
             info.metrics.bytes_received += len(data.encode())
-            info.metrics.last_activity = datetime.utcnow()
+            info.metrics.last_activity = datetime.now(timezone.utc)
             self._total_messages_received += 1
             
             # Trigger callbacks
@@ -506,7 +506,7 @@ class EnterpriseWebSocketManager:
     
     async def _cleanup_stale_connections(self) -> None:
         """Remove connections that have been idle too long."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         timeout_threshold = now - timedelta(seconds=self.connection_timeout)
         
         stale_connections = []
@@ -550,7 +550,7 @@ class EnterpriseWebSocketManager:
             "type": "system",
             "action": "shutdown",
             "message": "Server shutting down. Please reconnect shortly.",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         await self.broadcast_all(shutdown_message)
@@ -581,7 +581,7 @@ class EnterpriseWebSocketManager:
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get comprehensive WebSocket metrics."""
-        uptime = (datetime.utcnow() - self._start_time).total_seconds()
+        uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
         
         # Connection state distribution
         state_counts = defaultdict(int)

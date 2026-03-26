@@ -244,8 +244,8 @@ async def create_p2p_transfer(
             "id": str(uuid.uuid4()),
             "user_id": user_id,
             "balances": {transfer.currency: 0.0},
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
         await wallets_collection.insert_one(sender_wallet)
 
@@ -265,7 +265,7 @@ async def create_p2p_transfer(
 
     # Generate transfer ID
     transfer_id = str(uuid.uuid4())
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
 
     # Create sender transaction (debit - amount + fee)
     sender_txn = {
@@ -528,7 +528,7 @@ async def get_p2p_history(
             ),
             "note": t.get("metadata", {}).get("note"),
             "status": t.get("status", "completed"),
-            "created_at": t.get("created_at", datetime.utcnow()).isoformat()
+            "created_at": t.get("created_at", datetime.now(timezone.utc)).isoformat()
         })
 
     return {

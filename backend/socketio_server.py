@@ -73,8 +73,8 @@ class SocketIOManager:
         async def connect(sid, environ):
             """Handle client connection."""
             self.connections[sid] = {
-                "connected_at": datetime.utcnow().isoformat(),
-                "last_ping": datetime.utcnow().isoformat(),
+                "connected_at": datetime.now(timezone.utc).isoformat(),
+                "last_ping": datetime.now(timezone.utc).isoformat(),
                 "user_id": None
             }
             
@@ -84,7 +84,7 @@ class SocketIOManager:
             await self.sio.emit('connected', {
                 "message": "Connected to CryptoVault WebSocket",
                 "sid": sid,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }, room=sid)
         
         @self.sio.event
@@ -144,7 +144,7 @@ class SocketIOManager:
                 
                 # Token is valid - authenticate the connection
                 self.connections[sid]["user_id"] = user_id
-                self.connections[sid]["authenticated_at"] = datetime.utcnow().isoformat()
+                self.connections[sid]["authenticated_at"] = datetime.now(timezone.utc).isoformat()
                 
                 # Add to user sessions
                 if user_id not in self.user_sessions:
@@ -159,7 +159,7 @@ class SocketIOManager:
                 await self.sio.emit('authenticated', {
                     "success": True,
                     "user_id": user_id,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }, room=sid)
             
             except Exception as e:
@@ -207,10 +207,10 @@ class SocketIOManager:
         async def ping(sid):
             """Handle ping for connection health check."""
             if sid in self.connections:
-                self.connections[sid]["last_ping"] = datetime.utcnow().isoformat()
+                self.connections[sid]["last_ping"] = datetime.now(timezone.utc).isoformat()
             
             await self.sio.emit('pong', {
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }, room=sid)
     
     # ============================================
@@ -246,21 +246,21 @@ class SocketIOManager:
         """Broadcast price updates to price channel subscribers."""
         await self.broadcast_to_channel('prices', 'price_update', {
             "prices": prices,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
     async def send_notification(self, user_id: str, notification: Dict):
         """Send notification to specific user."""
         await self.broadcast_to_user(user_id, 'notification', {
             **notification,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
     async def send_order_update(self, user_id: str, order: Dict):
         """Send order status update to user."""
         await self.broadcast_to_user(user_id, 'order_update', {
             "order": order,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
     # ============================================

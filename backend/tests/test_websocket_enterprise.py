@@ -643,7 +643,7 @@ class TestHealthCheck:
         
         # Make connection stale
         info = ws_manager._connections[mock_websocket]
-        info.metrics.last_activity = datetime.utcnow() - timedelta(seconds=400)
+        info.metrics.last_activity = datetime.now(timezone.utc) - timedelta(seconds=400)
         
         # Run cleanup
         await ws_manager._cleanup_stale_connections()

@@ -60,7 +60,7 @@ def get_build_info() -> Dict[str, Any]:
     return {
         "version": os.environ.get("APP_VERSION", APP_VERSION),
         "api_version": os.environ.get("API_VERSION", API_VERSION),
-        "build_timestamp": os.environ.get("BUILD_TIMESTAMP", datetime.utcnow().isoformat()),
+        "build_timestamp": os.environ.get("BUILD_TIMESTAMP", datetime.now(timezone.utc).isoformat()),
         "git_commit": os.environ.get("GIT_COMMIT", os.environ.get("FLY_IMAGE_REF", "unknown")),
     }
 
@@ -105,7 +105,7 @@ async def get_version():
     return VersionInfo(
         version=build_info.get("version", APP_VERSION),
         api_version=build_info.get("api_version", API_VERSION),
-        build_timestamp=build_info.get("build_timestamp", datetime.utcnow().isoformat()),
+        build_timestamp=build_info.get("build_timestamp", datetime.now(timezone.utc).isoformat()),
         git_commit=build_info.get("git_commit", "unknown"),
         environment=os.environ.get("ENVIRONMENT", "production"),
         min_frontend_version=MIN_FRONTEND_VERSION,
@@ -213,5 +213,5 @@ async def get_deployment_info(request: Request):
         "image_ref": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or os.environ.get("FLY_IMAGE_REF", "unknown"),
         "public_url": os.environ.get("PUBLIC_API_URL", fallback_public_url),
         "environment": os.environ.get("ENVIRONMENT", "production"),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }

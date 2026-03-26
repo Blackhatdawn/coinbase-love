@@ -282,7 +282,7 @@ async def websocket_notifications(
         "type": "system",
         "data": {
             "message": "Connected to notification stream",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     })
     
@@ -295,7 +295,7 @@ async def websocket_notifications(
             if data == "ping":
                 await websocket.send_json({
                     "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
     
     except WebSocketDisconnect:

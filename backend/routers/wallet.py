@@ -101,15 +101,15 @@ async def get_wallet_balance(
             "id": str(uuid.uuid4()),
             "user_id": user_id,
             "balances": {"USD": 0.0},
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
         await wallets_collection.insert_one(wallet)
     
     return {
         "wallet": {
             "balances": wallet.get("balances", {"USD": 0.0}),
-            "updated_at": wallet.get("updated_at", datetime.utcnow()).isoformat()
+            "updated_at": wallet.get("updated_at", datetime.now(timezone.utc)).isoformat()
         }
     }
 
@@ -193,9 +193,9 @@ async def create_deposit(
             "pay_address": payment_result.get("pay_address"),
             "status": "pending",
             "mock": payment_result.get("mock", False),
-            "created_at": datetime.utcnow(),
-            "expires_at": datetime.utcnow() + timedelta(hours=1),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+            "updated_at": datetime.now(timezone.utc)
         }
         await deposits_collection.insert_one(deposit_record)
         
@@ -231,7 +231,7 @@ async def create_deposit(
             "currency": data.currency.upper(),
             "payAddress": payment_result.get("pay_address"),
             "payAmount": payment_result.get("pay_amount"),
-            "expiresAt": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+            "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
             "qrCode": payment_result.get("qr_code"),
             "mock": payment_result.get("mock", False)
         }
@@ -269,7 +269,7 @@ async def get_deposit_status(
                 if new_status != deposit["status"]:
                     await deposits_collection.update_one(
                         {"order_id": order_id},
-                        {"$set": {"status": new_status, "updated_at": datetime.utcnow()}}
+                        {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc)}}
                     )
                     deposit["status"] = new_status
         except Exception as e:
@@ -431,8 +431,8 @@ async def nowpayments_webhook(
                     "status": payment_status,
                     "actually_paid": actually_paid,
                     "webhook_processed": True,
-                    "webhook_received_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "webhook_received_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -455,7 +455,7 @@ async def nowpayments_webhook(
                     {
                         "$set": {
                             "balances.USD": new_balance,
-                            "updated_at": datetime.utcnow()
+                            "updated_at": datetime.now(timezone.utc)
                         }
                     }
                 )
@@ -465,8 +465,8 @@ async def nowpayments_webhook(
                     "id": str(uuid.uuid4()),
                     "user_id": user_id,
                     "balances": {"USD": amount},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 })
                 logger.info(f"✅ New wallet created with balance: ${amount}")
             
@@ -481,7 +481,7 @@ async def nowpayments_webhook(
                 "status": "completed",
                 "reference": order_id,
                 "description": f"Deposit via {deposit['pay_currency']}",
-                "created_at": datetime.utcnow()
+                "created_at": datetime.now(timezone.utc)
             }
             await transactions_collection.insert_one(deposit_transaction)
             await broadcast_transaction_event(user_id, deposit_transaction)
@@ -551,7 +551,7 @@ async def nowpayments_webhook(
             "status": "success",
             "order_id": order_id,
             "payment_status": payment_status,
-            "processed_at": datetime.utcnow().isoformat()
+            "processed_at": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:
@@ -601,14 +601,14 @@ async def test_webhook_endpoint(request: Request):
                 "headers": dict(request.headers),
                 "client_host": request.client.host if request.client else "unknown"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         logger.error(f"Test webhook error: {str(e)}")
         return {
             "status": "error",
             "message": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
 
@@ -692,7 +692,7 @@ async def create_withdrawal(
         "approval_count": 0,
         "approvals": [],  # [{admin_id, approved_at, ip_address}]
         "rejections": [],
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "processed_at": None,
         "completed_at": None,
         "notes": f"High-value withdrawal (${data.amount:,.2f}) - requires 2 admin approvals" if requires_multi_approval else None,
@@ -706,7 +706,7 @@ async def create_withdrawal(
         {
             "$set": {
                 f"balances.{data.currency.upper()}": current_balance - total_amount,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
         }
     )
@@ -722,7 +722,7 @@ async def create_withdrawal(
         "status": "pending",
         "reference": withdrawal_id,
         "description": f"Withdrawal to {data.address[:12]}...",
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
     await transactions_collection.insert_one(withdrawal_transaction)
     
@@ -736,7 +736,7 @@ async def create_withdrawal(
         "status": "completed",
         "reference": withdrawal_id,
         "description": f"Withdrawal fee for {withdrawal_id[:8]}...",
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
     await transactions_collection.insert_one(fee_transaction)
 
@@ -857,7 +857,7 @@ async def approve_withdrawal(
     approval_record = {
         "admin_id": user_id,
         "admin_email": admin_user.get("email"),
-        "approved_at": datetime.utcnow().isoformat(),
+        "approved_at": datetime.now(timezone.utc).isoformat(),
         "ip_address": request.client.host if request.client else None,
     }
 
@@ -872,7 +872,7 @@ async def approve_withdrawal(
             "$set": {
                 "approval_count": new_approval_count,
                 "status": new_status,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(timezone.utc),
             },
         },
     )
@@ -952,7 +952,7 @@ async def reject_withdrawal(
             {"user_id": withdrawal["user_id"]},
             {"$set": {
                 f"balances.{withdrawal['currency']}": current_balance + refund_amount,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(timezone.utc),
             }},
         )
 
@@ -960,11 +960,11 @@ async def reject_withdrawal(
         {"id": withdrawal_id},
         {"$set": {
             "status": "rejected",
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(timezone.utc),
         },
         "$push": {"rejections": {
             "admin_id": user_id,
-            "rejected_at": datetime.utcnow().isoformat(),
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
             "ip_address": request.client.host if request.client else None,
         }}},
     )
@@ -1148,8 +1148,8 @@ async def create_p2p_transfer(
         "fee": transfer_fee,
         "note": data.note,
         "status": "completed",  # P2P transfers are instant
-        "created_at": datetime.utcnow(),
-        "completed_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc),
+        "completed_at": datetime.now(timezone.utc)
     }
 
     await transfers_collection.insert_one(transfer_record)
@@ -1160,7 +1160,7 @@ async def create_p2p_transfer(
         {
             "$set": {
                 f"balances.{data.currency.upper()}": sender_balance - total_amount,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
         }
     )
@@ -1174,7 +1174,7 @@ async def create_p2p_transfer(
             {
                 "$set": {
                     f"balances.{data.currency.upper()}": recipient_balance + data.amount,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1184,8 +1184,8 @@ async def create_p2p_transfer(
             "id": str(uuid.uuid4()),
             "user_id": recipient["id"],
             "balances": {data.currency.upper(): data.amount},
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         })
 
     # Create transaction records for both users
@@ -1199,7 +1199,7 @@ async def create_p2p_transfer(
         "status": "completed",
         "reference": transfer_id,
         "description": f"Transfer to {recipient['name']} ({recipient['email']})",
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
     await transactions_collection.insert_one(sender_transaction)
 
@@ -1213,7 +1213,7 @@ async def create_p2p_transfer(
         "status": "completed",
         "reference": transfer_id,
         "description": f"Transfer from {sender['name']} ({sender['email']})",
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
     await transactions_collection.insert_one(recipient_transaction)
 

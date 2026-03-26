@@ -34,7 +34,7 @@ class PasswordResetService:
             }
         """
         # Check email-based rate limit (3 attempts per hour)
-        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         
         email_attempts = await self.reset_attempts_collection.count_documents({
             "email": email.lower(),
@@ -49,7 +49,7 @@ class PasswordResetService:
             )
             
             if oldest_attempt:
-                retry_after = (oldest_attempt["created_at"] + timedelta(hours=1) - datetime.utcnow()).total_seconds()
+                retry_after = (oldest_attempt["created_at"] + timedelta(hours=1) - datetime.now(timezone.utc)).total_seconds()
                 return {
                     "allowed": False,
                     "attempts_remaining": 0,
@@ -95,7 +95,7 @@ class PasswordResetService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         
         # Store token with metadata
-        expires_at = datetime.utcnow() + timedelta(minutes=15)  # 15 minute expiration
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)  # 15 minute expiration
         
         await self.reset_tokens_collection.insert_one({
             "token_hash": token_hash,
@@ -103,7 +103,7 @@ class PasswordResetService:
             "email": email.lower(),
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "expires_at": expires_at,
             "used": False,
             "used_at": None
@@ -114,7 +114,7 @@ class PasswordResetService:
             "email": email.lower(),
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "success": True
         })
         
@@ -143,7 +143,7 @@ class PasswordResetService:
             return None
         
         # Check expiration
-        if datetime.utcnow() > token_doc["expires_at"]:
+        if datetime.now(timezone.utc) > token_doc["expires_at"]:
             logger.warning(f"Expired reset token attempted for user {token_doc['user_id']}")
             return None
         
@@ -158,7 +158,7 @@ class PasswordResetService:
             {
                 "$set": {
                     "used": True,
-                    "used_at": datetime.utcnow()
+                    "used_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -195,7 +195,7 @@ class PasswordResetService:
         await self.password_history_collection.insert_one({
             "user_id": user_id,
             "password_hash": password_hash,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         })
         
         # Keep only last 5 passwords
@@ -223,7 +223,7 @@ class PasswordResetService:
             }
         """
         # Check for failed attempts in last 24 hours
-        twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         
         failed_attempts = await self.reset_attempts_collection.count_documents({
             "user_id": user_id,
@@ -259,7 +259,7 @@ class PasswordResetService:
             "email": email.lower(),
             "user_id": user_id,
             "ip_address": ip_address,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "success": False,
             "failure_reason": reason
         })
@@ -269,7 +269,7 @@ class PasswordResetService:
     async def cleanup_expired_tokens(self):
         """Cleanup expired tokens (run periodically)"""
         result = await self.reset_tokens_collection.delete_many({
-            "expires_at": {"$lt": datetime.utcnow()}
+            "expires_at": {"$lt": datetime.now(timezone.utc)}
         })
         
         if result.deleted_count > 0:
@@ -277,7 +277,7 @@ class PasswordResetService:
     
     async def get_reset_statistics(self, user_id: str) -> Dict[str, Any]:
         """Get password reset statistics for user"""
-        twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         
         total_attempts = await self.reset_attempts_collection.count_documents({
             "user_id": user_id

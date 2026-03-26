@@ -171,7 +171,7 @@ async def add_holding(
         "amount": holding_data.amount,
         "value": round(holding_data.amount * price, 2),
         "allocation": 0,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     existing_idx = next((i for i, h in enumerate(holdings) if h["symbol"] == holding_data.symbol.upper()), None)
@@ -186,7 +186,7 @@ async def add_holding(
 
     await portfolios_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+        {"$set": {"holdings": holdings, "updated_at": datetime.now(timezone.utc)}}
     )
 
     # Invalidate portfolio cache
@@ -212,7 +212,7 @@ async def delete_holding(
 
     await portfolios_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"holdings": holdings, "updated_at": datetime.utcnow()}}
+        {"$set": {"holdings": holdings, "updated_at": datetime.now(timezone.utc)}}
     )
 
     # Invalidate portfolio cache

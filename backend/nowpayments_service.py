@@ -173,7 +173,7 @@ class NOWPaymentsService:
                 "price_amount": price_amount,
                 "price_currency": price_currency.upper(),
                 "order_id": order_id,
-                "expiration_estimate_date": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+                "expiration_estimate_date": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
                 "qr_code": f"https://api.qrserver.com/v1/create-qr-code/?data={mock_address}&size=200x200"
             }
         
@@ -263,7 +263,7 @@ class NOWPaymentsService:
                 "price_amount": price_amount,
                 "price_currency": price_currency.upper(),
                 "pay_address": mock_address,
-                "expiration": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+                "expiration": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
             }
         
         try:

@@ -131,9 +131,9 @@ async def create_alert(
         "is_active": True,
         "notify_push": data.notifyPush,
         "notify_email": data.notifyEmail,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "triggered_at": None,
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.now(timezone.utc)
     }
     
     await alerts_collection.insert_one(alert_doc)
@@ -217,7 +217,7 @@ async def update_alert(
         raise HTTPException(status_code=404, detail="Alert not found")
     
     # Build update document
-    update_doc = {"updated_at": datetime.utcnow()}
+    update_doc = {"updated_at": datetime.now(timezone.utc)}
     
     if data.isActive is not None:
         update_doc["is_active"] = data.isActive
@@ -327,7 +327,7 @@ async def check_and_trigger_alerts(db, symbol: str, current_price: float):
                 {"id": alert["id"]},
                 {
                     "$set": {
-                        "triggered_at": datetime.utcnow(),
+                        "triggered_at": datetime.now(timezone.utc),
                         "is_active": False,
                         "triggered_price": current_price
                     }

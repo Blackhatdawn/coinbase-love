@@ -206,7 +206,7 @@ def test_create_stake_uses_usd_fallback_when_token_balance_missing(monkeypatch):
 def test_redeem_stake_blocks_locked_position_until_mature(monkeypatch):
     monkeypatch.setattr(earn.settings, "feature_staking_enabled", True)
 
-    created = datetime.utcnow() - timedelta(days=5)
+    created = datetime.now(timezone.utc) - timedelta(days=5)
     stake_doc = {
         "id": "s1",
         "user_id": "u1",
@@ -237,7 +237,7 @@ def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
     monkeypatch.setattr(earn.settings, "feature_staking_enabled", True)
     monkeypatch.setattr(earn, "_token_usd_price", _fake_token_price)
 
-    created = datetime.utcnow() - timedelta(days=40)
+    created = datetime.now(timezone.utc) - timedelta(days=40)
     stake_doc = {
         "id": "s1",
         "user_id": "u1",
@@ -266,7 +266,7 @@ def test_redeem_stake_credits_usd_for_usd_funded_stake(monkeypatch):
 def test_positions_returns_dynamic_days_remaining(monkeypatch):
     monkeypatch.setattr(earn.settings, "feature_staking_enabled", True)
 
-    created = datetime.utcnow() - timedelta(days=10)
+    created = datetime.now(timezone.utc) - timedelta(days=10)
     stakes = FakeCollection(
         docs=[
             {

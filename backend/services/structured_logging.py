@@ -21,7 +21,7 @@ class StructuredFormatter(logging.Formatter):
         
         # Base log structure
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

@@ -29,7 +29,7 @@ class BusinessAnalytics:
     
     async def get_user_growth(self, days: int = 30) -> dict:
         """Get user registration growth over time."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         users_collection = self.db.get_collection("users")
         
         # Total users
@@ -46,7 +46,7 @@ class BusinessAnalytics:
         })
         
         # Active users (logged in last 7 days)
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         active_users = await users_collection.count_documents({
             "last_login": {"$gte": week_ago}
         })
@@ -83,13 +83,13 @@ class BusinessAnalytics:
         users_collection = self.db.get_collection("users")
         
         # Users created in cohort period
-        cohort_start = datetime.utcnow() - timedelta(days=cohort_days)
+        cohort_start = datetime.now(timezone.utc) - timedelta(days=cohort_days)
         cohort_users = await users_collection.count_documents({
             "created_at": {"$gte": cohort_start}
         })
         
         # Users from cohort who logged in within last 7 days
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         retained_users = await users_collection.count_documents({
             "created_at": {"$gte": cohort_start},
             "last_login": {"$gte": week_ago}
@@ -110,7 +110,7 @@ class BusinessAnalytics:
     
     async def get_trading_volume(self, days: int = 30) -> dict:
         """Get trading volume metrics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         orders_collection = self.db.get_collection("orders")
         
         # Total trades
@@ -203,7 +203,7 @@ class BusinessAnalytics:
     
     async def get_revenue_metrics(self, days: int = 30) -> dict:
         """Calculate revenue from trading fees, withdrawal fees, etc."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         transactions_collection = self.db.get_collection("transactions")
         
         # Trading fees
@@ -278,7 +278,7 @@ class BusinessAnalytics:
     
     async def get_conversion_funnel(self, days: int = 30) -> dict:
         """Analyze user conversion funnel."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         users_collection = self.db.get_collection("users")
         deposits_collection = self.db.get_collection("deposits")
         orders_collection = self.db.get_collection("orders")
@@ -358,7 +358,7 @@ class BusinessAnalytics:
         total_orders = await orders_collection.count_documents({})
         
         # Recent activity (last hour)
-        hour_ago = datetime.utcnow() - timedelta(hours=1)
+        hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         recent_orders = await orders_collection.count_documents({
             "created_at": {"$gte": hour_ago}
         })
@@ -369,7 +369,7 @@ class BusinessAnalytics:
                 "total_orders": total_orders,
                 "orders_last_hour": recent_orders
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     # ============================================
@@ -386,7 +386,7 @@ class BusinessAnalytics:
         
         return {
             "period_days": days,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "user_metrics": user_growth,
             "trading_metrics": trading_volume,
             "revenue_metrics": revenue,
@@ -404,7 +404,7 @@ async def track_event(db: AsyncIOMotorDatabase, event_type: str, user_id: Option
         "type": event_type,
         "user_id": user_id,
         "metadata": metadata or {},
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     }
     
     await events_collection.insert_one(event)

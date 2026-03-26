@@ -115,7 +115,7 @@ class PriceFeedManager:
                     formatted = self._format_prices(raw_data["data"])
                     changes = self._detect_changes(formatted)
                     self.prices = formatted
-                    self.last_update = datetime.utcnow()
+                    self.last_update = datetime.now(timezone.utc)
 
                     if self.connections:
                         await self._broadcast({

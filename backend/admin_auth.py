@@ -25,13 +25,8 @@ logger = logging.getLogger(__name__)
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Admin JWT settings - C1 FIX: Use HMAC-derived key independent from user JWT
-_user_secret = settings.jwt_secret.get_secret_value()
-ADMIN_SECRET_KEY = hmac.new(
-    _user_secret.encode(),
-    b"cryptovault-admin-jwt-signing-key-v1",
-    hashlib.sha256,
-).hexdigest()
+# Admin JWT settings - C1 FIX: Use independent ADMIN_JWT_SECRET from config
+ADMIN_SECRET_KEY = settings.admin_jwt_secret.get_secret_value()
 ADMIN_TOKEN_EXPIRE_HOURS = 8  # Admin sessions expire faster
 
 

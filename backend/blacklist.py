@@ -4,7 +4,7 @@ Uses Redis (Upstash) for fast, expiring blacklist (preferred).
 Falls back to MongoDB collection if Redis unavailable.
 
 Security Audit Fixes:
-- C6: datetime.utcnow() -> datetime.now(timezone.utc)
+- C6: datetime.now(timezone.utc) -> datetime.now(timezone.utc)
 - M5: Lazy DB access instead of module-level import
 """
 

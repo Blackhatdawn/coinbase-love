@@ -69,7 +69,7 @@ class PriceStreamManager:
         message = {
             "type": "price_update",
             "prices": {k: str(v) for k, v in prices.items()},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_timestamp_ms": int(timestamp_ms),
             "source": price_stream_service.current_source,
         }
@@ -162,7 +162,7 @@ async def websocket_single_price(websocket: WebSocket, symbol: str):
             try:
                 _ = await asyncio.wait_for(websocket.receive_text(), timeout=20)
             except asyncio.TimeoutError:
-                await websocket.send_json({"type": "keep_alive", "timestamp": datetime.utcnow().isoformat()})
+                await websocket.send_json({"type": "keep_alive", "timestamp": datetime.now(timezone.utc).isoformat()})
 
             if normalized in price_stream_service.prices:
                 await websocket.send_json(

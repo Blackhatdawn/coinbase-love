@@ -36,7 +36,7 @@ async def submit_contact_form(payload: ContactRequest, request: Request, db=Depe
         "message": payload.message.strip(),
         "ip_address": request.client.host if request.client else None,
         "user_agent": request.headers.get("user-agent"),
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "status": "new",
     }
 

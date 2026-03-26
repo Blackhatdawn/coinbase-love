@@ -43,7 +43,7 @@ try:
     SENDGRID_AVAILABLE = True
 except ImportError:
     SENDGRID_AVAILABLE = False
-    logger.warning("SendGrid SDK not installed; SendGrid mode unavailable.")
+    logger.warning("SendGrid SDK not installed, timezone; SendGrid mode unavailable.")
 
 
 def generate_verification_code(length: int = 6) -> str:
@@ -63,7 +63,7 @@ def generate_password_reset_token() -> str:
 
 def get_token_expiration(hours: int = 24, minutes: int = 0) -> datetime:
     """Get token expiry timestamp."""
-    return datetime.utcnow() + timedelta(hours=hours, minutes=minutes)
+    return datetime.now(timezone.utc) + timedelta(hours=hours, minutes=minutes)
 
 
 class EmailService:

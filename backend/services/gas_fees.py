@@ -285,7 +285,7 @@ class GasFeeService:
             "to_currency": to_currency,
             "estimates": estimates,
             "recommended": "medium",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     
     def _get_estimated_time(self, priority: str) -> str:

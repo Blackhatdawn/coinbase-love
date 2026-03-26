@@ -128,7 +128,7 @@ async def create_order(
                     f"balances.USD": -required_amount,
                     f"balances.{crypto_symbol}": order_data.amount
                 },
-                "$set": {"updated_at": datetime.utcnow()}
+                "$set": {"updated_at": datetime.now(timezone.utc)}
             }
         )
     else:  # sell order
@@ -150,7 +150,7 @@ async def create_order(
                     f"balances.{crypto_symbol}": -order_data.amount,
                     f"balances.USD": net_proceeds
                 },
-                "$set": {"updated_at": datetime.utcnow()}
+                "$set": {"updated_at": datetime.now(timezone.utc)}
             }
         )
 
@@ -163,7 +163,7 @@ async def create_order(
         amount=order_data.amount,
         price=order_data.price,
         status="filled",
-        filled_at=datetime.utcnow()
+        filled_at=datetime.now(timezone.utc)
     )
 
     await orders_collection.insert_one(order.dict())
@@ -305,7 +305,7 @@ async def create_advanced_order(
         "time_in_force": order_data.time_in_force,
         "expire_time": order_data.expire_time,
         "status": "pending",  # Will be triggered when conditions are met
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "filled_at": None
     }
 
@@ -381,7 +381,7 @@ async def cancel_order(
                 {
                     "$set": {
                         "balances.USD": current_balance + order["reserved_amount"],
-                        "updated_at": datetime.utcnow()
+                        "updated_at": datetime.now(timezone.utc)
                     }
                 }
             )
@@ -392,7 +392,7 @@ async def cancel_order(
         {
             "$set": {
                 "status": "cancelled",
-                "cancelled_at": datetime.utcnow()
+                "cancelled_at": datetime.now(timezone.utc)
             }
         }
     )
