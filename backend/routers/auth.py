@@ -280,8 +280,9 @@ async def signup(
     
     # Auto-login user if email verification not required (dev/mock mode)
     if auto_verify:
+        device_fingerprint = generate_device_fingerprint(request)
         access_token = create_access_token(data={"sub": user.id})
-        refresh_token = create_refresh_token(data={"sub": user.id})
+        refresh_token = create_refresh_token(data={"sub": user.id}, device_fingerprint=device_fingerprint)
         response_data["access_token"] = access_token
         
         response = JSONResponse(content=response_data)
@@ -298,8 +299,31 @@ async def login(
     request: Request,
     db = Depends(get_db)
 ):
-    """Login user with account lockout protection and database timeout handling."""
+    """
+    Login user with account lockout protection and database timeout handling.
+    H4 FIX: Add login-specific rate limiting (5 failed attempts per minute per IP+email).
+    """
     users_collection = db.get_collection("users")
+
+    # H4 FIX: Add login-specific rate limiting
+    # Rate limit: max 5 failed login attempts per minute per email+IP combo
+    rate_limit_key = f"login:ratelimit:{credentials.email}:{request.client.host}"
+    try:
+        from redis_cache import redis_cache
+        failed_count = await redis_cache.get(rate_limit_key)
+        failed_count = int(failed_count) if failed_count else 0
+        
+        if failed_count >= 5:
+            logger.warning(f"Login rate limit exceeded for {credentials.email} from {request.client.host}")
+            raise HTTPException(
+                status_code=429,
+                detail="Too many login attempts. Please try again in 1 minute."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.debug(f"Redis rate limit check failed: {str(e)}")
+        # Don't block login if Redis is down
 
     # FIX #1: Add timeout handling to prevent infinite loading spinner
     # Wrap database operations with timeout to prevent indefinite hangs
@@ -347,6 +371,15 @@ async def login(
         "success": False
     }
     if not verify_password(credentials.password, user.password_hash):
+        # H4 FIX: Increment login rate limit counter on failed attempt
+        try:
+            from redis_cache import redis_cache
+            failed_count = await redis_cache.get(rate_limit_key)
+            failed_count = int(failed_count) if failed_count else 0
+            await redis_cache.set(rate_limit_key, str(failed_count + 1), ex=60)  # 60 second TTL
+        except Exception as e:
+            logger.debug(f"Redis rate limit increment failed: {str(e)}")
+        
         failed_attempts = user.failed_login_attempts + 1
         update_data = {
             "failed_login_attempts": failed_attempts,
@@ -418,8 +451,9 @@ async def login(
         logger.error(f"Database timeout updating login status for user: {user.id}")
         # Continue with login even if update fails
 
+    # H7 FIX: Include device fingerprint in refresh token for device binding
     access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id}, device_fingerprint=device_fingerprint)
 
     try:
         await asyncio.wait_for(
@@ -573,8 +607,9 @@ async def change_password(
     await log_audit(db, user_id, "PASSWORD_CHANGED", ip_address=request.client.host)
 
     # Issue fresh tokens for this session only
+    device_fingerprint = generate_device_fingerprint(request)
     access_token = create_access_token(data={"sub": user_id})
-    refresh_token_val = create_refresh_token(data={"sub": user_id})
+    refresh_token_val = create_refresh_token(data={"sub": user_id}, device_fingerprint=device_fingerprint)
 
     response = JSONResponse(content={"message": "Password changed successfully. All other sessions have been logged out."})
     set_auth_cookies(response, access_token, refresh_token_val)
@@ -583,7 +618,10 @@ async def change_password(
 
 @router.post("/refresh")
 async def refresh_token(request: Request):
-    """Refresh access token with token rotation (H1 fix)."""
+    """
+    Refresh access token with token rotation (H1 fix).
+    H7 FIX: Verify device hasn't changed (device binding).
+    """
     old_refresh_token = request.cookies.get("refresh_token")
     if not old_refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token not found")
@@ -600,9 +638,21 @@ async def refresh_token(request: Request):
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
+    # H7 FIX: Verify device hasn't changed (device binding)
+    token_device = payload.get("device")
+    current_device = generate_device_fingerprint(request)
+    
+    if token_device and token_device != current_device:
+        logger.warning(f"Device fingerprint mismatch for user {user_id}. Token issued for {token_device}, current {current_device}")
+        raise HTTPException(
+            status_code=401,
+            detail="Device mismatch. Please login again for security."
+        )
+
     # H1 FIX: Rotate refresh token - issue both new access AND new refresh tokens
     new_access_token = create_access_token(data={"sub": user_id})
-    new_refresh_token = create_refresh_token(data={"sub": user_id})
+    # H7 FIX: Include current device fingerprint in new refresh token
+    new_refresh_token = create_refresh_token(data={"sub": user_id}, device_fingerprint=current_device)
 
     # Blacklist the old refresh token to prevent reuse
     old_exp = payload.get("exp", 0)
@@ -654,8 +704,10 @@ async def verify_email(
         }}
     )
 
+    # H7 FIX: Include device fingerprint in refresh token for device binding
+    device_fingerprint = generate_device_fingerprint(request)
     access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id}, device_fingerprint=device_fingerprint)
 
     await log_audit(db, user.id, "EMAIL_VERIFIED")
 
@@ -769,6 +821,16 @@ async def forgot_password(
         return {"message": "If this email is registered, a password reset link has been sent."}
 
     user = User(**user_doc)
+
+    # H9 FIX: Invalidate any existing password reset tokens before issuing a new one
+    # This ensures only the latest reset token is valid (prevents token reuse)
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$set": {
+            "password_reset_token": None,
+            "password_reset_expires": None
+        }}
+    )
 
     reset_token = generate_password_reset_token()
     reset_expires = get_token_expiration(hours=1)

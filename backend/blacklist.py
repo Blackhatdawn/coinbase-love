@@ -50,14 +50,26 @@ async def get_redis_client() -> Optional[redis.Redis]:
 
 async def blacklist_token(token: str, expires_in: int):
     """
-    Add token to blacklist with expiry (in seconds).
+    H8 FIX: Add token to blacklist by jti (not full token) for efficiency.
     Uses Redis TTL or MongoDB expires_at field.
+    
+    This stores only the token jti (unique ID) rather than the full token,
+    reducing memory usage and improving lookup performance.
     """
+    # Extract jti from token to use as blacklist key
+    from auth import get_token_jti
+    jti = get_token_jti(token)
+    if not jti:
+        logger.warning("Could not extract jti from token for blacklisting")
+        # Fallback: blacklist the full token
+        jti = token
+    
     client = await get_redis_client()
     if client:
         try:
-            await client.set(token, "blacklisted", ex=max(expires_in, 60))
-            logger.debug(f"Token blacklisted in Redis (expires in {expires_in}s)")
+            # H8 FIX: Store only jti, not full token
+            await client.set(f"blacklist:jti:{jti}", "revoked", ex=max(expires_in, 60))
+            logger.debug(f"Token jti blacklisted in Redis (expires in {expires_in}s)")
             return
         except Exception as e:
             logger.error(f"Redis blacklist failed: {str(e)}")
@@ -65,21 +77,34 @@ async def blacklist_token(token: str, expires_in: int):
     db = _get_db()
     if db is not None:
         try:
+            # H8 FIX: Store only jti, not full token
             await db.get_collection("blacklisted_tokens").insert_one({
-                "token": token,
+                "jti": jti,
                 "expires_at": datetime.now(timezone.utc) + timedelta(seconds=max(expires_in, 60))
             })
-            logger.debug("Token blacklisted in MongoDB fallback")
+            logger.debug("Token jti blacklisted in MongoDB fallback")
         except Exception as e:
             logger.error(f"MongoDB blacklist fallback failed: {str(e)}")
 
 
 async def is_token_blacklisted(token: str) -> bool:
-    """Check if token is blacklisted."""
+    """
+    H8 FIX: Check if token is blacklisted by jti (not full token).
+    Uses Redis or MongoDB for efficient lookup.
+    """
+    # Extract jti from token
+    from auth import get_token_jti
+    jti = get_token_jti(token)
+    if not jti:
+        logger.warning("Could not extract jti from token for blacklist check")
+        # Fallback: check full token
+        jti = token
+    
     client = await get_redis_client()
     if client:
         try:
-            exists = await client.exists(token)
+            # H8 FIX: Check only jti key
+            exists = await client.exists(f"blacklist:jti:{jti}")
             return bool(exists)
         except Exception as e:
             logger.error(f"Redis blacklist check failed: {str(e)}")
@@ -88,8 +113,9 @@ async def is_token_blacklisted(token: str) -> bool:
     db = _get_db()
     if db is not None:
         try:
+            # H8 FIX: Query only jti field, not full token
             doc = await db.get_collection("blacklisted_tokens").find_one({
-                "token": token,
+                "jti": jti,
                 "expires_at": {"$gt": datetime.now(timezone.utc)}
             })
             return doc is not None

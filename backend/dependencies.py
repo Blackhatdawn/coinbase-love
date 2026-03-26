@@ -64,7 +64,11 @@ def get_limiter():
 
 
 async def get_current_user_id(request: Request) -> str:
-    """Extract and validate user ID from JWT token."""
+    """
+    Extract and validate user ID from JWT token.
+    H2 FIX: Check if password was changed after token was issued.
+    If password changed after token issued, reject token (all old sessions invalid).
+    """
     # Try to get token from Authorization header first
     auth_header = request.headers.get("Authorization")
     token = None
@@ -106,6 +110,31 @@ async def get_current_user_id(request: Request) -> str:
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # H2 FIX: Verify password hasn't changed since token was issued
+    token_issued_at = payload.get("iat")  # Token issued at
+    if token_issued_at:
+        try:
+            # Get database connection
+            db = get_db()
+            users_collection = db.get_collection("users")
+            user_doc = await users_collection.find_one({"id": user_id})
+            
+            if user_doc and "password_changed_at" in user_doc and user_doc["password_changed_at"]:
+                password_changed_at = user_doc["password_changed_at"]
+                # If password was changed AFTER token was issued, invalidate session
+                if password_changed_at.timestamp() > token_issued_at:
+                    logger.info(f"Rejecting token: password changed after token issued for user {user_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Session invalidated due to password change. Please login again.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking password change for user {user_id}: {str(e)}")
+            # Don't fail the request - this is a bonus check
     
     return user_id
 

@@ -82,8 +82,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
-    """Create JWT refresh token with jti, aud, and iss claims."""
+def create_refresh_token(data: dict, device_fingerprint: Optional[str] = None) -> str:
+    """
+    Create JWT refresh token with jti, aud, and iss claims.
+    H7 FIX: Include device_fingerprint in token to bind it to device.
+    """
     to_encode = data.copy()
     now = datetime.now(timezone.utc)
     expire = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -95,6 +98,11 @@ def create_refresh_token(data: dict) -> str:
         "aud": JWT_AUDIENCE,
         "iss": JWT_ISSUER,
     })
+    
+    # H7 FIX: Add device fingerprint to token for device binding
+    if device_fingerprint:
+        to_encode["device"] = device_fingerprint
+    
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
