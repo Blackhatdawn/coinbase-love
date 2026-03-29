@@ -5,7 +5,7 @@ Advanced security features for password management
 
 import secrets
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import logging
