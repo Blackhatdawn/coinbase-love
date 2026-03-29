@@ -6,8 +6,7 @@ import json
 import asyncio
 import logging
 from typing import Dict, Set, Optional, Any
-from datetime import datetime
-
+from datetime import datetime, timezone
 import httpx
 
 from config import settings
