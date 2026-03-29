@@ -6,7 +6,7 @@ JSON logging with contextual information
 import logging
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 import traceback
 
