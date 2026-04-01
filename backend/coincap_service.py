@@ -6,7 +6,7 @@ Note: kept module/class name for backward compatibility with existing imports.
 import httpx
 import logging
 from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 
 from config import settings

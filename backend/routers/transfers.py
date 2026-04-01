@@ -12,7 +12,7 @@ Features:
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Literal
 import uuid
 import logging

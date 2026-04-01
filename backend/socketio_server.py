@@ -12,7 +12,7 @@ import logging
 import socketio
 import asyncio
 from typing import Dict, Set, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from config import settings
 

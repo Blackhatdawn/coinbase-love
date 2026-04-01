@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict
 import logging
 import uuid

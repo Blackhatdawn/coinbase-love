@@ -768,6 +768,16 @@ export const api = {
     },
   },
 
+  // KYC
+  kyc: {
+    getStatus: () =>
+      apiClient.get<KYCStatusResponse>('/api/kyc/status'),
+    getPresignedUrl: (data: PresignedUrlRequest) =>
+      apiClient.post<PresignedUrlResponse>('/api/kyc/presigned-url', data),
+    submit: (data: KYCSubmissionRequest) =>
+      apiClient.post<{ success: boolean; message: string; status: string }>('/api/kyc/submit', data),
+  },
+
   // Health check
   health: {
     ping: () => apiClient.get('/ping'),

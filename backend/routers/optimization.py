@@ -10,7 +10,7 @@ Provides monitoring endpoints for:
 
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/optimization", tags=["optimization"])
 

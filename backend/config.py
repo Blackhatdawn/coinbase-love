@@ -328,6 +328,7 @@ class Settings(BaseSettings):
     # ============================================
     # FEATURE FLAGS
     # ============================================
+    feature_kyc_enabled: bool = Field(default=True, description="Enable KYC endpoints")
     feature_2fa_enabled: bool = Field(default=True, description="Enable 2FA endpoints")
     feature_deposits_enabled: bool = Field(default=True, description="Enable deposit endpoints")
     feature_withdrawals_enabled: bool = Field(default=True, description="Enable withdrawal endpoints")

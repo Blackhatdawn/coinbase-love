@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Literal
 import logging
 import csv

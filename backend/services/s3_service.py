@@ -22,23 +22,25 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
-# S3 configuration from environment
-S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "")
-S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
-S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
-S3_REGION = os.environ.get("S3_REGION", "us-east-1")
-S3_BUCKET_KYC = os.environ.get("S3_BUCKET_KYC", "cryptovault-kyc-documents")
-S3_BUCKET_AUDIT = os.environ.get("S3_BUCKET_AUDIT", "cryptovault-audit-logs")
+# S3 configuration from settings
+S3_ENDPOINT_URL = settings.s3_endpoint_url
+S3_ACCESS_KEY_ID = settings.s3_access_key_id
+S3_SECRET_ACCESS_KEY = settings.s3_secret_access_key
+S3_REGION = settings.s3_region
+S3_BUCKET_KYC = settings.s3_bucket_kyc
+S3_BUCKET_AUDIT = settings.s3_bucket_audit
 
 # Local fallback directory
 LOCAL_UPLOAD_DIR = Path("/tmp/cryptovault-uploads")
 
 # Check if S3 is configured
-S3_CONFIGURED = bool(S3_ENDPOINT_URL and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
+S3_CONFIGURED = bool(S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
 
 if not S3_CONFIGURED:
     logger.warning(
@@ -110,6 +112,77 @@ async def delete_document(
         return await _delete_from_s3(key, bucket or S3_BUCKET_KYC)
     else:
         return _delete_from_local(key)
+
+
+async def generate_presigned_url(
+    key: str,
+    content_type: str,
+    bucket: str = "",
+    expiration: int = 3600,
+) -> Dict[str, Any]:
+    """
+    Generate a pre-signed URL for direct-to-S3 upload.
+
+    Args:
+        key: Object key
+        content_type: MIME type of the file
+        bucket: S3 bucket name
+        expiration: URL expiration in seconds (default 1 hour)
+
+    Returns:
+        dict: {"url": str, "fields": dict, "key": str}
+    """
+    if not S3_CONFIGURED:
+        # For local development without S3, return a mock URL
+        # The frontend will need to handle this fallback
+        return {
+            "url": f"{settings.public_api_url or 'http://localhost:8001'}/api/kyc/upload-mock",
+            "fields": {"key": key, "Content-Type": content_type},
+            "key": key,
+            "mock": True
+        }
+
+    try:
+        import boto3
+        from botocore.config import Config
+
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=S3_ENDPOINT_URL if S3_ENDPOINT_URL else None,
+            aws_access_key_id=S3_ACCESS_KEY_ID,
+            aws_secret_access_key=S3_SECRET_ACCESS_KEY,
+            region_name=S3_REGION,
+            config=Config(signature_version="s3v4"),
+        )
+
+        bucket_name = bucket or S3_BUCKET_KYC
+
+        # Enforce server-side encryption and least privilege
+        response = s3_client.generate_presigned_post(
+            Bucket=bucket_name,
+            Key=key,
+            Fields={
+                "Content-Type": content_type,
+                "x-amz-server-side-encryption": "AES256"
+            },
+            Conditions=[
+                {"Content-Type": content_type},
+                {"x-amz-server-side-encryption": "AES256"},
+                ["content-length-range", 1, 10 * 1024 * 1024],  # 1B to 10MB
+            ],
+            ExpiresIn=expiration,
+        )
+
+        return {
+            "url": response["url"],
+            "fields": response["fields"],
+            "key": key,
+            "mock": False
+        }
+
+    except Exception as exc:
+        logger.error("Failed to generate pre-signed URL: %s", exc)
+        raise RuntimeError(f"Could not generate upload URL: {str(exc)}")
 
 
 # ============================================

@@ -8,7 +8,7 @@ import hashlib
 import httpx
 import uuid
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from config import settings
