@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from starlette.middleware.gzip import GZIPMiddleware  # Import moved to compression section
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import asyncio
 import uuid
@@ -20,7 +20,23 @@ import json
 
 # Configuration and database
 from config import settings, validate_startup_environment, get_settings
-from database import DatabaseConnection
+import os
+
+# Force mock database if explicitly requested via environment
+# In production, we default to REAL database for data persistence
+use_mock_db = os.getenv("USE_MOCK_DB", "false").lower() == "true"
+
+if use_mock_db:
+    from database_mock import DatabaseConnection
+else:
+    try:
+        from database import DatabaseConnection
+    except (ImportError, ValueError) as e:
+        if settings.environment == "production":
+            logger = logging.getLogger(__name__)
+            logger.critical(f"💥 Failed to load production database: {e}")
+            sys.exit(1)
+        from database_mock import DatabaseConnection
 
 # Routers
 from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, transactions, prices, websocket, transfers, users, notifications, monitoring, config, referrals, earn, contact, push
@@ -229,7 +245,7 @@ class SecurityHeadersMiddleware:
                 
                 security_headers = [
                     # HSTS - Force HTTPS for 1 year (31,536,000 seconds)
-                    (b"strict-transport-security", b"max-age=31536000, timezone; includeSubDomains; preload"),
+                    (b"strict-transport-security", b"max-age=31536000; includeSubDomains; preload"),
                     
                     # Prevent clickjacking
                     (b"x-frame-options", b"DENY"),
@@ -635,41 +651,9 @@ EXPOSED_HEADERS = [
     "X-Total-Count",          # Pagination total
 ]
 
-# Apply CORS middleware with credentials for authenticated endpoints
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,  # Required for session/cookie auth
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=ALLOWED_HEADERS,
-    expose_headers=EXPOSED_HEADERS,
-    max_age=3600,  # Cache preflight requests for 1 hour
-)
-
-# ============================================
-# COMPRESSION MIDDLEWARE
-# ============================================
-
-# Add GZip compression for response compression
-# Using correct Starlette import path
-try:
-    from starlette.middleware.gzip import GZipMiddleware
-    
-    # GZip compression for API responses
-    # Minimum size prevents compressing tiny responses (overhead > benefit)
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
-    logger.info("✅ GZip compression middleware enabled (min size: 1000 bytes)")
-except ImportError as e:
-    logger.warning(f"⚠️ GZip compression middleware not available: {e}")
-
 # ============================================
 # CUSTOM MIDDLEWARE
 # ============================================
-
-# Compression will be handled by reverse proxy (nginx/cloudflare)
-# if hasattr(settings, 'enable_compression') and settings.enable_compression:
-#     app.add_middleware(GZIPMiddleware, minimum_size=1000)
-#     logger.info("✅ Response compression enabled (Gzip)")
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -719,6 +703,34 @@ try:
     logger.info(f"   - CSRF protection: {'ENABLED' if csrf_enabled else 'DISABLED (dev mode)'}")
 except ImportError as e:
     logger.warning(f"⚠️ Advanced security middleware not available: {e}")
+
+# ============================================
+# COMPRESSION MIDDLEWARE
+# ============================================
+
+# Add GZip compression for response compression
+try:
+    from starlette.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    logger.info("✅ GZip compression middleware enabled (min size: 1000 bytes)")
+except ImportError as e:
+    logger.warning(f"⚠️ GZip compression middleware not available: {e}")
+
+# ============================================
+# CORS CONFIGURATION - Enterprise Grade
+# ============================================
+
+# Apply CORS middleware LAST so it wraps everything else
+# This ensures CORS headers are added even for errors or middleware responses
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=ALLOWED_HEADERS,
+    expose_headers=EXPOSED_HEADERS,
+    max_age=3600,
+)
 
 # ============================================
 # DATABASE CONNECTION

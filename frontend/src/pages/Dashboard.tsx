@@ -538,7 +538,7 @@ const renderWidget = (widgetId: string, props: any) => {
             <div className="space-y-2">
               <SecurityItem label="2FA" enabled status="Enabled" />
               <SecurityItem label="Email Verified" enabled status="Verified" />
-              <SecurityItem label="Anti-Phishing" enabled={false} status="Set up" link="/security" />
+              <SecurityItem label="Identity Verification" enabled={false} status="Verify" link="/kyc" />
             </div>
           </div>
         </DashboardCard>

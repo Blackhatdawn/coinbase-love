@@ -1,7 +1,7 @@
 """Portfolio management endpoints."""
 
 from fastapi import APIRouter, HTTPException, Depends, Request
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import logging
 
@@ -89,7 +89,7 @@ async def get_portfolio(
                 "current_price": current_price,
                 "value": round(current_value, 2),
                 "allocation": 0,
-                "cached_at": datetime.now().isoformat()
+                "cached_at": datetime.now(timezone.utc).isoformat()
             })
         else:
             updated_holdings.append({

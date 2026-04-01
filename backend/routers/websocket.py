@@ -6,7 +6,7 @@ Streams cached exchange WebSocket prices to connected clients.
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -43,7 +43,7 @@ class PriceStreamManager:
                 "type": "connection",
                 "status": "connected",
                 "message": "Connected to centralized price cache",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -120,7 +120,7 @@ async def websocket_price_stream(websocket: WebSocket):
                 message_type = message.get("type")
 
                 if message_type == "ping":
-                    await websocket.send_json({"type": "pong", "timestamp": datetime.now().isoformat()})
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
                 elif message_type == "get_status":
                     status = price_stream_service.get_status()
                     await websocket.send_json(
@@ -129,7 +129,7 @@ async def websocket_price_stream(websocket: WebSocket):
                             "state": status["state"],
                             "source": status["source"],
                             "prices_cached": status["prices_cached"],
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     )
                 elif message_type == "get_price":
@@ -140,7 +140,7 @@ async def websocket_price_stream(websocket: WebSocket):
                                 "type": "price",
                                 "symbol": symbol,
                                 "price": str(price_stream_service.prices[symbol]),
-                                "timestamp": datetime.now().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                             }
                         )
             except json.JSONDecodeError:
@@ -170,7 +170,7 @@ async def websocket_single_price(websocket: WebSocket, symbol: str):
                         "type": "price",
                         "symbol": normalized,
                         "price": str(price_stream_service.prices[normalized]),
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
     except WebSocketDisconnect:

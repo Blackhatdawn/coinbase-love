@@ -25,7 +25,7 @@ class User(BaseModel):
     locked_until: Optional[datetime] = None
     
     # KYC Fields (Phase 1 - Manual KYC System)
-    kyc_status: str = "pending"  # pending, approved, rejected
+    kyc_status: str = "unverified"  # unverified, pending, approved, rejected
     kyc_tier: int = 0  # 0 = unverified, 1 = basic, 2 = advanced
     kyc_submitted_at: Optional[datetime] = None
     kyc_approved_at: Optional[datetime] = None

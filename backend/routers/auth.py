@@ -173,7 +173,7 @@ async def signup(
         city=user_data.city,
         postal_code=user_data.postal_code,
         occupation=user_data.occupation,
-        kyc_status='pending',
+        kyc_status='unverified',
         kyc_tier=0,
         
         # Fraud detection data

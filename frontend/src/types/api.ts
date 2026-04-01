@@ -285,6 +285,49 @@ export type PaginatedOrders = {
 };
 
 // ============================================
+// KYC
+// ============================================
+
+export interface KYCStatusResponse {
+  kyc_status: "unverified" | "pending" | "approved" | "rejected";
+  kyc_tier: number;
+  submitted_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  documents_count: number;
+}
+
+export interface PresignedUrlRequest {
+  file_name: string;
+  content_type: string;
+  document_type: "id_front" | "id_back" | "address_proof" | "selfie";
+}
+
+export interface PresignedUrlResponse {
+  url: string;
+  fields: Record<string, string>;
+  key: string;
+  mock?: boolean;
+}
+
+export interface KYCSubmissionRequest {
+  full_name: string;
+  date_of_birth: string;
+  phone_number: string;
+  occupation: string;
+  country: string;
+  city: string;
+  address: string;
+  postal_code: string;
+  id_type: string;
+  id_front_key: string;
+  id_back_key?: string;
+  proof_of_address_key: string;
+  selfie_key: string;
+}
+
+// ============================================
 // ERRORS
 // ============================================
 

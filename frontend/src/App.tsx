@@ -65,6 +65,7 @@ const Referrals = lazy(() => import("@/pages/Referrals"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const DashboardSecurity = lazy(() => import("@/pages/DashboardSecurity"));
 const AdvancedTradingPage = lazy(() => import("@/pages/AdvancedTradingPage"));
+const KYC = lazy(() => import("@/pages/KYC"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -278,6 +279,7 @@ const AppContent = () => {
             <Route path="/advanced-trading" element={<AdvancedTradingPage />} />
             <Route path="/earn" element={<Earn />} />
             <Route path="/referrals" element={<Referrals />} />
+            <Route path="/kyc" element={<KYC />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/security" element={<DashboardSecurity />} />
           </Route>

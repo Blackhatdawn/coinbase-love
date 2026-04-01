@@ -1,7 +1,7 @@
 """User management endpoints."""
 
 from fastapi import APIRouter, HTTPException, Query, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import logging
 
