@@ -406,23 +406,34 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Manage application startup and shutdown events.
+    Implements enterprise-grade initialization with health checks.
     """
     # STARTUP LOGIC
     global db_connection
 
-    logger.info("=" * 70)
-    logger.info("🚀 CRYPTOVAULT API SERVER - STARTING")
-    logger.info("=" * 70)
+    logger.info("=" * 80)
+    logger.info("🚀 CRYPTOVAULT API SERVER - ENTERPRISE STARTUP")
+    logger.info("=" * 80)
     logger.info(f"   Version: 1.0.0")
     logger.info(f"   Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
     logger.info(f"   Host: {settings.host}")
     logger.info(f"   Port: {settings.port}")
-    logger.info("=" * 70)
+    logger.info(f"   Environment: {settings.environment}")
+    logger.info("=" * 80)
 
     try:
-        logger.info("📋 Validating environment configuration...")
-        validate_startup_environment()
+        # Run comprehensive startup health checks
+        from startup import run_startup_checks
+        
+        can_start, health_check = await run_startup_checks()
+        
+        if not can_start:
+            logger.critical("💥 STARTUP BLOCKED: Critical health check failures detected")
+            logger.critical("Please resolve the critical issues above and restart the server")
+            raise RuntimeError("Startup health check failed - server cannot start")
 
+        # Initialize database connection with retries
+        logger.info("🔌 Initializing database connection...")
         db_connection = DatabaseConnection(
             mongo_url=settings.database_url,
             db_name=settings.db_name,
@@ -430,48 +441,76 @@ async def lifespan(app: FastAPI):
             min_pool_size=min(5, settings.mongo_max_pool_size),
             server_selection_timeout_ms=settings.mongo_timeout_ms
         )
-        await db_connection.connect()
+        
+        try:
+            await db_connection.connect(max_retries=5)
+            logger.info("✅ Database connection established")
+        except Exception as e:
+            logger.critical(f"💥 Database connection failed: {str(e)}")
+            raise
 
+        # Set global dependencies
         dependencies.set_db_connection(db_connection)
         dependencies.set_limiter(limiter)
 
+        # Create database indexes for performance
         if db_connection.is_connected:
-            from database_indexes import create_indexes as create_database_indexes
-            await create_database_indexes(db_connection.db)
+            try:
+                logger.info("📊 Creating database indexes...")
+                from database_indexes import create_indexes as create_database_indexes
+                await create_database_indexes(db_connection.db)
+                logger.info("✅ Database indexes created")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not create indexes: {e}")
 
-        await price_stream_service.start()
-
-        telegram_status = await telegram_bot.get_health_status()
-        if telegram_status.get("enabled") and telegram_status.get("api_reachable"):
-            logger.info(
-                "✅ Telegram bot connectivity check passed (@%s)",
-                telegram_status.get("bot_username") or "unknown"
-            )
-            await telegram_bot.start_command_polling()
-        elif telegram_status.get("feature_enabled"):
-            logger.warning(
-                "⚠️ Telegram enabled but not fully operational "
-                "(configured_admin_count=%s, api_reachable=%s)",
-                telegram_status.get("configured_admin_count"),
-                telegram_status.get("api_reachable")
-            )
-        else:
-            logger.info("ℹ️ Telegram notifications disabled via configuration")
-        
-        # Initialize default admin account if none exists
+        # Start price stream service (non-critical)
         try:
+            logger.info("📈 Starting price stream service...")
+            await price_stream_service.start()
+            logger.info("✅ Price stream service started")
+        except Exception as e:
+            logger.warning(f"⚠️ Price stream service failed to start: {e}")
+
+        # Initialize Telegram bot notifications (non-critical)
+        try:
+            telegram_status = await telegram_bot.get_health_status()
+            if telegram_status.get("enabled") and telegram_status.get("api_reachable"):
+                logger.info(
+                    "✅ Telegram bot operational (@%s)",
+                    telegram_status.get("bot_username") or "unknown"
+                )
+                await telegram_bot.start_command_polling()
+            elif telegram_status.get("feature_enabled"):
+                logger.warning(
+                    "⚠️ Telegram enabled but not fully operational "
+                    "(configured_admin_count=%s, api_reachable=%s)",
+                    telegram_status.get("configured_admin_count"),
+                    telegram_status.get("api_reachable")
+                )
+            else:
+                logger.info("ℹ️ Telegram notifications disabled")
+        except Exception as e:
+            logger.warning(f"⚠️ Telegram initialization error: {e}")
+        
+        # Initialize default admin account (non-critical)
+        try:
+            logger.info("👤 Ensuring admin account exists...")
             from admin_auth import create_default_admin
             await create_default_admin()
+            logger.info("✅ Admin account initialized")
         except Exception as e:
-            logger.warning(f"⚠️ Could not initialize admin account: {e}")
+            logger.warning(f"⚠️ Admin account initialization warning: {e}")
 
-        logger.info("="*70)
-        logger.info("✅ Server startup complete!")
-        logger.info(f"📍 Environment: {settings.environment}")
-        logger.info("="*70)
+        logger.info("=" * 80)
+        logger.info("✅ SERVER STARTUP COMPLETE - READY FOR REQUESTS")
+        logger.info(f"   📍 Environment: {settings.environment}")
+        logger.info(f"   🌍 CORS Origins: {len(settings.get_cors_origins_list())} configured")
+        logger.info(f"   🔐 Security: HSTS, CSP, Rate Limiting enabled")
+        logger.info("=" * 80)
 
     except Exception as e:
-        logger.critical(f"💥 Startup failed: {str(e)}")
+        logger.critical(f"💥 STARTUP FAILED: {str(e)}")
+        logger.critical("Server cannot start. Please check the configuration and logs above.")
         raise
 
     yield

@@ -959,37 +959,44 @@ def validate_startup_environment() -> dict:
         if settings.public_socket_io_path and not str(settings.public_socket_io_path).startswith("/"):
             strict_missing_vars.append("public_socket_io_path must start with '/'")
 
-    if missing_vars or strict_missing_vars:
-        combined = missing_vars + strict_missing_vars
-        error_msg = (
-            "❌ STARTUP FAILED: Critical environment variables not configured:\\n"
-            f"   {', '.join(combined)}\\n\\n"
-            "   Please set these in your environment or .env file:\\n"
-        )
-        for var in combined:
-            error_msg += f"   - {str(var).upper()}\\n"
-        raise ValueError(error_msg)
-
-    # Log successful validation
-    print("✅ Environment Validated")
-    print(f"   Environment: {settings.environment}")
-    print(f"   App: {settings.app_name} v{settings.app_version}")
-    print(f"   Host: {settings.host}:{settings.port}")
-    print(f"   Database: {settings.db_name}")
-    print(f"   Redis: {'Enabled (Upstash)' if settings.upstash_redis_rest_url else 'Enabled (Standard)' if settings.redis_url else 'Disabled'}")
-    print(f"   Email Service: {settings.email_service}")
-    print(f"   CORS Origins: {', '.join(settings.get_cors_origins_list())}")
-    print(f"   Strict Production Mode: {'Enabled' if settings.full_production_configuration else 'Disabled'}")
-    if settings.is_sentry_available():
-        print(f"   Sentry: Enabled")
-
-    return {
-        "status": "success",
+    # Prepare error/validation results
+    validation_result = {
+        "status": "invalid" if (missing_vars or strict_missing_vars) else "valid",
         "environment": settings.environment,
         "app_name": settings.app_name,
         "database": settings.db_name,
         "strict_mode": settings.full_production_configuration,
+        "errors": missing_vars + strict_missing_vars,
     }
+    
+    if missing_vars or strict_missing_vars:
+        combined = missing_vars + strict_missing_vars
+        error_msg = (
+            "❌ STARTUP FAILED: Critical environment variables not configured:\n"
+            f"   {', '.join(combined)}\n\n"
+            "   Please set these in your environment or .env file:\n"
+        )
+        for var in combined:
+            error_msg += f"   - {str(var).upper()}\n"
+        logger = logging.getLogger(__name__)
+        logger.critical(error_msg)
+        raise ValueError(error_msg)
+
+    # Log successful validation
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Environment Validated")
+    logger.info(f"   Environment: {settings.environment}")
+    logger.info(f"   App: {settings.app_name} v{settings.app_version}")
+    logger.info(f"   Host: {settings.host}:{settings.port}")
+    logger.info(f"   Database: {settings.db_name}")
+    logger.info(f"   Redis: {'Enabled (Upstash)' if settings.upstash_redis_rest_url else 'Enabled (Standard)' if settings.redis_url else 'Disabled'}")
+    logger.info(f"   Email Service: {settings.email_service}")
+    logger.info(f"   CORS Origins: {', '.join(settings.get_cors_origins_list())}")
+    logger.info(f"   Strict Production Mode: {'Enabled' if settings.full_production_configuration else 'Disabled'}")
+    if settings.is_sentry_available():
+        logger.info(f"   Sentry: Enabled")
+
+    return validation_result
 
 
 # ============================================
