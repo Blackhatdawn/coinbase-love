@@ -43,6 +43,7 @@ from routers import auth, portfolio, trading, crypto, admin, wallet, alerts, tra
 from routers.health import router as health_router
 from routers.kyc_aml import router as kyc_aml_router
 from routers.circuit_breaker_monitor import router as circuit_breaker_monitor_router
+from routers.phase4_monitoring import router as phase4_monitoring_router
 
 # Services
 from services.telegram_bot import telegram_bot
@@ -59,6 +60,13 @@ from performance_monitoring import performance_metrics, RequestTimer
 
 # Phase 3 Fault Tolerance
 from circuit_breaker import CircuitBreakerRegistry, with_circuit_breaker, BREAKER_COINCAP, BREAKER_TELEGRAM, BREAKER_NOWPAYMENTS, BREAKER_FIREBASE, BREAKER_EMAIL
+
+# Phase 4 Advanced Request Management
+from request_deduplication import request_deduplicator
+from smart_cache import smart_cache
+from rate_limiter import rate_limiter
+from connection_pool_manager import connection_pool_manager
+from load_testing import LoadTestSuite
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -860,6 +868,9 @@ app.include_router(monitoring.router, prefix="/api")
 
 # Circuit Breaker Monitoring (Phase 3: Fault Tolerance Dashboard)
 app.include_router(circuit_breaker_monitor_router, tags=["monitoring"])
+
+# Phase 4 Advanced Request Management Monitoring
+app.include_router(phase4_monitoring_router, tags=["monitoring"])
 
 # Removed: deep_investigation router (archived to _legacy_archive)
 # app.include_router(deep_investigation.router, prefix="/api")
