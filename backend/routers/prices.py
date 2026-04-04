@@ -2,6 +2,7 @@
 Cryptocurrency Prices API Endpoints
 Real-time prices from Redis cache (updated by WebSocket streams)
 Includes monitoring and metrics endpoints
+Phase 2: Response caching and request retry logic
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -13,15 +14,23 @@ from datetime import datetime
 import logging
 from dependencies import get_current_user_id, get_db
 
+# Phase 2 Performance Optimization
+from cache_decorator import cached_endpoint, CACHE_PRICES, CACHE_MARKET_DATA, get_cache_headers
+from request_retry import with_retry, RETRY_API
+from performance_monitoring import performance_metrics, RequestTimer
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
 @router.get("")
+@cached_endpoint(config=CACHE_MARKET_DATA)
+@with_retry(config=RETRY_API)
 async def get_all_prices(response: Response) -> Dict[str, Any]:
     """
-    Get all cached cryptocurrency prices.
+    Get all cached cryptocurrency prices (Phase 2: Cached & Retried).
     Prices are updated in real-time by WebSocket stream.
+    Uses 300s cache with 4-attempt retry logic.
     
     Returns:
     {
@@ -38,17 +47,26 @@ async def get_all_prices(response: Response) -> Dict[str, Any]:
     }
     """
     try:
-        # Add cache headers for CDN/browser caching (5 seconds for real-time data)
-        response.headers["Cache-Control"] = "public, max-age=5, stale-while-revalidate=10"
+        # Phase 2: Add cache headers for CDN/browser caching (300 seconds for market data)
+        response.headers.update(get_cache_headers(ttl_seconds=300))
         
         # Get all prices from service
-        status = price_stream_service.get_status()
-        
-        return {
-            "prices": price_stream_service.prices,
-            "status": status,
-            "count": len(price_stream_service.prices)
-        }
+        async with RequestTimer("get-all-prices"):
+            status = price_stream_service.get_status()
+            
+            # Record API timing
+            performance_metrics.record_api_timing(
+                endpoint="/prices",
+                method="GET",
+                response_time_ms=0,  # Populated by RequestTimer context
+                status_code=200,
+            )
+            
+            return {
+                "prices": price_stream_service.prices,
+                "status": status,
+                "count": len(price_stream_service.prices)
+            }
     
     except Exception as e:
         logger.error(f"❌ Error getting prices: {str(e)}")
@@ -56,40 +74,59 @@ async def get_all_prices(response: Response) -> Dict[str, Any]:
 
 
 @router.get("/{symbol}")
-async def get_price(symbol: str) -> Dict[str, Any]:
+@cached_endpoint(config=CACHE_PRICES)
+@with_retry(config=RETRY_API)
+async def get_price(symbol: str, response: Response) -> Dict[str, Any]:
     """
-    Get cached price for a specific cryptocurrency symbol.
+    Get cached price for a specific cryptocurrency symbol (Phase 2: Cached & Retried).
+    Uses 60s cache with 4-attempt retry logic.
     
     Example: GET /api/prices/bitcoin
     Returns: {"symbol": "bitcoin", "price": "45000.50", "cached_at": "2026-01-16T05:00:00.000Z"}
     """
     try:
-        # Try cache first (lowercase for consistency)
-        cache_key = f"crypto:price:{symbol.lower()}"
-        cached_price = await redis_cache.get(cache_key)
+        # Phase 2: Add cache headers
+        response.headers.update(get_cache_headers(ttl_seconds=60))
         
-        if cached_price:
-            price_value = cached_price.get("price") if isinstance(cached_price, dict) else cached_price
-            return {
-                "symbol": symbol.lower(),
-                "price": str(price_value),
-                "source": "redis_cache"
-            }
-        
-        # Try in-memory if not in Redis
-        normalized = symbol.lower()
-        if normalized in price_stream_service.prices:
-            return {
-                "symbol": normalized,
-                "price": str(price_stream_service.prices[normalized]),
-                "source": "memory_cache"
-            }
-        
-        # Price not found
-        raise HTTPException(
-            status_code=404,
-            detail=f"Price for {symbol} not available. Service may be initializing."
-        )
+        async with RequestTimer(f"get-price:{symbol}"):
+            # Try cache first (lowercase for consistency)
+            cache_key = f"crypto:price:{symbol.lower()}"
+            cached_price = await redis_cache.get(cache_key)
+            
+            if cached_price:
+                price_value = cached_price.get("price") if isinstance(cached_price, dict) else cached_price
+                performance_metrics.record_api_timing(
+                    endpoint="/prices/{symbol}",
+                    method="GET",
+                    response_time_ms=0,  # Populated by RequestTimer
+                    status_code=200,
+                )
+                return {
+                    "symbol": symbol.lower(),
+                    "price": str(price_value),
+                    "source": "redis_cache"
+                }
+            
+            # Try in-memory if not in Redis
+            normalized = symbol.lower()
+            if normalized in price_stream_service.prices:
+                performance_metrics.record_api_timing(
+                    endpoint="/prices/{symbol}",
+                    method="GET",
+                    response_time_ms=0,
+                    status_code=200,
+                )
+                return {
+                    "symbol": normalized,
+                    "price": str(price_stream_service.prices[normalized]),
+                    "source": "memory_cache"
+                }
+            
+            # Price not found
+            raise HTTPException(
+                status_code=404,
+                detail=f"Price for {symbol} not available. Service may be initializing."
+            )
     
     except HTTPException:
         raise

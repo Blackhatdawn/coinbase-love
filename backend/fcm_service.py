@@ -1,11 +1,17 @@
 """
 Firebase Cloud Messaging (FCM) Service
 Handles push notification delivery with automatic mock fallback.
+Phase 3: Circuit breaker pattern for Firebase fault tolerance
 """
 import json
 import os
 import logging
 from typing import Optional, Dict, Any
+
+from config import settings
+
+# Phase 3 Fault Tolerance
+from circuit_breaker import with_circuit_breaker, BREAKER_FIREBASE
 
 logger = logging.getLogger(__name__)
 

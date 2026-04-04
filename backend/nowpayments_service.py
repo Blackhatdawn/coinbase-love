@@ -2,6 +2,7 @@
 NOWPayments Integration Service
 Handles crypto payment processing for deposits
 Supports MOCK mode when no API key is provided
+Phase 3: Circuit breaker pattern for fault tolerance on payment API
 """
 import hmac
 import hashlib
@@ -12,6 +13,9 @@ from datetime import datetime, timedelta, timezone
 import logging
 
 from config import settings
+
+# Phase 3 Fault Tolerance
+from circuit_breaker import with_circuit_breaker, BREAKER_NOWPAYMENTS
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +60,9 @@ class NOWPaymentsService:
             "Content-Type": "application/json"
         }
     
+    @with_circuit_breaker(breaker=BREAKER_NOWPAYMENTS, fallback_func=lambda *args, **kwargs: {\"status\": \"error\", \"message\": \"Payment API unavailable\"})
     async def get_status(self) -> Dict[str, Any]:
-        """Check API status"""
+        \"\"\"Check API status with circuit breaker protection (Phase 3)\"\"\"
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.get(

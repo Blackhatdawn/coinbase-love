@@ -8,6 +8,7 @@ Enterprise-grade email system with:
 - SOC 2 compliance logging
 - Beautiful HTML templates
 - 6-digit OTP verification with 5-minute expiry
+Phase 2: Integration with request retry decorator for monitoring
 """
 import random
 import secrets
@@ -22,6 +23,10 @@ import aiosmtplib
 import httpx
 
 from config import settings
+
+# Phase 2 Performance Optimization
+from request_retry import with_retry, RETRY_CONSERVATIVE
+from performance_monitoring import performance_metrics, RequestTimer
 
 logger = logging.getLogger(__name__)
 

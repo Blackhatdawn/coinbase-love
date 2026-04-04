@@ -56,6 +56,9 @@ from redis_enhanced import redis_enhanced
 from db_optimization import create_all_recommended_indexes
 from performance_monitoring import performance_metrics, RequestTimer
 
+# Phase 3 Fault Tolerance
+from circuit_breaker import CircuitBreakerRegistry, with_circuit_breaker, BREAKER_COINCAP, BREAKER_TELEGRAM, BREAKER_NOWPAYMENTS, BREAKER_FIREBASE, BREAKER_EMAIL
+
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -456,6 +459,20 @@ async def lifespan(app: FastAPI):
         # Set global dependencies
         dependencies.set_db_connection(db_connection)
         dependencies.set_limiter(limiter)
+
+        # Phase 3: Initialize Circuit Breaker Registry
+        try:
+            logger.info("🔌 Initializing Circuit Breaker Registry...")
+            registry = CircuitBreakerRegistry.get_instance()
+            registry.initialize_all_breakers()
+            logger.info("✅ Circuit Breaker Registry initialized with 5 breakers")
+            logger.info("   - CoinCap API breaker")
+            logger.info("   - Telegram API breaker")
+            logger.info("   - NowPayments API breaker")
+            logger.info("   - Firebase API breaker")
+            logger.info("   - Email Service breaker")
+        except Exception as e:
+            logger.warning(f"⚠️ Circuit breaker initialization warning: {e}")
 
         # Create database indexes for performance
         if db_connection.is_connected:

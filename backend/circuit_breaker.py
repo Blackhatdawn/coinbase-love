@@ -6,10 +6,9 @@ Implements exponential backoff and automatic recovery
 
 import asyncio
 import logging
-import time
 from enum import Enum
 from typing import Callable, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

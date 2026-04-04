@@ -1,6 +1,8 @@
-"""Portfolio management endpoints."""
+"""Portfolio management endpoints.
+Phase 2: Response caching and request retry logic
+"""
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import logging
@@ -11,6 +13,11 @@ from cache import cache
 from redis_cache import redis_cache
 from services import price_stream_service
 from coincap_service import coincap_service
+
+# Phase 2 Performance Optimization
+from cache_decorator import cached_endpoint, CACHE_PORTFOLIO, get_cache_headers
+from request_retry import with_retry, RETRY_API
+from performance_monitoring import performance_metrics, RequestTimer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -49,14 +56,22 @@ async def get_price_for_symbol(symbol: str) -> Optional[float]:
 # ============================================
 
 @router.get("")
-@cache(ttl=60)
+@cached_endpoint(config=CACHE_PORTFOLIO)
+@with_retry(config=RETRY_API)
 async def get_portfolio(
     request: Request,
+    response: Response,
     user_id: str = Depends(get_current_user_id),
     db = Depends(get_db)
 ):
-    """Get user's complete portfolio with real-time prices from Redis cache."""
-    portfolios_collection = db.get_collection("portfolios")
+    """Get user's complete portfolio with real-time prices (Phase 2: Cached & Retried).
+    Uses 120s cache with 4-attempt retry logic for reliability.
+    """
+    # Phase 2: Add cache headers
+    response.headers.update(get_cache_headers(ttl_seconds=120))
+    
+    async with RequestTimer(f"get-portfolio:{user_id}"):
+        portfolios_collection = db.get_collection("portfolios")
     portfolio_doc = await portfolios_collection.find_one({"user_id": user_id})
 
     if not portfolio_doc:

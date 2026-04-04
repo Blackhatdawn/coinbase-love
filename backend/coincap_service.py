@@ -2,6 +2,7 @@
 Market data service (CoinGecko-backed).
 
 Note: kept module/class name for backward compatibility with existing imports.
+Phase 2: Request retry logic for external API reliability
 """
 import httpx
 import logging
@@ -11,6 +12,10 @@ import random
 
 from config import settings
 from redis_cache import redis_cache
+
+# Phase 2 Performance Optimization
+from request_retry import with_retry, RETRY_API, RetryConfig
+from performance_monitoring import performance_metrics, RequestTimer
 
 logger = logging.getLogger(__name__)
 
@@ -55,23 +60,33 @@ class CoinCapService:
             await redis_cache.cache_prices(prices)
             return prices
 
+    @with_circuit_breaker(breaker=BREAKER_COINCAP, fallback_func=lambda *args, **kwargs: [])
+    @with_retry(config=RETRY_API)
     async def _fetch_real_prices(self, coin_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        \"\"\"Fetch real prices from CoinGecko with circuit breaker (Phase 3) and retry logic (Phase 2).
+        
+        Circuit Breaker States:
+        - CLOSED: Normal operation, requests go through
+        - OPEN: CoinGecko failing, returns empty list fallback
+        - HALF_OPEN: Automatic recovery test after 60s timeout
+        \"\"\"
         ids = [self._normalize_coin_id(coin_id) for coin_id in (coin_ids or self.tracked_coins)]
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(
-                f"{self.base_url}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "ids": ",".join(ids),
-                    "order": "market_cap_desc",
-                    "per_page": min(max(len(ids), 20), 250),
-                    "page": 1,
-                    "sparkline": "false",
-                    "price_change_percentage": "24h",
-                },
-            )
-            response.raise_for_status()
-            assets = response.json()
+        async with RequestTimer("fetch-real-prices-circuit-protected"):
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/coins/markets",
+                    params={
+                        "vs_currency": "usd",
+                        "ids": ",".join(ids),
+                        "order": "market_cap_desc",
+                        "per_page": min(max(len(ids), 20), 250),
+                        "page": 1,
+                        "sparkline": "false",
+                        "price_change_percentage": "24h",
+                    },
+                )
+                response.raise_for_status()
+                assets = response.json()
 
         logger.info("✅ Fetched %s prices from CoinGecko", len(assets))
         results: List[Dict[str, Any]] = []

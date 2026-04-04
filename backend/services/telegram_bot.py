@@ -1,6 +1,7 @@
 """
 Telegram Bot Service for Admin KYC Notifications
 Free integration using Telegram Bot API - No costs
+Phase 3: Circuit breaker pattern for fault tolerance on Telegram API
 """
 import asyncio
 import logging
@@ -10,6 +11,9 @@ from datetime import datetime, timezone
 
 import httpx
 from config import settings
+
+# Phase 3 Fault Tolerance
+from circuit_breaker import with_circuit_breaker, BREAKER_TELEGRAM
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +47,9 @@ class TelegramBotService:
         self._polling_disabled_reason: Optional[str] = None
         self._polling_conflict_logged: bool = False
     
+    @with_circuit_breaker(breaker=BREAKER_TELEGRAM, fallback_func=lambda *args, **kwargs: False)
     async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send message to all admin chats"""
+        """Send message to all admin chats with circuit breaker protection (Phase 3)"""
         if not self.enabled:
             logger.info("Telegram notification skipped (bot disabled or not fully configured)")
             return False
